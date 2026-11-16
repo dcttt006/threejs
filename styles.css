@@ -2341,6 +2341,46 @@ html .splash__name { color: #fff; font-weight: 900; }
     #over-screen .btn:hover { background: #fff; color: #0b1220; }
 }
 
+
+/* pause: the same night blue panel */
+.pause-overlay { background: rgba(7, 16, 31, .78); }
+.pause-overlay__panel.paper {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #27344b;
+    border-radius: 3px;
+    background:
+        radial-gradient(80% 90% at 100% 100%, rgba(255, 176, 0, .16), transparent 70%),
+        #07101f;
+    color: #fff;
+}
+.pause-overlay__panel.paper::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    left: -6px;
+    width: 26px;
+    height: 150px;
+    background: linear-gradient(90deg, #ffc21a 0 8px, transparent 8px 15px, rgba(255, 194, 26, .55) 15px 20px, transparent 20px);
+    transform: rotate(36deg);
+}
+.pause-overlay__title { font-style: italic; font-weight: 900; }
+.pause-overlay__sub { color: #98a3b6; }
+.pause-overlay__sub kbd { border: 1px solid #27344b; border-radius: 3px; background: #1b2434; color: #fff; }
+.paper :focus-visible { outline-color: #fff; }
+.paper .btn {
+    border: 0;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    padding: 0 32px;
+    background: #ffc21a;
+    color: #0b1220;
+    font-style: italic;
+    text-transform: none;
+}
+@media (hover: hover) {
+    .paper .btn:hover { background: #fff; color: #0b1220; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: .01ms !important;
