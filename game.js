@@ -2087,11 +2087,14 @@ function endGame() {
     $('over-winner').textContent = winner;
     // a WK match: record it, and the result screen leads back to the tournament
     if (typeof wkAfterMatch === 'function') wkAfterMatch();
+    if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(true);       // statistics (game.stats.js)
 
     gotoScreen('over');
 }
 
 function teardownGame() {
+    // left before full time (back button, menu): counted as a match not finished
+    if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(false);
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
     STATE.gameStartTime = null;

@@ -1176,6 +1176,27 @@ kbd {
     background: var(--home-gold);
     transform: skewX(-18deg);
 }
+/* what the statistics measure: under the menu, or in the corner over the pitch */
+.home__note {
+    position: relative;
+    z-index: 1;
+    max-width: 34em;
+    margin: -8px 0 0;
+    padding: 0 var(--pad) calc(14px + var(--safe-b));
+    color: var(--home-dim);
+    font: 400 12px/1.4 var(--font-text);
+}
+@media (orientation: landscape) and (min-width: 560px) {
+    .home__note {
+        position: absolute;
+        right: calc(var(--pad) + var(--safe-r));
+        bottom: calc(10px + var(--safe-b));
+        max-width: min(40%, 30em);
+        margin: 0;
+        padding: 0;
+        text-align: right;
+    }
+}
 .home__stadium-label { font: italic 700 clamp(19px, 5vw, 24px)/1.1 var(--font-text); }
 .home__stadium-name  { color: var(--home-dim); font: italic 600 clamp(14px, 3.8vw, 17px)/1.2 var(--font-text); }
 

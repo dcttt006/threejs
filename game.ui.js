@@ -317,6 +317,7 @@ function startGame() {
     runKickoffCountdown(() => {
         STATE.gameStartTime = Date.now();
         STATE.inputLocked = false;
+        if (typeof PR_STATS !== 'undefined') PR_STATS.matchStart();     // statistics (game.stats.js)
         // started with the phone upright: wait until it is turned
         if (IS_TOUCH && isPortrait()) togglePause(true);
     });

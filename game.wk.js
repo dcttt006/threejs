@@ -952,6 +952,7 @@ function bindWk() {
     $('wk-start')?.addEventListener('click', () => {
         if (!wkPick) return;
         wkNew(wkPick, wkPickLevel || 'medium');
+        if (typeof PR_STATS !== 'undefined') PR_STATS.wkStart(wkPick, wkPickLevel || 'medium');
         gotoScreen('wkhub');
         wkRenderHub();
     });

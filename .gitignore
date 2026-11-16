@@ -1,2 +1,11 @@
 # exceeds GitHub's 100 MB per-file hard limit
 media/models/stadiums/estadio_unico_madre_de_ciudades.glb
+
+# macOS clutter
+.DS_Store
+._*
+
+# old code backups and stadium downloads the game doesn't use
+*.zip
+media/models/arena.glb
+media/models/stadiums/emirates-stadium (1)/textures/
