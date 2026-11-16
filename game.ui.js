@@ -472,14 +472,14 @@ function paintHud() {
     fillHudKeys($('hud-keys-p1'), STATE.p1, [
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
         [['Spatie'], 'schieten / tackle'],
-        [['E'], 'hoog schot'],
+        [['W', 'Spatie'], 'samen: hoog schot'],
         [['Q'], 'passen / bal vragen'],
         [['Shift'], 'sprinten'],
     ]);
     fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
         [['↑', '←', '↓', '→'], 'bewegen'],
         [['Enter'], 'schieten / tackle'],
-        [["'"], 'hoog schot'],
+        [['↑', 'Enter'], 'samen: hoog schot'],
         [['Shift'], 'passen / bal vragen'],
         [['Alt'], 'sprinten'],
     ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
@@ -521,6 +521,8 @@ function runKickoffCountdown(done) {
 // Q key: back to your keeper, or ask him for the ball). The stick is analogue;
 // movePlayer() reads touchMove for player 1.
 const touchMove = { active: false, x: 0, z: 0 };
+let touchShotHigh = false;      // the last Schiet was let go with a swipe up
+const SWIPE_HIGH_PX = 28;       // how far up the thumb must slide
 const STICK_TRAVEL = 52;        // px the knob can move from the centre, on the full-size stick
 const STICK_DEAD = 0.18;        // ignore tiny movements of the thumb
 
@@ -534,9 +536,9 @@ function resetTouch() {
     const stick = $('touch-stick'), knob = $('touch-knob');
     if (stick) { stick.style.left = ''; stick.style.top = ''; stick.classList.remove('is-held'); }
     if (knob) knob.style.transform = '';
-    ['touch-shoot', 'touch-high', 'touch-pass', 'touch-sprint'].forEach(id => $(id)?.classList.remove('is-down'));
+    ['touch-shoot', 'touch-pass', 'touch-sprint'].forEach(id => $(id)?.classList.remove('is-down', 'is-high'));
     $('touch-shoot')?.style.removeProperty('--charge');
-    $('touch-high')?.style.removeProperty('--charge');
+    touchShotHigh = false;
 }
 
 let touchBound = false;
@@ -598,35 +600,40 @@ function bindTouch() {
             btn.classList.add('is-down');
             keys[code] = true;
             keysPressed[code] = true;
-            onDown?.();
+            onDown?.(e);
         });
         const up = (e) => {
             if (e.pointerId !== id) return;
             id = null;
             btn.classList.remove('is-down');
+            onUp?.(e);                     // before the key goes up: a swipe is read first
             keys[code] = false;
-            onUp?.();
         };
         btn.addEventListener('pointerup', up);
         btn.addEventListener('pointercancel', up);
         btn.addEventListener('contextmenu', (e) => e.preventDefault());
     };
 
-    // Schiet and Hoog fill a ring while they charge, so you can see how hard it will be
-    const charged = (btn, code) => {
-        let raf = 0, start = 0;
-        const paint = () => {
-            const t = Math.min(1, (performance.now() - start) / CHARGE_MAX_MS);
-            btn.style.setProperty('--charge', t.toFixed(3));
-            raf = t < 1 ? requestAnimationFrame(paint) : 0;
-        };
-        hold(btn, code,
-            () => { start = performance.now(); cancelAnimationFrame(raf); paint(); },
-            () => { cancelAnimationFrame(raf); raf = 0; btn.style.removeProperty('--charge'); });
+    // Schiet fills a ring while it charges, so you can see how hard it will be.
+    // Swipe up over it as you let go and the shot goes high (touchShotHigh,
+    // read by handleShoot); the button turns "Hoog" once the swipe is far enough.
+    let raf = 0, start = 0, startY = 0;
+    const paint = () => {
+        const t = Math.min(1, (performance.now() - start) / CHARGE_MAX_MS);
+        shoot.style.setProperty('--charge', t.toFixed(3));
+        raf = t < 1 ? requestAnimationFrame(paint) : 0;
     };
-    charged(shoot, 'Space');
-    const high = $('touch-high');
-    if (high) charged(high, 'KeyE');
+    const swipedUp = (e) => startY - e.clientY > SWIPE_HIGH_PX;
+    hold(shoot, 'Space',
+        (e) => { start = performance.now(); startY = e.clientY; cancelAnimationFrame(raf); paint(); },
+        (e) => {
+            touchShotHigh = swipedUp(e);
+            shoot.classList.remove('is-high');
+            cancelAnimationFrame(raf); raf = 0; shoot.style.removeProperty('--charge');
+        });
+    shoot.addEventListener('pointermove', (e) => {
+        if (shoot.classList.contains('is-down')) shoot.classList.toggle('is-high', swipedUp(e));
+    });
     hold(pass, 'KeyQ');
     const sprint = $('touch-sprint');
     if (sprint) hold(sprint, 'ShiftLeft');

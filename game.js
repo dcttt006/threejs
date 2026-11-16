@@ -569,13 +569,12 @@ function updateStaminaBars() {
         // with the ball: Schiet and Pass; without it: Tackle and Vraag
         const own = hasBall(controlledP1);
         const shoot = $('touch-shoot'), pass = $('touch-pass');
-        const shootText = own ? 'Schiet' : 'Tackle';
+        const shootText = !own ? 'Tackle' : (shoot && shoot.classList.contains('is-high') ? 'Hoog' : 'Schiet');
         const passText = own ? 'Pass' : 'Vraag';
         if (shoot && shoot.textContent !== shootText) shoot.textContent = shootText;
         if (pass && pass.textContent !== passText) pass.textContent = passText;
         shoot?.classList.toggle('is-tackle', !own);
         shoot?.classList.toggle('is-resting', !own && controlledP1.userData.tackleCd > 0);
-        $('touch-high')?.classList.toggle('is-resting', !own);
     }
 }
 
@@ -836,7 +835,6 @@ const GAME_KEYS = new Set([
     'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
     'Space','Enter',
     'KeyQ','ShiftRight','ShiftLeft',     // pass (Q, right Shift) and sprint (left Shift)
-    'KeyE','Quote',                      // high shot: E for player 1, ' for player 2
     'AltRight','Slash',                  // player 2 sprints with right Alt/Option or /
 ]);
 // Numpad fallback — when NumLock is off some laptops fire Numpad codes for arrows.
@@ -858,7 +856,6 @@ const KEY_FROM_EKEY = {
     's': 'KeyS', 'S': 'KeyS',
     'd': 'KeyD', 'D': 'KeyD',
     'q': 'KeyQ', 'Q': 'KeyQ',
-    'e': 'KeyE', 'E': 'KeyE', "'": 'Quote',
 };
 function resolveKeyCode(e) {
     if (e.code && KEY_ALIASES[e.code]) return KEY_ALIASES[e.code];
@@ -973,8 +970,7 @@ function gameTick() {
                 right: ['KeyD', 'ArrowRight'],
                 sprint: ['ShiftLeft', 'ShiftRight'],
             });
-            handleShoot(controlledP1, ['Space']);
-            handleHighShot(controlledP1, ['KeyE']);
+            handleShoot(controlledP1, ['Space'], ['KeyW', 'ArrowUp']);
             handlePass(controlledP1, ['KeyQ']);
         } else {
             movePlayer(controlledP1, {
@@ -984,10 +980,8 @@ function gameTick() {
                 up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
                 sprint: ['AltRight', 'Slash'],
             });
-            handleShoot(controlledP1, ['Space']);
-            handleShoot(controlledP2, ['Enter']);
-            handleHighShot(controlledP1, ['KeyE']);
-            handleHighShot(controlledP2, ['Quote']);
+            handleShoot(controlledP1, ['Space'], ['KeyW']);
+            handleShoot(controlledP2, ['Enter'], ['ArrowUp']);
             handlePass(controlledP1, ['KeyQ']);
             handlePass(controlledP2, ['ShiftRight']);
         }
@@ -1260,7 +1254,9 @@ const CHARGE_MAX_MS = 650;      // hold this long for a full-power shot
 const POWER_MIN = 1.35;         // a tap: a pass or a placed shot (~80 units/s)
 const POWER_MAX = 2.55;         // full charge: hard, but a keeper can still get there
 
-function handleShoot(player, key) {
+// The shoot key: low, or high when up is held as it is let go (W or the up
+// arrow; on a phone a swipe up over Schiet). Without the ball: a tackle.
+function handleShoot(player, key, upKeys) {
     if (!player) return;
 
     // charge mechanic: press starts a timer, release fires with scaled power
@@ -1287,35 +1283,13 @@ function handleShoot(player, key) {
         const power = POWER_MIN + (POWER_MAX - POWER_MIN) * t;
         player.userData.charging = false;
         player.userData.chargeStart = 0;
-        if (carrier === player || ballDistTo(player) < CARRY_REACH + 0.6) fireShot(player, power, t);
+        const high = (upKeys && pressed(upKeys))
+            || (player === controlledP1 && typeof touchShotHigh !== 'undefined' && touchShotHigh);
+        if (typeof touchShotHigh !== 'undefined' && player === controlledP1) touchShotHigh = false;
+        if (carrier === player || ballDistTo(player) < CARRY_REACH + 0.6) fireShot(player, power, t, high);
     }
 
     player.userData.shootHeld = isHeld;
-}
-
-// The high shot (E, ', or Hoog on a phone): charged the same way, it rises
-// over the defenders. A short press dips in just under the bar, a full one is
-// struck at the top corner and may sail over. Without the ball it does nothing.
-function handleHighShot(player, key) {
-    if (!player) return;
-    const u = player.userData;
-    const isHeld = pressed(key), wasHeld = !!u.highHeld;
-    if (isHeld && !wasHeld && hasBall(player)) {
-        u.highCharging = true;
-        u.charging = true;                    // the ring under the player fills, he slows to set himself
-        u.chargeStart = performance.now();
-    }
-    if (!isHeld && wasHeld && u.highCharging) {
-        const heldMs = performance.now() - (u.chargeStart || 0);
-        const t = Math.min(1, Math.max(0, (heldMs - CHARGE_MIN_MS) / (CHARGE_MAX_MS - CHARGE_MIN_MS)));
-        u.highCharging = false;
-        u.charging = false;
-        u.chargeStart = 0;
-        if (carrier === player || ballDistTo(player) < CARRY_REACH + 0.6) {
-            fireShot(player, POWER_MIN + (POWER_MAX - POWER_MIN) * t, t, true);
-        }
-    }
-    u.highHeld = isHeld;
 }
 
 // Every shot goes at the other goal, wherever you face. Up or down (held, or

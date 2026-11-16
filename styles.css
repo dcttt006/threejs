@@ -2442,30 +2442,23 @@ html .splash__name { color: #fff; font-weight: 900; }
 .rotate-hint__lead { max-width: 20em; margin: 0; color: #fff; font-size: 17px; line-height: 1.4; }
 
 
-/* Hoog: the high shot, left of Schiet, above Pass (a 2x2 with Sprint);
-   a gold ring, a ring that fills while it charges, dim without the ball */
-.touch__btn--high {
-    --charge: 0;
-    isolation: isolate;
-    right: calc(var(--edge-r) + var(--sprint) + 20px);
-    bottom: calc(var(--edge-b) + var(--sprint) + 12px);
-    width: var(--pass);
-    height: var(--pass);
-    border: 0;
-    background: conic-gradient(#fff calc(var(--charge) * 360deg), rgba(255, 194, 26, .9) 0);
-    color: #ffc21a;
-}
-.touch__btn--high::before {
-    content: '';
+/* Schiet: a swipe up over it as you let go = a high shot; it says so */
+.touch__btn--shoot::after {
+    content: '\2191  hoog';
     position: absolute;
-    inset: 4px;
-    z-index: -1;
-    border-radius: 50%;
-    background: rgba(18, 21, 18, .82);
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, .75);
+    font: 700 11px/1 var(--font-text);
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
 }
-.touch__btn--high.is-down::before { background: #ffc21a; }
-.touch__btn--high.is-down { color: #0b1220; }
-.touch__btn--high.is-resting { opacity: .4; }
+.touch__btn--shoot.is-tackle::after { content: none; }
+.touch__btn--shoot.is-high::before { background: #fff; }
+.touch__btn--shoot.is-high { transform: translateY(-6px) scale(.97); }
 
 /* full time: possession, shots (on target) and passes, red left and blue right */
 .match-stats {

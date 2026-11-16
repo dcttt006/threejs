@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=118">
+    <link rel="stylesheet" href="styles.css?v=125">
 </head>
 <body>
     <!-- shared icons -->
@@ -124,14 +124,14 @@
                     <dl class="keys">
                         <div><dt>Bewegen</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dd></div>
                         <div><dt>Schieten</dt><dd><kbd>Spatie</kbd> langer = harder</dd></div>
-                        <div><dt>Hoog schot</dt><dd><kbd>E</kbd> langer = harder</dd></div>
+                        <div><dt>Hoog schot</dt><dd><kbd>W</kbd> + <kbd>Spatie</kbd> samen</dd></div>
                         <div><dt>Passen</dt><dd><kbd>Q</kbd></dd></div>
                         <div><dt>Zonder bal</dt><dd><kbd>Spatie</kbd> tackle, <kbd>Q</kbd> bal vragen</dd></div>
                         <div><dt>Sprinten</dt><dd><kbd>Shift</kbd> links</dd></div>
                         <div><dt>Krullen</dt><dd>na je schot <kbd>W</kbd> of <kbd>S</kbd></dd></div>
                     </dl>
                     <p class="keys__note" id="p1-keys-alt" hidden>Tegen de computer werken de pijltjes ook.</p>
-                    <p class="touch-help">Links de stick. Rechts <strong>Schiet</strong> laag, <strong>Hoog</strong> over de verdediging (langer = harder), <strong>Pass</strong> en <strong>Sprint</strong>. Zonder bal worden ze <strong>Tackle</strong> en <strong>Vraag</strong>. Krullen: duw na je schot de stick omhoog of omlaag.</p>
+                    <p class="touch-help">Links de stick. Rechts <strong>Schiet</strong> (langer = harder; veeg bij het loslaten omhoog voor een hoog schot), <strong>Pass</strong> en <strong>Sprint</strong>. Zonder bal worden ze <strong>Tackle</strong> en <strong>Vraag</strong>. Krullen: duw na je schot de stick omhoog of omlaag.</p>
                 </section>
 
                 <div class="halves__mid">
@@ -159,7 +159,7 @@
                         <dl class="keys">
                             <div><dt>Bewegen</dt><dd><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></dd></div>
                             <div><dt>Schieten</dt><dd><kbd>Enter</kbd> langer = harder</dd></div>
-                            <div><dt>Hoog schot</dt><dd><kbd>'</kbd> langer = harder</dd></div>
+                            <div><dt>Hoog schot</dt><dd><kbd>↑</kbd> + <kbd>Enter</kbd> samen</dd></div>
                             <div><dt>Passen</dt><dd><kbd>Shift</kbd> rechts</dd></div>
                             <div><dt>Zonder bal</dt><dd><kbd>Enter</kbd> tackle, <kbd>Shift</kbd> bal vragen</dd></div>
                             <div><dt>Sprinten</dt><dd><kbd>Alt</kbd> rechts of <kbd>/</kbd></dd></div>
@@ -299,7 +299,6 @@
             <div class="touch__zone" id="touch-zone">
                 <div class="stick" id="touch-stick"><div class="stick__knob" id="touch-knob"></div></div>
             </div>
-            <button class="touch__btn touch__btn--high" id="touch-high" type="button" tabindex="-1">Hoog</button>
             <button class="touch__btn touch__btn--pass" id="touch-pass" type="button" tabindex="-1">Pass</button>
             <button class="touch__btn touch__btn--shoot" id="touch-shoot" type="button" tabindex="-1">Schiet</button>
             <button class="touch__btn touch__btn--sprint" id="touch-sprint" type="button" tabindex="-1">Sprint</button>
@@ -469,10 +468,10 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="game.core.js?v=115"></script>
     <script src="game.stadium.js?v=115"></script>
-    <script src="game.ui.js?v=118"></script>
+    <script src="game.ui.js?v=125"></script>
     <script src="game.wk.js?v=115"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
-    <script src="game.js?v=124"></script>
+    <script src="game.js?v=125"></script>
 </body>
 </html>
