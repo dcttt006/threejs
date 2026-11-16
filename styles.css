@@ -2566,20 +2566,14 @@ html .splash__name { color: #fff; font-weight: 900; }
     color: #0b1a14;
     font-weight: 800;
 }
+/* the middle: your WK 26 emblem (media/hud/wk-emblem.png, white on black) */
 .scorebug--wk .scorebug__sep {
-    display: grid;
-    place-items: center;
-    width: auto;
-    height: calc(var(--bug-h) - 4px);
-    padding: 0 4px;
+    width: calc((var(--bug-h) + 2px) * .62);
+    height: calc(var(--bug-h) + 2px);
+    margin: -2px 1px;
     border-radius: 6px;
-    background: #fff;
-    color: #111;
-    font: 800 10px/.95 var(--font-cond);
-    text-align: center;
-    white-space: pre;
+    background: #000 url('media/hud/wk-emblem.png?v=1') center / contain no-repeat;
 }
-.scorebug--wk .scorebug__sep::before { content: 'WK\A 26'; }
 @media (min-width: 700px) and (min-height: 560px) {
     .scorebug--wk .scorebug__main { padding: 0 10px; border-left-width: 5px; border-right-width: 5px; }
     .scorebug--wk .scorebug__team { gap: 8px; padding: 0 12px; }
@@ -2588,7 +2582,7 @@ html .splash__name { color: #fff; font-weight: 900; }
     .scorebug--wk .scorebug__team--blue .scorebug__name::after { width: 9px; height: 9px; }
     .scorebug--wk #hud-s1, .scorebug--wk #hud-s2 { min-width: 32px; border-radius: 8px; }
     .scorebug--wk .scorebug__score { gap: 4px; }
-    .scorebug--wk .scorebug__sep { padding: 0 6px; font-size: 13px; border-radius: 8px; }
+    .scorebug--wk .scorebug__sep { border-radius: 8px; }
 }
 /* the goal screen's score bar in the same colours in a WK match */
 .goal-flash--wk .goal-flash__bar { border-radius: 999px; background: #141414; overflow: hidden; }
