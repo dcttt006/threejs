@@ -8,6 +8,6 @@
 // rows, and only your own login can READ them.
 // NEVER put the service_role / secret key in this file.
 const STATS_CONFIG = {
-    url: '',        // https://xxxxxxxxxxxx.supabase.co
-    key: '',        // the anon public / publishable key
+    url: 'https://rgyvgdsizfrgikgsomac.supabase.co',
+    key: 'sb_publishable_Y4YP209t5x_FjGDOh4_tXQ_zBhV80lq',   // publishable: safe to be public
 };
