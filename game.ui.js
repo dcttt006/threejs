@@ -458,6 +458,9 @@ function hudCodes() {
 }
 
 function paintHud() {
+    // a WK match gets the World Cup scoreboard, every other match the European one
+    document.querySelector('.scorebug')?.classList.toggle('scorebug--wk', !!STATE.wkMatch);
+    $('goal-flash')?.classList.toggle('goal-flash--wk', !!STATE.wkMatch);
     // Scoreboard halves are fixed: red on the left, blue on the right.
     const redPlayer  = STATE.p1.team === 1 ? STATE.p1 : STATE.p2;
     const bluePlayer = STATE.p1.team === 2 ? STATE.p1 : STATE.p2;
