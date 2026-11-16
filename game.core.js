@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v87-restart-loading (2026-11-13)';
+const GAME_BUILD = 'v88-wk2026 (2026-11-13)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -221,7 +221,7 @@ function setSelectedStadium(id) {
 
 // ----------- DOM helpers -----------
 const $ = (id) => document.getElementById(id);
-const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen'];
+const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen'];
 const SCREEN_TO_DOM = {
     loading: 'loading-screen',
     launch:  'launch-screen',
@@ -230,6 +230,8 @@ const SCREEN_TO_DOM = {
     playing: 'game-screen',
     over:    'over-screen',
     stadium: 'stadium-screen',
+    wk:      'wk-screen',
+    wkhub:   'wk-hub-screen',
 };
 function showScreen(id) {
     screens.forEach(s => $(s)?.classList.toggle('active', s === id));
@@ -279,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindPause();
     bindStadium();
     bindTouch();
+    bindWk();
     updateLaunchStadiumLabel();
     window.addEventListener('keydown', (e) => {
         if (STATE.screen !== 'launch') return;

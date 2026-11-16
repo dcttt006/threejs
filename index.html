@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=89">
+    <link rel="stylesheet" href="styles.css?v=94">
 </head>
 <body>
     <!-- shared icons -->
@@ -52,6 +52,10 @@
                     <button id="launch-cpu" class="btn btn--line" type="button">
                         <span>Tegen de computer</span>
                         <span class="btn__meta" id="launch-cpu-level">Gemiddeld</span>
+                    </button>
+                    <button id="launch-wk" class="btn btn--line" type="button">
+                        <span>WK 2026</span>
+                        <span class="btn__meta">48 landen</span>
                     </button>
                     <button id="launch-stadium-pick" class="btn btn--line" type="button">
                         <span>Stadion kiezen</span>
@@ -210,6 +214,12 @@
             <div class="scorebug__clock" id="hud-timer">1:30</div>
         </div>
 
+        <!-- WK knockout level at full time (game.wk.js) -->
+        <div class="wk-banner" id="wk-banner" role="status" hidden>
+            <span class="wk-banner__title">Verlenging</span>
+            <span class="wk-banner__sub">Wie scoort, wint</span>
+        </div>
+
         <!-- while the stadium model downloads; the match is already on (buildStadium) -->
         <div class="stadium-loading" id="stadium-loading" role="status" hidden>
             Stadion laden <span id="stadium-loading-pct"></span>
@@ -258,6 +268,80 @@
         <div class="rotate-hint">
             <p class="rotate-hint__text">Draai je telefoon een kwartslag</p>
         </div>
+    </div>
+
+    <!-- ============ WK 2026: PICK YOUR COUNTRY ============ -->
+    <div id="wk-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">WK 2026</span>
+        </header>
+
+        <main class="page wk">
+            <div class="wk__head">
+                <img class="wk-emblem" alt="WK 2026" hidden>
+                <h1 class="title">Kies je land</h1>
+                <p class="wk__lead">Het WK in Canada, Mexico en de Verenigde Staten: de 48 landen in de groepen van de loting. Jij speelt de wedstrijden van jouw land, de rest wordt gespeeld zonder jou.</p>
+            </div>
+
+            <div class="wk-hero" id="wk-hero"></div>
+
+            <div class="wk__resume" id="wk-resume" hidden>
+                <p class="wk__resume-text" id="wk-resume-text"></p>
+                <button id="wk-resume-go" class="btn" type="button">Verder spelen</button>
+            </div>
+
+            <!-- twelve groups, filled from WK_GROUPS by wkRenderPick() -->
+            <div class="wk-groups" id="wk-groups"></div>
+
+            <div class="wk__foot">
+                <div class="seg" id="wk-level" role="radiogroup" aria-label="Niveau van de tegenstanders">
+                    <button class="seg__btn" type="button" role="radio" data-level="easy">Makkelijk</button>
+                    <button class="seg__btn" type="button" role="radio" data-level="medium">Gemiddeld</button>
+                    <button class="seg__btn" type="button" role="radio" data-level="hard">Moeilijk</button>
+                </div>
+                <button id="wk-start" class="btn" type="button" disabled>Kies je land</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ WK 2026: THE TOURNAMENT ============ -->
+    <div id="wk-hub-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" id="wk-hub-back">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Menu
+            </button>
+            <span class="topbar__brand">WK 2026</span>
+        </header>
+
+        <main class="page wkhub">
+            <div class="wkhub__head">
+                <img class="wk-emblem wk-emblem--small" alt="WK 2026" hidden>
+                <img class="flag flag--head" id="wk-hub-flag" src="media/flags/nl.svg" alt="" width="60" height="40">
+                <div>
+                    <h1 class="title" id="wk-hub-team">Nederland</h1>
+                    <p class="wkhub__sub" id="wk-hub-sub">Groep F</p>
+                </div>
+            </div>
+
+            <ol class="wk-path" id="wk-path" aria-label="Het toernooi"></ol>
+
+            <div class="wkhub__grid">
+                <section class="wk-panel">
+                    <h2 class="wk-panel__title" id="wk-table-title">Groep F</h2>
+                    <table class="wk-table" id="wk-table"></table>
+                    <ul class="wk-fixtures" id="wk-fixtures"></ul>
+                </section>
+                <section class="wk-panel wk-next" id="wk-next" aria-live="polite"></section>
+            </div>
+
+            <details class="wk-all">
+                <summary>Alle groepen</summary>
+                <div class="wk-all__grid" id="wk-all"></div>
+            </details>
+        </main>
     </div>
 
     <!-- ============ STADIUM PICKER ============ -->
@@ -324,6 +408,7 @@
             <div class="actions">
                 <button id="play-again" class="btn" type="button">Revanche</button>
                 <button id="back-home" class="btn btn--line" type="button">Naar het menu</button>
+                <button id="wk-continue" class="btn" type="button" hidden>Verder</button>
             </div>
         </main>
     </div>
@@ -331,9 +416,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=89"></script>
-    <script src="game.stadium.js?v=89"></script>
-    <script src="game.ui.js?v=89"></script>
-    <script src="game.js?v=89"></script>
+    <script src="game.core.js?v=94"></script>
+    <script src="game.stadium.js?v=94"></script>
+    <script src="game.ui.js?v=94"></script>
+    <script src="game.wk.js?v=94"></script>
+    <script src="game.js?v=94"></script>
 </body>
 </html>

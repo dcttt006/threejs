@@ -54,8 +54,8 @@ button:disabled { cursor: default; }
 :focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
 .paper :focus-visible { outline-color: var(--ink); }
 
-[data-team="red"]  { --team: var(--red); }
-[data-team="blue"] { --team: var(--blue); }
+[data-team="red"]  { --team: var(--red);  --team-ink: var(--red-ink, #fff); }
+[data-team="blue"] { --team: var(--blue); --team-ink: var(--blue-ink, #fff); }
 
 /* ---------- screens ---------- */
 .screen {
@@ -220,6 +220,36 @@ kbd {
     text-transform: uppercase;
 }
 .scorebug__name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* WK: the flag next to the score, the FIFA code beside it (game.wk.js) */
+.scorebug__flag {
+    flex: none;
+    width: 36px;
+    height: 24px;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px rgba(18, 21, 18, .25);
+}
+.scorebug__team--red .scorebug__flag  { margin-left: 12px; }
+.scorebug__team--blue .scorebug__flag { margin-right: 12px; }
+
+/* WK: extra time */
+.wk-banner {
+    position: absolute;
+    z-index: 4;
+    top: 38%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 18px 36px 20px;
+    border: var(--line) solid #fff;
+    background: var(--ink);
+    color: #fff;
+    text-align: center;
+    pointer-events: none;
+}
+.wk-banner__title { font: 800 54px/1 var(--font-cond); text-transform: uppercase; }
+.wk-banner__sub { font: 700 20px/1 var(--font-cond); color: var(--yellow); text-transform: uppercase; }
 .scorebug__team--red  { justify-content: flex-end; border-left: 12px solid var(--red); }
 .scorebug__team--blue { border-right: 12px solid var(--blue); }
 .scorebug__score {
@@ -371,7 +401,7 @@ kbd {
     margin-top: -120px;
     padding: 14px 20px 22px;
     background: var(--team, var(--ink));
-    color: #fff;
+    color: var(--team-ink, #fff);              /* dark text on a white or yellow kit (WK) */
     text-align: center;
     pointer-events: none;
     animation: goal-band 1.7s cubic-bezier(.2, .8, .2, 1) both;
@@ -1325,6 +1355,222 @@ kbd {
     /* match */
     #game-screen .scorebug { top: 10px; left: 50%; transform: translateX(-50%); }
     #game-screen .pause-btn { top: 10px; right: max(10px, env(safe-area-inset-right)); }
+}
+
+
+/* =====================================================
+   WK 2026 — pick a country, then the tournament
+   The scoreboard menus: black panels, amber pixel type,
+   flags as the only colour besides the amber.
+   ===================================================== */
+.flag {
+    flex: none;
+    display: block;
+    width: 30px;
+    height: 20px;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .18);
+}
+.flag--big { width: 54px; height: 36px; }
+.flag.is-crest { object-fit: contain; box-shadow: none; }      /* a crest keeps its shape */
+.wk-emblem { display: block; width: auto; height: clamp(90px, 14vh, 150px); }
+.wk-emblem--small { height: 64px; }
+.wk-emblem[hidden] { display: none; }
+
+/* real stadium photos (Wikimedia Commons), each with its credit */
+.wk-photo { margin: 0; border: 4px solid var(--edge); background: var(--pit); }
+.wk-photo img { display: block; width: 100%; height: clamp(120px, 22vh, 230px); object-fit: cover; object-position: 50% 60%; }
+.wk-next .wk-photo img { height: clamp(110px, 17vh, 170px); }
+.wk-next .wk-photo__cap { padding: 8px 10px 10px; }
+.wk-photo__cap { display: grid; gap: 4px; padding: 10px 12px 12px; }
+.wk-photo__what { color: var(--text); font-size: 15px; }
+.wk-photo__credit { color: var(--dim); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.wk-photo__credit:hover { color: var(--amber); }
+@media (max-height: 520px) { .wk-hero { display: none; } }
+.flag--head { width: 60px; height: 40px; }
+
+.wk { gap: 18px; }
+.wk__head { display: grid; gap: 10px; margin-top: 6px; }
+.wk__lead { max-width: 62ch; margin: 0; color: var(--text); font-size: 17px; }
+
+.wk__resume {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 14px 18px;
+    border: 4px solid var(--amber);
+}
+.wk__resume-text { display: flex; align-items: center; gap: 12px; margin: 0; color: #fff; }
+
+.wk-groups {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.wk-group { border: 4px solid var(--edge); background: var(--pit); }
+.wk-group__name {
+    margin: 0;
+    padding: 10px 12px 8px;
+    border-bottom: 4px solid var(--edge);
+    color: var(--amber);
+    font: 400 18px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.wk-team {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 0;
+    border-top: 2px dotted var(--edge);
+    background: none;
+    color: var(--text);
+    font: 500 16px/1.2 var(--font-menu);
+    text-align: left;
+}
+.wk-group__name + .wk-team { border-top: 0; }
+.wk-team:hover { color: var(--amber); }
+.wk-team.is-picked { background: var(--amber); color: var(--pit); }
+.wk-team:focus-visible { outline-offset: -4px; }
+.wk-team__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wk__foot {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 14px 0 4px;
+    background: var(--panel);
+}
+.menu .wk__foot .btn { min-width: min(100%, 360px); }
+.menu .btn:disabled { border-color: var(--edge); background: var(--edge); color: var(--dim); cursor: not-allowed; }
+
+/* the tournament */
+.wkhub { gap: 18px; }
+.wkhub__head { display: flex; align-items: center; gap: 18px; margin-top: 6px; }
+.wkhub__sub { margin: 6px 0 0; color: var(--dim); font: 400 16px/1 var(--font-led); text-transform: uppercase; }
+
+.wk-path {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.wk-path__step {
+    padding: 10px 8px;
+    border: 3px solid var(--edge);
+    color: var(--dim);
+    font: 400 13px/1.2 var(--font-led);
+    text-align: center;
+    text-transform: uppercase;
+}
+.wk-path__step.is-done { border-color: var(--amber); color: var(--amber); }
+.wk-path__step.is-now  { border-color: var(--amber); background: var(--amber); color: var(--pit); }
+.wk-path__step.is-out  { border-color: var(--red); color: #fff; background: var(--red); }
+
+.wkhub__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 18px;
+}
+.wk-panel { padding: 16px 18px 18px; border: 4px solid var(--edge); background: var(--pit); }
+.wk-panel__title { margin: 0 0 12px; color: var(--amber); font: 400 20px/1 var(--font-led); text-transform: uppercase; }
+
+.wk-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.wk-table th {
+    padding: 0 6px 8px;
+    color: var(--dim);
+    font-weight: 500;
+    font-size: 13px;
+    text-align: left;
+}
+.wk-table th.num, .wk-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wk-table td { padding: 8px 6px; border-top: 2px dotted var(--edge); color: var(--text); }
+.wk-table__pos { width: 26px; color: var(--dim); }
+.wk-table__team { display: flex; align-items: center; gap: 10px; }
+.wk-table tr.is-through .wk-table__pos { color: var(--amber); }
+.wk-table tr.is-me td { color: #fff; font-weight: 500; }
+.wk-table tr.is-me { background: rgba(255, 176, 0, .12); }
+.wk-table--small { font-size: 13px; }
+.wk-table--small td { padding: 6px 4px; }
+.wk-table--small .flag { width: 22px; height: 15px; }
+
+.wk-fixtures { display: grid; margin: 16px 0 0; padding: 0; list-style: none; }
+.wk-fixture {
+    display: grid;
+    grid-template-columns: 130px auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 2px dotted var(--edge);
+    color: var(--text);
+}
+.wk-fixture__round { color: var(--dim); font-size: 14px; }
+.wk-fixture__opp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-fixture__score { color: var(--dim); font: 400 14px/1 var(--font-led); white-space: nowrap; }
+.wk-fixture__score.is-won  { color: var(--amber); }
+.wk-fixture__score.is-lost { color: #ff6b6b; }
+.wk-fixture__score.is-draw { color: #fff; }
+
+.wk-next { display: grid; align-content: start; gap: 14px; }
+.wk-next__label { margin: 0; color: var(--amber); font: 400 18px/1.2 var(--font-led); text-transform: uppercase; }
+.wk-next__vs { margin: 0; color: var(--dim); }
+.wk-next__team { display: flex; align-items: center; gap: 16px; }
+.wk-next__name { color: #fff; font: 400 clamp(22px, 2.4vw, 34px)/1.1 var(--font-led); text-transform: uppercase; }
+.wk-next__city { margin: 0; color: var(--text); font-size: 15px; }
+.wk-next__result { margin: 0; color: #fff; font: 400 clamp(24px, 2.6vw, 38px)/1.1 var(--font-led); text-transform: uppercase; }
+.wk-next.is-champion { border-color: var(--amber); }
+.wk-next.is-champion .wk-next__result { color: var(--amber); }
+.menu .wk-next__play { margin-top: 6px; width: 100%; justify-content: center; }
+
+.wk-all { border: 4px solid var(--edge); }
+.wk-all > summary {
+    padding: 14px 18px;
+    color: var(--amber);
+    font: 400 18px/1 var(--font-led);
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.wk-all > summary:focus-visible { outline-offset: -6px; }
+.wk-all__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    padding: 0 18px 18px;
+}
+.wk-all__name { margin: 0 0 6px; color: var(--amber); font: 400 14px/1 var(--font-led); text-transform: uppercase; }
+
+@media (max-width: 1100px) {
+    .wk-groups, .wk-all__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+    .wkhub__grid { grid-template-columns: minmax(0, 1fr); }
+    .wk-path { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+    .wk-groups, .wk-all__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wk-fixture { grid-template-columns: 96px auto minmax(0, 1fr) auto; font-size: 14px; }
+    .wk-team { font-size: 14px; gap: 8px; padding: 8px; }
+    .menu .wk__foot .btn { width: 100%; min-width: 0; padding: 0 12px; font-size: 15px; }
+    .wk__foot .seg { display: flex; width: 100%; }
+    .wk__foot .seg__btn { flex: 1; min-width: 0; padding: 0 4px; font-size: 13px; }
+    .wk-path__step { padding: 8px 2px; font-size: 10px; overflow-wrap: anywhere; }
+    .menu .wk-next__play { padding: 0 10px; font-size: 16px; }
+    .wk-table { font-size: 14px; }
+    .wk-table th, .wk-table td { padding-left: 3px; padding-right: 3px; }
+}
+@media (max-height: 520px) {
+    .wk__lead { display: none; }
+    .wk-path__step { padding: 6px 4px; font-size: 11px; }
 }
 
 /* ---------- phones held upright (after the picker rules, so these win) ---------- */

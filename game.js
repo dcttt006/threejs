@@ -320,7 +320,8 @@ function makeBoardTexture(lines) {
 
 function buildBoards() {
     const stadium = getSelectedStadium();
-    const base = makeBoardTexture(['Pitch Royale', stadium.name]);
+    // in a WK match the boards say WK 2026 and where it is played
+    const base = makeBoardTexture(STATE.wkMatch ? wkBoardText() : ['Pitch Royale', stadium.name]);
     const H = 1.9, T = 0.5;
     const blank = new THREE.MeshLambertMaterial({ color: srgb(0x1a1d1a) });
     const board = (length) => {
@@ -644,7 +645,7 @@ function buildBall() {
     ball = new THREE.Group();
     const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(BALL_VISUAL_R, 24, 16),
-        new THREE.MeshLambertMaterial({ map: makeBallTexture() })
+        new THREE.MeshLambertMaterial({ map: STATE.wkMatch ? wkBallTexture() : makeBallTexture() })
     );
     mesh.position.y = BALL_VISUAL_R - BALL_SIZE;
     ball.add(mesh);
@@ -1870,6 +1871,12 @@ function scoreGoal(scoringTeam) {
 
     setTimeout(() => { flash.hidden = true; }, 1700);
 
+    // golden goal in WK extra time: the first goal ends the match
+    if (STATE.goldenGoal) {
+        setTimeout(() => { if (STATE.screen === 'playing') endGame(); }, 1900);
+        return;
+    }
+
     // the side that conceded kicks off, after everybody has jogged back (walkBack)
     STATE.kickoffTeam = scoringTeam === 1 ? 2 : 1;
     STATE.restartTicks = RESTART_TICKS;
@@ -1897,6 +1904,8 @@ function formatTime(s) {
 }
 
 function endGame() {
+    // a WK knockout level at full time goes to extra time instead
+    if (typeof wkBeforeEnd === 'function' && wkBeforeEnd()) return;
     STATE.inputLocked = true;
 
     // populate over screen
@@ -1912,6 +1921,8 @@ function endGame() {
     else if (STATE.score2 > STATE.score1) winner = `${bluePlayer.name} wint`;
     else winner = 'Gelijkspel';
     $('over-winner').textContent = winner;
+    // a WK match: record it, and the result screen leads back to the tournament
+    if (typeof wkAfterMatch === 'function') wkAfterMatch();
 
     gotoScreen('over');
 }

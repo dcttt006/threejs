@@ -280,6 +280,8 @@ let controlledP1, controlledP2;     // human-controlled veldspelers
 const keys = {};
 
 function startGame() {
+    // WK kits and colours for a WK match, the normal ones otherwise (game.wk.js)
+    if (typeof wkApply === 'function') wkApply();
     STATE.paused = false;
     STATE.scoring = false;          // a match that ended mid-celebration
     resetTouch();

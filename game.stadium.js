@@ -436,6 +436,12 @@ function buildStadium() {
     // play on the drawn pitch until the stadium (and its own grass) is in
     const ownPitch = scene.getObjectByName('own-pitch');
     if (ownPitch) ownPitch.visible = true;
+    // a WK match is played in a built stand bowl, not a downloaded model
+    if (STATE.wkMatch && typeof buildWkStadium === 'function') {
+        $('stadium-loading') && ($('stadium-loading').hidden = true);
+        buildWkStadium();
+        return;
+    }
     if (!stadium.file || !stadium.pitch || typeof THREE.GLTFLoader !== 'function') {
         buildStadiumFallback();
         return;

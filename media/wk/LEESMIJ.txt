@@ -1,0 +1,15 @@
+Eigen afbeeldingen voor de WK 2026-modus
+=========================================
+
+Het spel zoekt deze bestanden zelf. Zolang ze er niet zijn, gebruikt het de vlaggen.
+
+  emblem.png                 het toernooi-embleem (bovenaan de WK-schermen)
+  crests/<CODE>.png          het logo van een bond, in plaats van de vlag
+                             bijvoorbeeld crests/NED.png, crests/BRA.png, crests/ARG.png
+
+Codes: MEX RSA KOR CZE CAN BIH QAT SUI BRA MAR HAI SCO USA PAR AUS TUR
+       GER CUW CIV ECU NED JPN SWE TUN BEL EGY IRN NZL ESP CPV KSA URU
+       FRA SEN IRQ NOR ARG ALG AUT JOR POR COD UZB COL ENG CRO GHA PAN
+
+Gebruik PNG met een transparante achtergrond. Logo's van FIFA en de bonden zijn
+hun eigendom; wat je hier neerzet, zet je zelf online.
