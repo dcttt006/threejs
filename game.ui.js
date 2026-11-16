@@ -6,9 +6,22 @@
 // ----------- TOUCH DEVICES -----------
 // Phones and tablets get on-screen controls and play against the computer
 // (there is no second keyboard). ?touch in the URL forces it on a desktop.
-const IS_TOUCH = (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches)
+// Recognised by any of:
+//   * a coarse main pointer (a finger). Not "hover: none" as well: some
+//     Android phones, Samsung's above all (S Pen, mouse support), claim to hover
+//   * a touch screen on a phone or tablet system (Android, iPhone, iPad)
+//   * an iPad that asks for the desktop site (says Macintosh, has touch)
+// And should all of that miss one, the first touch of a finger switches the
+// controls on after all (switchToTouch, below).
+const UA = navigator.userAgent || '';
+const mq = (q) => !!(window.matchMedia && matchMedia(q).matches);
+let IS_TOUCH = mq('(pointer: coarse)')
+    || (navigator.maxTouchPoints > 0 && /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(UA))
+    || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1)
     || new URLSearchParams(location.search).has('touch');
-if (IS_TOUCH) {
+if (IS_TOUCH) touchMode();
+
+function touchMode() {
     document.documentElement.classList.add('is-touch');
     // A double tap or pinch zooms Safari in, and in the match (which takes
     // every touch for the controls) there is no way back out. Block both.
@@ -22,6 +35,19 @@ if (IS_TOUCH) {
         lastTouchEnd = now;
     }, { passive: false });
 }
+
+// The safety net: a finger touches the screen on a device that wasn't
+// recognised. From then on it is a touch device: controls on, no two-player
+// option, and a match already running gets its buttons straight away.
+function switchToTouch(e) {
+    if (IS_TOUCH || e.pointerType !== 'touch') return;
+    IS_TOUCH = true;
+    touchMode();
+    if (typeof setMode === 'function' && STATE.screen !== 'playing') setMode('cpu');
+    if (typeof bindTouch === 'function') bindTouch();
+    document.removeEventListener('pointerdown', switchToTouch, true);
+}
+if (!IS_TOUCH) document.addEventListener('pointerdown', switchToTouch, true);
 
 // ----------- LAUNCH -----------
 function bindLaunch() {
@@ -509,8 +535,10 @@ function resetTouch() {
     $('touch-shoot')?.style.removeProperty('--charge');
 }
 
+let touchBound = false;
 function bindTouch() {
-    if (!IS_TOUCH) return;
+    if (!IS_TOUCH || touchBound) return;     // once only (switchToTouch can call it late)
+    touchBound = true;
     const zone = $('touch-zone'), stick = $('touch-stick'), knob = $('touch-knob');
     const shoot = $('touch-shoot'), pass = $('touch-pass');
     if (!zone || !stick || !knob || !shoot || !pass) return;
