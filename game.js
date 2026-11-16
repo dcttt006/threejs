@@ -2015,6 +2015,11 @@ function scoreGoal(scoringTeam) {
     // who scored
     const scorer = STATE.p1.team === scoringTeam ? STATE.p1 : STATE.p2;
     $('goal-flash-sub').textContent = scorer.name;
+    const codes = hudCodes();
+    $('goal-flash-red').textContent = codes.red;
+    $('goal-flash-blue').textContent = codes.blue;
+    $('goal-flash-s1').textContent = STATE.score1;
+    $('goal-flash-s2').textContent = STATE.score2;
 
     const flash = $('goal-flash');
     flash.dataset.team = scoringTeam === 1 ? 'red' : 'blue';   // band takes the scorer's colour
@@ -2039,16 +2044,21 @@ function scoreGoal(scoringTeam) {
 function updateTimer() {
     if (STATE.paused) return;
     if (!STATE.gameStartTime) {
-        $('hud-timer').textContent = formatTime(STATE.gameDuration);
+        $('hud-timer').textContent = formatClock(0);
         return;
     }
     const elapsed = Math.floor((Date.now() - STATE.gameStartTime) / 1000);
     const remaining = Math.max(0, STATE.gameDuration - elapsed);
-    $('hud-timer').textContent = formatTime(remaining);
+    // the clock counts up, like on TV: 00:00 to 01:30 (02:00 after extra time)
+    $('hud-timer').textContent = formatClock(Math.min(elapsed, STATE.gameDuration));
     $('hud-timer').classList.toggle('warning', remaining <= 10 && remaining > 0);
     if (remaining === 0 && STATE.screen === 'playing') {
         endGame();
     }
+}
+function formatClock(s) {
+    const m = Math.floor(s / 60);
+    return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 function formatTime(s) {
     if (!Number.isFinite(s)) return '∞';
@@ -2092,6 +2102,6 @@ function teardownGame() {
     if (overlay) overlay.hidden = true;
     $('hud-s1').textContent = '0';
     $('hud-s2').textContent = '0';
-    $('hud-timer').textContent = formatTime(STATE.gameDuration);
+    $('hud-timer').textContent = formatClock(0);
     $('hud-timer').classList.remove('warning');
 }

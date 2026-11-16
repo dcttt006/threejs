@@ -399,12 +399,45 @@ function fillHudKeys(el, player, groups, note) {
     }
 }
 
+// Three letters for the scoreboard, the way TV shortens a club:
+//   Diego -> DIE, Computer -> COM, Speler 1 -> SP1, Real Madrid -> RMA,
+//   Jan de Vries -> JDV. Accents go (Élodie -> ELO). Two equal codes are
+//   told apart by the last letter of the second.
+function teamCode(name) {
+    const words = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    if (!words.length) return '???';
+    const [a, b, c] = words;
+    let code;
+    if (words.length === 1) code = a.slice(0, 3);
+    else if (/^\d+$/.test(b)) code = a.slice(0, 3 - Math.min(2, b.length)) + b.slice(0, 2);
+    else if (c) code = a[0] + b[0] + c[0];
+    else code = a[0] + b.slice(0, 2);
+    return code.padEnd(3, a.slice(code.length - 1) || 'X').slice(0, 3);
+}
+function hudCodes() {
+    if (STATE.wkMatch) return { red: STATE.wkMatch.me, blue: STATE.wkMatch.opp };
+    const redPlayer  = STATE.p1.team === 1 ? STATE.p1 : STATE.p2;
+    const bluePlayer = STATE.p1.team === 2 ? STATE.p1 : STATE.p2;
+    const red = teamCode(redPlayer.name);
+    let blue = teamCode(bluePlayer.name);
+    if (blue === red) {
+        const letters = String(bluePlayer.name).normalize('NFD').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const alt = [...letters.slice(3), ...'XYZ2'].find(ch => ch !== red[2]);
+        blue = blue.slice(0, 2) + alt;
+    }
+    return { red, blue };
+}
+
 function paintHud() {
     // Scoreboard halves are fixed: red on the left, blue on the right.
     const redPlayer  = STATE.p1.team === 1 ? STATE.p1 : STATE.p2;
     const bluePlayer = STATE.p1.team === 2 ? STATE.p1 : STATE.p2;
-    $('hud-p1-name').textContent = redPlayer.name;
-    $('hud-p2-name').textContent = bluePlayer.name;
+    const codes = hudCodes();
+    $('hud-p1-name').textContent = codes.red;
+    $('hud-p2-name').textContent = codes.blue;
+    $('hud-p1-name').title = redPlayer.name;
+    $('hud-p2-name').title = bluePlayer.name;
 
     // Key legends follow the keyboard instead: P1 (WASD) left, P2 (arrows) right.
     const cpu = STATE.mode === 'cpu';

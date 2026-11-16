@@ -223,65 +223,93 @@ kbd {
     height: 100% !important;
 }
 
+/* TV scoreboard in the style of a European night: our mark in a blue
+   square, the clock on a light plate, then a navy bar with the two
+   three-letter codes either side of the score. A thin strip in each
+   team's colour (red or blue, or the WK kits) closes the bar. */
 .scorebug {
-    --bug-h: 36px;
+    --bug-h: 30px;
+    --bug-navy: #0d1a6e;
+    --bug-blue: #202ed8;                    /* the blue of media/hud/ball.png */
+    --bug-plate: #eef0f7;
+    --bug-dim: #4a5bc4;
     position: absolute;
     z-index: 2;
     top: calc(8px + var(--safe-t));
     left: 50%;
-    display: grid;
-    grid-template-columns: clamp(72px, 20vw, 200px) auto clamp(72px, 20vw, 200px);
+    display: flex;
+    align-items: stretch;
+    height: var(--bug-h);
     transform: translateX(-50%);
+    font-family: var(--font-text);
+}
+.scorebug__mark {
+    display: grid;
+    place-items: center;
+    width: var(--bug-h);
+    background: var(--bug-blue);
+    color: #fff;
+}
+.scorebug__mark img { display: block; width: 100%; height: 100%; object-fit: cover; }   /* media/hud/ball.png, your own ball */
+.scorebug__clock {
+    display: grid;
+    place-items: center;
+    min-width: 66px;
+    padding: 0 8px;
+    background: var(--bug-plate);
+    color: var(--bug-navy);
+    font: 500 17px/1 var(--font-text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+}
+.scorebug__clock.warning { background: var(--yellow); }
+.scorebug__main {
+    display: flex;
+    align-items: stretch;
+    margin-left: 4px;
+    border-left: 5px solid var(--red);
+    border-right: 5px solid var(--blue);
+    background: var(--bug-navy);
+    color: #fff;
 }
 .scorebug__team {
     display: flex;
     align-items: center;
-    height: var(--bug-h);
-    padding: 0 10px;
-    overflow: hidden;
-    background: #fff;
-    color: var(--ink);
-    font: 700 19px/1 var(--font-cond);
+    gap: 6px;
+    padding: 0 8px 0 10px;
+    font: 500 17px/1 var(--font-text);
+    letter-spacing: .08em;
     text-transform: uppercase;
 }
-.scorebug__name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.scorebug__team--red  { justify-content: flex-end; border-left: 8px solid var(--red); }
-.scorebug__team--blue { border-right: 8px solid var(--blue); }
-/* WK: the flag next to the score, the FIFA code beside it (game.wk.js) */
-.scorebug__flag {
-    flex: none;
-    width: 27px;
-    height: 18px;
-    object-fit: cover;
-    box-shadow: 0 0 0 1px rgba(18, 21, 18, .25);
+.scorebug__name { white-space: nowrap; }
+/* the little brackets that open towards the score */
+.scorebug__team--red::after,
+.scorebug__team--blue::before {
+    content: '';
+    width: 5px;
+    height: 12px;
+    border: 2px solid var(--bug-dim);
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
 }
-.scorebug__team--red .scorebug__flag  { margin-left: 8px; }
-.scorebug__team--blue .scorebug__flag { margin-right: 8px; }
+.scorebug__team--blue::before { border: 2px solid var(--bug-dim); border-right: 0; border-radius: 8px 0 0 8px; }
+.scorebug__team--blue { padding: 0 10px 0 8px; }
 .scorebug__score {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-width: 78px;
-    height: var(--bug-h);
-    padding: 0 10px;
-    background: var(--ink);
-    color: #fff;
-    font: 800 28px/1 var(--font-cond);
+    gap: 9px;
+    padding: 0 4px;
+    font: 500 18px/1 var(--font-text);
     font-variant-numeric: tabular-nums;
 }
-.scorebug__clock {
-    grid-column: 2;
-    justify-self: center;
-    min-width: 58px;
-    padding: 3px 8px 4px;
-    background: #fff;
-    color: var(--ink);
-    font: 700 16px/1 var(--font-cond);
-    font-variant-numeric: tabular-nums;
-    text-align: center;
+.scorebug__sep { width: 1px; height: 12px; background: var(--bug-dim); }
+/* WK: the flag next to the FIFA code (game.wk.js) */
+.scorebug__flag {
+    flex: none;
+    width: 21px;
+    height: 14px;
+    object-fit: cover;
 }
-.scorebug__clock.warning { background: var(--yellow); }
 
 /* WK: extra time */
 .wk-banner {
@@ -358,7 +386,7 @@ kbd {
 .stadium-loading {
     position: absolute;
     z-index: 2;
-    top: calc(74px + var(--safe-t));
+    top: calc(46px + var(--safe-t));
     left: 50%;
     transform: translateX(-50%);
     padding: 5px 10px 6px;
@@ -414,7 +442,8 @@ kbd {
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* goal: a full-width band in the scoring team's colour */
+/* goal: the word in the scorer's colour, then the new score on a navy bar
+   like the scoreboard, sliding through */
 .goal-flash {
     position: absolute;
     z-index: 5;
@@ -424,20 +453,49 @@ kbd {
     translate: 0 -50%;
     display: grid;
     justify-items: center;
-    gap: 2px;
-    padding: 10px 16px 16px;
-    background: var(--team, var(--ink));
-    color: var(--team-ink, #fff);              /* dark text on a white or yellow kit (WK) */
-    text-align: center;
+    gap: 0;
     pointer-events: none;
     animation: goal-band 1.7s cubic-bezier(.2, .8, .2, 1) both;
 }
 .goal-flash__text {
-    font: 800 clamp(52px, min(12vw, calc(var(--vh) * 22)), 170px)/.88 var(--font-cond);
+    width: 100%;
+    padding: 6px 16px 4px;
+    background: var(--team, #0d1a6e);
+    color: var(--team-ink, #fff);              /* dark text on a white or yellow kit (WK) */
+    font: 800 clamp(52px, min(12vw, calc(var(--vh) * 22)), 170px)/.9 var(--font-cond);
+    letter-spacing: .04em;
+    text-align: center;
     text-transform: uppercase;
 }
+.goal-flash__bar {
+    display: flex;
+    align-items: stretch;
+    height: clamp(34px, calc(var(--vh) * 8), 52px);
+    border-left: 6px solid var(--red);
+    border-right: 6px solid var(--blue);
+    background: #0d1a6e;
+    color: #fff;
+    font: 500 clamp(18px, calc(var(--vh) * 4.4), 28px)/1 var(--font-text);
+    letter-spacing: .08em;
+}
+.goal-flash__code { display: grid; place-items: center; padding: 0 clamp(14px, 2.4vw, 26px); }
+.goal-flash__score {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 1.6vw, 16px);
+    padding: 0 clamp(8px, 1.4vw, 14px);
+    background: #fff;
+    color: #0d1a6e;
+    font-variant-numeric: tabular-nums;
+}
+.goal-flash__score .scorebug__sep { height: 50%; background: #0d1a6e; opacity: .35; }
 .goal-flash__sub {
-    font: 700 clamp(18px, min(2.6vw, calc(var(--vh) * 6)), 34px)/1 var(--font-cond);
+    margin-top: 6px;
+    padding: 4px 10px 5px;
+    background: rgba(13, 26, 110, .88);
+    color: #fff;
+    font: 500 clamp(13px, calc(var(--vh) * 3), 17px)/1 var(--font-text);
+    letter-spacing: .06em;
     text-transform: uppercase;
 }
 @keyframes goal-band {
@@ -446,6 +504,7 @@ kbd {
     88%  { transform: translateX(0); }
     100% { transform: translateX(100%); }
 }
+
 
 .pause-overlay {
     position: absolute;
@@ -479,19 +538,15 @@ kbd {
     .hud-keys { display: flex; }
 }
 @media (min-width: 700px) and (min-height: 560px) {
-    .scorebug {
-        --bug-h: 52px;
-        top: calc(18px + var(--safe-t));
-        grid-template-columns: clamp(110px, 17vw, 230px) auto clamp(110px, 17vw, 230px);
-    }
-    .scorebug__team { padding: 0 14px; font-size: 26px; }
-    .scorebug__team--red  { border-left-width: 12px; }
-    .scorebug__team--blue { border-right-width: 12px; }
-    .scorebug__flag { width: 36px; height: 24px; }
-    .scorebug__team--red .scorebug__flag  { margin-left: 12px; }
-    .scorebug__team--blue .scorebug__flag { margin-right: 12px; }
-    .scorebug__score { gap: 8px; min-width: 118px; padding: 0 16px; font-size: 40px; }
-    .scorebug__clock { min-width: 78px; padding: 4px 10px 5px; font-size: 22px; }
+    .scorebug { --bug-h: 40px; top: calc(18px + var(--safe-t)); }
+    .scorebug__clock { min-width: 92px; padding: 0 12px; font-size: 23px; }
+    .scorebug__main { margin-left: 6px; border-left-width: 6px; border-right-width: 6px; }
+    .scorebug__team { gap: 10px; padding: 0 12px 0 16px; font-size: 23px; }
+    .scorebug__team--blue { padding: 0 16px 0 12px; }
+    .scorebug__team--red::after, .scorebug__team--blue::before { width: 7px; height: 16px; }
+    .scorebug__score { gap: 14px; padding: 0 6px; font-size: 24px; }
+    .scorebug__sep { height: 16px; }
+    .scorebug__flag { width: 27px; height: 18px; }
 
     .wk-banner { gap: 6px; padding: 18px 36px 20px; }
     .wk-banner__title { font-size: 54px; }
@@ -499,12 +554,11 @@ kbd {
 
     .pause-btn { top: calc(18px + var(--safe-t)); right: calc(18px + var(--safe-r)); gap: 7px; width: 48px; height: 48px; }
     .pause-btn span { width: 7px; height: 20px; }
-    .stadium-loading { top: calc(112px + var(--safe-t)); padding: 6px 12px 7px; font-size: 15px; }
+    .stadium-loading { top: calc(66px + var(--safe-t)); padding: 6px 12px 7px; font-size: 15px; }
 
     .kickoff-board { gap: 4px; min-width: 230px; padding: 16px 36px 20px; }
     .kickoff-overlay__lbl { font-size: 19px; }
     .kickoff-overlay__num { --num: clamp(110px, 15vw, 190px); }
-    .goal-flash { padding: 14px 20px 22px; }
     .pause-overlay__panel { padding: 30px 44px 36px; }
 }
 
