@@ -295,6 +295,7 @@ function buildGoals() {
 }
 
 // ----------- advertising boards -----------
+const SHOW_BOARDS = false;
 // Far touchline and behind both goals; the camera side stays open.
 function makeBoardTexture(lines) {
     const c = document.createElement('canvas');
@@ -319,28 +320,44 @@ function makeBoardTexture(lines) {
 }
 
 function buildBoards() {
+    // No advertising boards in any stadium (also not in the WK): they didn't
+    // line up with the models. The code stays for when they come back.
+    if (!SHOW_BOARDS) return;
     const stadium = getSelectedStadium();
     // in a WK match the boards say WK 2026 and where it is played
-    const base = makeBoardTexture(STATE.wkMatch ? wkBoardText() : ['Pitch Royale', stadium.name]);
+    const texts = STATE.wkMatch ? wkBoardText() : ['Pitch Royale', stadium.name];
+    const base = makeBoardTexture(texts);
     const H = 1.9, T = 0.5;
     const blank = new THREE.MeshLambertMaterial({ color: srgb(0x1a1d1a) });
+    // One panel of print keeps its shape on the canvas (1024 / texts x 64);
+    // every board shows a whole number of panels, so no name is cut off.
+    const PANEL = H * (1024 / texts.length) / 64;
     const board = (length) => {
         const tex = base.clone();
         tex.needsUpdate = true;
-        tex.repeat.x = Math.max(1, Math.round(length / 34));
+        const panels = Math.max(2, Math.round(length / PANEL));
+        tex.repeat.x = panels / texts.length;
         const face = new THREE.MeshBasicMaterial({ map: tex });
         // BoxGeometry faces: +x, -x, +y, -y, +z, -z — only +z carries the print
         return new THREE.Mesh(new THREE.BoxGeometry(length, H, T), [blank, blank, blank, blank, face, blank]);
     };
 
-    const far = board(FIELD_W + 16);
-    far.position.set(0, H / 2, -(FIELD_L / 2 + 4.5));
+    // A U around the pitch: the far touchline and both goal ends, meeting in
+    // the corners. The camera side stays open; the end boards stop at the
+    // near touchline.
+    const xEnd = FIELD_W / 2 + GOAL_DEPTH + 3.5;     // behind the goals
+    const zFar = FIELD_L / 2 + 4.5;                  // behind the far touchline
+    const zNear = FIELD_L / 2 + 2;
+
+    const far = board(2 * xEnd - T);                 // between the inner faces of the end boards
+    far.position.set(0, H / 2, -zFar);
     scene.add(far);
 
+    const endLen = zFar + T / 2 + zNear;             // from the far board's back to the near touchline
     [-1, 1].forEach(side => {
-        const end = board(FIELD_L + 12);
+        const end = board(endLen);
         end.rotation.y = -side * Math.PI / 2;        // printed face towards the pitch
-        end.position.set(side * (FIELD_W / 2 + GOAL_DEPTH + 3.5), H / 2, 0);
+        end.position.set(side * xEnd, H / 2, (zNear - zFar - T / 2) / 2);
         scene.add(end);
     });
 }
@@ -549,6 +566,15 @@ function updateStaminaBars() {
     if (btn && controlledP1) {
         btn.style.setProperty('--stamina', (controlledP1.userData.stamina ?? 1).toFixed(3));
         btn.classList.toggle('is-tired', !!controlledP1.userData.tired);
+        // with the ball: Schiet and Pass; without it: Tackle and Vraag
+        const own = hasBall(controlledP1);
+        const shoot = $('touch-shoot'), pass = $('touch-pass');
+        const shootText = own ? 'Schiet' : 'Tackle';
+        const passText = own ? 'Pass' : 'Vraag';
+        if (shoot && shoot.textContent !== shootText) shoot.textContent = shootText;
+        if (pass && pass.textContent !== passText) pass.textContent = passText;
+        shoot?.classList.toggle('is-tackle', !own);
+        shoot?.classList.toggle('is-resting', !own && controlledP1.userData.tackleCd > 0);
     }
 }
 
@@ -597,6 +623,22 @@ function animatePlayers(dt) {
             rig.armL.rotation.x = -0.6 * Math.sin(k * Math.PI);
         }
 
+        // asking for the ball: the right arm straight up
+        if (u.callT > 0) {
+            u.callT = Math.max(0, u.callT - dt);
+            rig.armR.rotation.x = -2.9;
+        }
+
+        // a sliding tackle: leaning back, low over the grass, the leading leg out
+        const sliding = u.tackleT > 0 || u.getUpT > 0;
+        u.slide = (u.slide || 0) + ((sliding ? 1 : 0) - (u.slide || 0)) * Math.min(1, dt * (sliding ? 20 : 8));
+        if (u.slide > 0.01) {
+            rig.body.rotation.x = rig.body.rotation.x * (1 - u.slide) - 1.05 * u.slide;
+            rig.legR.rotation.x = rig.legR.rotation.x * (1 - u.slide) - 1.3 * u.slide;
+            rig.legL.rotation.x = rig.legL.rotation.x * (1 - u.slide) + 0.4 * u.slide;
+            rig.armL.rotation.x = rig.armL.rotation.x * (1 - u.slide) - 1.2 * u.slide;
+        }
+
         // a keeper's dive: the whole body tips over towards the ball and drops
         rig.body.rotation.order = 'YXZ';
         let rollWant = 0;
@@ -610,7 +652,7 @@ function animatePlayers(dt) {
         // quick to go down, slower to get back up
         u.roll = (u.roll || 0) + (rollWant - (u.roll || 0)) * Math.min(1, dt * (rollWant ? 18 : 7));
         rig.body.rotation.z = u.roll;
-        rig.body.position.y -= Math.abs(u.roll) * 0.9;
+        rig.body.position.y -= Math.abs(u.roll) * 0.9 + (u.slide || 0) * 1.1;
     });
 }
 
@@ -675,6 +717,7 @@ function updateBallShadow() {
 }
 
 function positionForKickoff() {
+    ballCall = null;
     ball.position.set(0, BALL_SIZE, 0);
     ball.velocity = { x: 0, y: 0, z: 0 };
 
@@ -690,6 +733,9 @@ function positionForKickoff() {
         p.userData.cooldown = 0;
         p.userData.diveT = 0;
         p.userData.react = 0;
+        p.userData.tackleT = p.userData.getUpT = p.userData.tackleCd = 0;
+        p.userData.callT = 0;
+        p.userData.calledBy = null;
         p.userData.aimX = p.team === 1 ? 1 : -1;      // facing the other goal
         p.userData.aimZ = 0;
         p.userData.stamina = 1;
@@ -1037,6 +1083,8 @@ function steer(p, wantX, wantZ, rate) {
 
 function movePlayer(player, k) {
     if (!player) return;
+    if (player.userData.tackleCd > 0) player.userData.tackleCd--;
+    if (slideTackle(player)) return;
 
     // collect raw input direction
     let inX = 0, inZ = 0;
@@ -1185,6 +1233,7 @@ function updateCarry() {
         if (carrier) { passTarget = null; lastKick = null; }
     }
 
+    updateBallCall();                 // a teammate who was asked for it plays it now
     if (!carrier) return;
     const f = facingOf(carrier);
     const tx = carrier.position.x + f.x * CARRY_DIST;
@@ -1212,6 +1261,13 @@ function handleShoot(player, key) {
     const wasHeld = !!player.userData.shootHeld;
 
     if (isHeld && !wasHeld) {
+        // without the ball the same key is a sliding tackle
+        if (!hasBall(player)) {
+            startTackle(player);
+            player.userData.charging = false;
+            player.userData.shootHeld = isHeld;
+            return;
+        }
         player.userData.charging = true;
         player.userData.chargeStart = performance.now();
     }
@@ -1256,6 +1312,100 @@ function fireShot(player, power, charge01) {
     lastKick = { by: player, team: player.team, kind: 'shot' };
     // aftertouch: what is held now aimed the shot, a fresh up/down curls it
     curl = { by: player, t: CURL_TICKS, z0: player.userData.inZ || 0, curled: false };
+}
+
+// ----------- sliding tackle -----------
+// The shoot key without the ball: a slide along the ground, towards the ball
+// when it is close. Reaching the man on the ball wins it most of the time,
+// otherwise it is knocked loose. A missed slide leaves you on the grass for
+// a moment, and you can't slide again straight away.
+const TACKLE_TICKS = 24;          // the slide, 0.4 s
+const TACKLE_SPEED = 0.85;        // faster than a sprint at the start, slowing down
+const TACKLE_GETUP_MISS = 26;     // on the ground after a miss
+const TACKLE_GETUP_WIN = 8;
+const TACKLE_COOLDOWN = 80;       // before the next slide
+const TACKLE_AIM_RANGE = 10;      // within this distance the slide goes for the ball
+
+function hasBall(p) {
+    return carrier === p || (!carrier && ballDistTo(p) < CARRY_REACH + 0.6);
+}
+
+function startTackle(p) {
+    const u = p.userData;
+    if (u.tackleT > 0 || u.getUpT > 0 || u.tackleCd > 0) return;
+    let dir = facingOf(p);
+    const bx = ball.position.x - p.position.x, bz = ball.position.z - p.position.z;
+    const bd = Math.hypot(bx, bz);
+    if (bd > 0.5 && bd < TACKLE_AIM_RANGE) dir = { x: bx / bd, z: bz / bd };
+    u.tvx = dir.x * TACKLE_SPEED;
+    u.tvz = dir.z * TACKLE_SPEED;
+    u.aimX = dir.x; u.aimZ = dir.z;
+    u.tackleT = TACKLE_TICKS;
+    u.tackleWon = false;
+    u.tackleCd = TACKLE_COOLDOWN;
+}
+
+// Moves a sliding (or getting up) player; true while that takes over from the stick.
+function slideTackle(p) {
+    const u = p.userData;
+    if (u.tackleT > 0) {
+        u.tackleT--;
+        p.position.x += u.tvx;
+        p.position.z += u.tvz;
+        u.vx = u.tvx; u.vz = u.tvz;
+        u.tvx *= 0.93; u.tvz *= 0.93;
+        p.position.x = Math.max(-FIELD_W/2 + PLAYER_SIZE/2, Math.min(FIELD_W/2 - PLAYER_SIZE/2, p.position.x));
+        p.position.z = Math.max(-FIELD_L/2 + PLAYER_SIZE/2, Math.min(FIELD_L/2 - PLAYER_SIZE/2, p.position.z));
+
+        if (!u.tackleWon && ballDistTo(p) < STEAL_REACH + 0.7) {
+            if (carrier && carrier.team !== p.team) {
+                carrier.userData.cooldown = 50;
+                carrier.userData.shield = 0;
+                if (Math.random() < 0.7) {
+                    carrier = p;                          // clean: the ball is yours
+                    u.shield = 45;
+                } else {
+                    carrier = null;                       // poked away
+                    knockBall(u.tvx / TACKLE_SPEED, u.tvz / TACKLE_SPEED, 0.75, 0.05);
+                }
+                u.tackleWon = true;
+            } else if (!carrier) {
+                u.tackleWon = true;                       // a loose ball: just take it
+            }
+        }
+        if (u.tackleT === 0) u.getUpT = u.tackleWon ? TACKLE_GETUP_WIN : TACKLE_GETUP_MISS;
+        return true;
+    }
+    if (u.getUpT > 0) {
+        u.getUpT--;
+        steer(p, 0, 0, RUN_BRAKE);
+        return true;
+    }
+    return false;
+}
+
+// ----------- asking for the ball -----------
+// The pass key without the ball: the arm goes up and whoever of your side has
+// it (your computer teammate, or your keeper once he has held it a moment)
+// plays it to you.
+const CALL_DELAY = 12;            // a teammate's reaction, 0.2 s
+let ballCall = null;              // { from, to, t }
+
+function callForBall(player) {
+    player.userData.callT = 0.7;                          // arm up (animatePlayers)
+    const side = player.team === 1 ? team1Players : team2Players;
+    const keeper = side[0];
+    if (keeper && keeper.userData.holdingBall) { keeper.userData.calledBy = player; return; }
+    if (carrier && carrier !== player && carrier.team === player.team) {
+        ballCall = { from: carrier, to: player, t: CALL_DELAY };
+    }
+}
+function updateBallCall() {
+    if (!ballCall) return;
+    if (carrier !== ballCall.from) { ballCall = null; return; }   // lost it, or already played it
+    if (--ballCall.t > 0) return;
+    passBall(ballCall.from, ballCall.to);
+    ballCall = null;
 }
 
 // ----------- curl (aftertouch) -----------
@@ -1306,11 +1456,8 @@ function handlePass(player, keyArr) {
     if (!pressedOnce(keyArr)) return;
 
     const side = player.team === 1 ? team1Players : team2Players;
-    const keeper = side[0];
-    if (keeper && keeper.userData.holdingBall) { passBall(keeper, player); return; }
-    if (carrier && carrier !== player && carrier.team === player.team) { passBall(carrier, player); return; }
-
-    if (carrier !== player && ballDistTo(player) > CARRY_REACH + 0.6) return;
+    // without the ball: ask for it
+    if (!hasBall(player)) { callForBall(player); return; }
     const f = facingOf(player);
     let best = null, bestScore = -Infinity;
     side.forEach(m => {
@@ -1375,6 +1522,9 @@ function updateAI() {
 // How quick, far and fast he goes comes from LEVELS (game.core.js): the
 // computer's keeper plays at the chosen level, every other keeper at medium.
 const KEEPER_REACH = PLAYER_SIZE / 2 + BALL_SIZE + 0.2;   // hands, standing
+const KEEPER_HOLD_MIN = 2000;     // ms with the ball in his hands before he plays it
+const KEEPER_HOLD_MAX = 3500;
+const KEEPER_CALL_MIN = 1500;     // asked for it: never sooner than this
 
 function keeperSkill(k) {
     const cpuSide = STATE.mode === 'cpu' && k.team !== STATE.p1.team;
@@ -1390,7 +1540,8 @@ function updateKeeper(k) {
     const lineX = goalLineX + out * 3.5;
 
     if (u.holdingBall) {
-        steer(k, 0, 0, 0.08);
+        // with the ball in his hands he takes a few steps out of his goal
+        steer(k, out * 0.07, -k.position.z * 0.004, 0.01);
     } else {
         // 1 — is a shot coming? where will it cross my line?
         const vx = ball.velocity.x, vz = ball.velocity.z;
@@ -1481,6 +1632,9 @@ function updateKeeper(k) {
         carrier = null;
         u.holdingBall = true;
         u.holdStart = performance.now();
+        // like a real keeper he takes his time: two to three and a half seconds
+        u.holdFor = KEEPER_HOLD_MIN + Math.random() * (KEEPER_HOLD_MAX - KEEPER_HOLD_MIN);
+        u.calledBy = null;
     }
 
     if (k.userData.holdingBall) {
@@ -1492,19 +1646,19 @@ function updateKeeper(k) {
         ball.velocity.y = 0;
         ball.velocity.z = 0;
 
-        // pressure: the nearest attacker
         const enemies = (isTeam1 ? team2Players : team1Players).filter(p => !p.userData.isKeeper);
-        const enemyDist = nearestTo(enemies, k.position.x, k.position.z).d;
-
         const heldMs = performance.now() - (k.userData.holdStart || performance.now());
-        const minHold = 380;        // brief catch animation — never instant
-        const maxHold = 2400;       // safety release so the game doesn't stall
-        const pressureRange = 13;   // an enemy this close = panic-pass
 
-        const pressured = enemyDist < pressureRange;
-        const release = heldMs > minHold && (pressured || heldMs > maxHold);
+        // asked for it (pass key): to you, once he has held it a moment
+        if (u.calledBy && heldMs > KEEPER_CALL_MIN) {
+            const to = u.calledBy;
+            u.calledBy = null;
+            passBall(k, to);
+            return;
+        }
 
-        if (release) {
+        // nobody can take it out of his hands, so there is no hurry
+        if (heldMs > (u.holdFor || KEEPER_HOLD_MIN)) {
             // to the teammate with the most room; a human gets it when he is free
             const mates = (isTeam1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper);
             let best = null, bestRoom = -Infinity;

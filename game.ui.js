@@ -75,12 +75,16 @@ function bindSetup() {
         });
     });
 
+    // no toss without a name: the button waits until every player has one
+    [p1Input, p2Input].forEach(inp => inp.addEventListener('input', checkNames));
+
     submit.addEventListener('click', () => {
-        STATE.p1.name = (p1Input.value.trim() || 'Speler 1').slice(0, 14);
+        if (missingNames().length) { checkNames(); missingNames()[0].focus(); return; }
+        STATE.p1.name = p1Input.value.trim().slice(0, 14);
         if (STATE.mode === 'cpu') {
             STATE.p2.name = 'Computer';
         } else {
-            STATE.p2.name = (p2Input.value.trim() || 'Speler 2').slice(0, 14);
+            STATE.p2.name = p2Input.value.trim().slice(0, 14);
         }
         // CPU never wins the toss randomly — keep it human-friendly: human always calls
         STATE.callerSide = STATE.mode === 'cpu' ? 'p1' : (Math.random() < 0.5 ? 'p1' : 'p2');
@@ -157,6 +161,23 @@ function applyMode() {
     if (bot) bot.hidden = !cpu;
     if (p2Input) p2Input.disabled = cpu;
     if (p1Alt) p1Alt.hidden = !cpu;
+    checkNames();
+}
+
+// The name fields that are still empty (player 2 only counts with two players).
+function missingNames() {
+    const fields = [$('p1-name')];
+    if (STATE.mode !== 'cpu') fields.push($('p2-name'));
+    return fields.filter(f => f && !f.value.trim());
+}
+function checkNames() {
+    const submit = $('to-coin');
+    if (!submit) return;
+    const missing = missingNames();
+    submit.disabled = missing.length > 0;
+    submit.textContent = !missing.length ? 'Naar de toss'
+        : STATE.mode !== 'cpu' && missing.length === 2 ? 'Vul jullie namen in'
+        : 'Vul je naam in';
 }
 
 function renderRosterColors() {
@@ -389,14 +410,14 @@ function paintHud() {
     const cpu = STATE.mode === 'cpu';
     fillHudKeys($('hud-keys-p1'), STATE.p1, [
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
-        [['Spatie'], 'schieten'],
-        [['Q'], 'passen'],
+        [['Spatie'], 'schieten / tackle'],
+        [['Q'], 'passen / bal vragen'],
         [['Shift'], 'sprinten'],
     ]);
     fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
         [['↑', '←', '↓', '→'], 'bewegen'],
-        [['Enter'], 'schieten'],
-        [['Shift'], 'passen'],
+        [['Enter'], 'schieten / tackle'],
+        [['Shift'], 'passen / bal vragen'],
         [['Alt'], 'sprinten'],
     ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
 }

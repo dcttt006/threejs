@@ -627,15 +627,27 @@ function dressStadium(arena, stadium) {
     ];
     if (!stadium.pitch.own) block.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), 0.3));
     const seen = new Set();
+    const photo = new Map();          // lit material -> its unlit replacement (photo scans)
+    const aniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
 
     arena.traverse((c) => {
         if (!c.isMesh || !c.material) return;
         c.castShadow = false;
         c.receiveShadow = false;
+        if (stadium.look && stadium.look.photo) {
+            const swap = (m) => {
+                if (!photo.has(m)) photo.set(m, photoMaterial(m, stadium.look, block));
+                return photo.get(m);
+            };
+            c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
+            return;
+        }
         const mats = Array.isArray(c.material) ? c.material : [c.material];
         mats.forEach((m) => {
             if (seen.has(m)) return;
             seen.add(m);
+            // textures stay sharp when the grass is seen at a low angle
+            if (m.map) { m.map.anisotropy = aniso; m.map.needsUpdate = true; }
             // tame overly emissive baked-in lighting and mirror-like metal
             if (m.emissive && m.emissiveIntensity > 1) m.emissiveIntensity = 0.4;
             if (m.metalness !== undefined) m.metalness = tameMetalness(m, 0.4);
@@ -645,6 +657,82 @@ function dressStadium(arena, stadium) {
             m.needsUpdate = true;
         });
     });
+}
+
+// ----------- photo scans -----------
+// Some stadiums are photogrammetry (Google Earth style): the daylight and
+// the shadows of the stands are already in the photos. Lighting them again
+// makes them dark and blotchy, so they are drawn unlit, with a colour grade
+// from the catalog's look: { photo, gain, sat, contrast, grassLift,
+// grassLevel (brightness of its sunlit grass), grassSat }.
+// On the pitch itself the dark shadow patches in the photo are lifted to the
+// brightness of the sunlit grass, so the model's own grass and lines stay
+// but read as one even surface.
+function photoMaterial(src, look, clip) {
+    const m = new THREE.MeshBasicMaterial({
+        map: src.map || null,
+        color: src.color ? src.color.clone() : new THREE.Color(0xffffff),
+        side: src.side,
+        transparent: src.transparent,
+        alphaTest: src.alphaTest,
+        opacity: src.opacity,
+        vertexColors: src.vertexColors,
+    });
+    if (m.map) {
+        m.map.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
+        m.map.needsUpdate = true;
+    }
+    m.toneMapped = false;              // the photo's colours, not filmic ones
+    m.clippingPlanes = clip;
+    m.clipIntersection = true;
+    const u = {
+        uGain: { value: look.gain ?? 1 },
+        uSat: { value: look.sat ?? 1 },
+        uContrast: { value: look.contrast ?? 1 },
+        uLift: { value: look.grassLift ?? 0 },
+        uTarget: { value: look.grassLevel ?? 0.15 },      // linear brightness of the sunlit grass
+        uGrassSat: { value: look.grassSat ?? 1.3 },
+        uPitch: { value: new THREE.Vector2(FIELD_W / 2 + 6, FIELD_L / 2 + 5) },
+    };
+    m.onBeforeCompile = (sh) => {
+        Object.assign(sh.uniforms, u);
+        sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 vWorldPos;')
+            .replace('#include <project_vertex>', '#include <project_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader
+            .replace('#include <common>', `#include <common>
+varying vec3 vWorldPos;
+uniform float uGain, uSat, uContrast, uLift, uTarget, uGrassSat;
+uniform vec2 uPitch;`)
+            .replace('#include <map_fragment>', `#include <map_fragment>
+{
+    vec3 c = diffuseColor.rgb;
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    // the pitch: lift the shadows of the stands to the sunlit grass, keep the bright lines
+    vec2 d = abs(vWorldPos.xz) - uPitch;
+    float onPitch = (1.0 - smoothstep(0.0, 4.0, max(d.x, d.y))) * (1.0 - smoothstep(0.4, 1.5, vWorldPos.y));
+    if (onPitch > 0.0 && uLift > 0.0) {
+        // a soft knee: grass near the sunlit brightness (the mowing stripes)
+        // stays as it is, only real shadow is pulled up towards it
+        float shadow = smoothstep(uTarget * 0.9, uTarget * 0.3, l);
+        float newL = mix(l, uTarget * 0.85, shadow);
+        vec3 lifted = c * clamp(newL / max(l, 0.012), 1.0, 7.0);
+        // lifted shadow comes out grey-blue: turn it green
+        vec3 grass = mix(lifted, vec3(0.055, 0.19, 0.04) * (newL / 0.157), shadow * 0.6);
+        // and a richer green on the whole pitch
+        float gl = dot(grass, vec3(0.2126, 0.7152, 0.0722));
+        grass = mix(vec3(gl), grass, uGrassSat);
+        float isLine = smoothstep(0.3, 0.48, l);
+        c = mix(c, mix(grass, c, isLine), onPitch * uLift);
+        l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    }
+    c = mix(vec3(l), c, uSat);                      // saturation
+    c = (c - 0.18) * uContrast + 0.18;             // contrast around mid grey (linear)
+    diffuseColor.rgb = max(c * uGain, 0.0);
+}`);
+    };
+    m.customProgramCacheKey = () => 'photo-scan';
+    return m;
 }
 
 function buildStadiumFallback() {

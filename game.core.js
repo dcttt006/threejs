@@ -159,6 +159,7 @@ const STADIUMS = [
         file: 'media/models/stadiums/emirates-stadium (1)/source/untitled.glb',
         capacity: '60.704',
         pitch: { x: 1.17, z: 0.74, w: 107.4, l: 69.8, angle: -1.542, y: 9.08 },
+        look: { photo: true, gain: 1.3, sat: 1.0, contrast: 1.04, grassLift: 1, grassLevel: 0.07, grassSat: 1.12 },
     },
     {
         id: 'wanda-metropolitano',

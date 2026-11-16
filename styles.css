@@ -622,6 +622,8 @@ kbd {
     color: var(--ink);
     font-size: clamp(16px, calc(var(--vh) * 6), 22px);
 }
+/* without the ball it is Tackle; dimmed while you can't slide again yet */
+.touch__btn--shoot.is-resting { opacity: .55; }
 .touch__btn--shoot::before {
     content: '';
     position: absolute;
