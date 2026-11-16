@@ -2441,6 +2441,78 @@ html .splash__name { color: #fff; font-weight: 900; }
 .rotate-hint__text { font-style: italic; font-weight: 900; font-size: 40px; }
 .rotate-hint__lead { max-width: 20em; margin: 0; color: #fff; font-size: 17px; line-height: 1.4; }
 
+
+/* Hoog: the high shot, left of Schiet, above Pass (a 2x2 with Sprint);
+   a gold ring, a ring that fills while it charges, dim without the ball */
+.touch__btn--high {
+    --charge: 0;
+    isolation: isolate;
+    right: calc(var(--edge-r) + var(--sprint) + 20px);
+    bottom: calc(var(--edge-b) + var(--sprint) + 12px);
+    width: var(--pass);
+    height: var(--pass);
+    border: 0;
+    background: conic-gradient(#fff calc(var(--charge) * 360deg), rgba(255, 194, 26, .9) 0);
+    color: #ffc21a;
+}
+.touch__btn--high::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    z-index: -1;
+    border-radius: 50%;
+    background: rgba(18, 21, 18, .82);
+}
+.touch__btn--high.is-down::before { background: #ffc21a; }
+.touch__btn--high.is-down { color: #0b1220; }
+.touch__btn--high.is-resting { opacity: .4; }
+
+/* full time: possession, shots (on target) and passes, red left and blue right */
+.match-stats {
+    display: grid;
+    gap: 10px;
+    width: min(100%, 520px);
+    margin: 0 0 22px;
+    padding: 12px 16px;
+    border: 1px solid #27344b;
+    border-radius: 4px;
+    background: rgba(17, 27, 44, .9);
+}
+.match-stats__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 4px 12px;
+}
+.match-stats__value {
+    color: #fff;
+    font: italic 800 24px/1 var(--font-cond);
+    font-variant-numeric: tabular-nums;
+}
+.match-stats__value--red  { text-align: left; }
+.match-stats__value--blue { text-align: right; }
+.match-stats__label { color: #98a3b6; font: 500 13px/1.2 var(--font-text); text-align: center; }
+.match-stats__bar { grid-column: 1 / -1; display: flex; gap: 2px; height: 6px; }
+.match-stats__bar-red  { flex: 1 1 0; border-radius: 3px 0 0 3px; background: var(--red); }
+.match-stats__bar-blue { flex: 1 1 0; border-radius: 0 3px 3px 0; background: var(--blue); }
+@media (min-width: 600px), (orientation: landscape) and (min-width: 560px) {
+    .match-stats { width: min(100%, 640px); }
+}
+/* a phone on its side: the stats in three columns, the title makes room */
+@media (orientation: landscape) and (max-height: 519px) {
+    #over-screen .title { display: none; }
+    .match-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+    }
+    .match-stats__row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 8px; }
+    .match-stats__label { grid-column: 1 / -1; grid-row: 1; font-size: 11px; }
+    .match-stats__value { font-size: 18px; }
+    .match-stats__bar { height: 4px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: .01ms !important;

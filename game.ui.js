@@ -334,6 +334,7 @@ function startGame() {
     STATE.paused = false;
     STATE.scoring = false;          // a match that ended mid-celebration
     resetTouch();
+    if (typeof resetMatchStats === 'function') resetMatchStats();
     gotoScreen('playing');
 
     // hud names + colors
@@ -471,12 +472,14 @@ function paintHud() {
     fillHudKeys($('hud-keys-p1'), STATE.p1, [
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
         [['Spatie'], 'schieten / tackle'],
+        [['E'], 'hoog schot'],
         [['Q'], 'passen / bal vragen'],
         [['Shift'], 'sprinten'],
     ]);
     fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
         [['↑', '←', '↓', '→'], 'bewegen'],
         [['Enter'], 'schieten / tackle'],
+        [["'"], 'hoog schot'],
         [['Shift'], 'passen / bal vragen'],
         [['Alt'], 'sprinten'],
     ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
@@ -531,8 +534,9 @@ function resetTouch() {
     const stick = $('touch-stick'), knob = $('touch-knob');
     if (stick) { stick.style.left = ''; stick.style.top = ''; stick.classList.remove('is-held'); }
     if (knob) knob.style.transform = '';
-    ['touch-shoot', 'touch-pass', 'touch-sprint'].forEach(id => $(id)?.classList.remove('is-down'));
+    ['touch-shoot', 'touch-high', 'touch-pass', 'touch-sprint'].forEach(id => $(id)?.classList.remove('is-down'));
     $('touch-shoot')?.style.removeProperty('--charge');
+    $('touch-high')?.style.removeProperty('--charge');
 }
 
 let touchBound = false;
@@ -608,16 +612,21 @@ function bindTouch() {
         btn.addEventListener('contextmenu', (e) => e.preventDefault());
     };
 
-    // Schiet fills a ring while it charges, so you can see how hard it will be
-    let chargeRaf = 0, chargeStart = 0;
-    const paintCharge = () => {
-        const t = Math.min(1, (performance.now() - chargeStart) / CHARGE_MAX_MS);
-        shoot.style.setProperty('--charge', t.toFixed(3));
-        chargeRaf = t < 1 ? requestAnimationFrame(paintCharge) : 0;
+    // Schiet and Hoog fill a ring while they charge, so you can see how hard it will be
+    const charged = (btn, code) => {
+        let raf = 0, start = 0;
+        const paint = () => {
+            const t = Math.min(1, (performance.now() - start) / CHARGE_MAX_MS);
+            btn.style.setProperty('--charge', t.toFixed(3));
+            raf = t < 1 ? requestAnimationFrame(paint) : 0;
+        };
+        hold(btn, code,
+            () => { start = performance.now(); cancelAnimationFrame(raf); paint(); },
+            () => { cancelAnimationFrame(raf); raf = 0; btn.style.removeProperty('--charge'); });
     };
-    hold(shoot, 'Space',
-        () => { chargeStart = performance.now(); cancelAnimationFrame(chargeRaf); paintCharge(); },
-        () => { cancelAnimationFrame(chargeRaf); chargeRaf = 0; shoot.style.removeProperty('--charge'); });
+    charged(shoot, 'Space');
+    const high = $('touch-high');
+    if (high) charged(high, 'KeyE');
     hold(pass, 'KeyQ');
     const sprint = $('touch-sprint');
     if (sprint) hold(sprint, 'ShiftLeft');

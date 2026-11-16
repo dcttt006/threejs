@@ -266,6 +266,10 @@ const PR_STATS = (() => {
             secs: Math.round((Date.now() - started) / 1000),
             finished: !!finished,
         };
+        // possession, shots (on target) and passes per side: [red, blue]
+        if (typeof MATCH !== 'undefined' && typeof possessionShare === 'function') {
+            data.match = { p1Team: p1.team, poss: possessionShare(), shots: [...MATCH.shots], onTarget: [...MATCH.onTarget], passes: [...MATCH.passes] };
+        }
         if (m) {
             const w = typeof wk !== 'undefined' ? wk : null;
             const k = m.f.kind === 'ko' && w && w.ko ? w.ko[m.f.m] : null;

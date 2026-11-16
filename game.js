@@ -575,6 +575,7 @@ function updateStaminaBars() {
         if (pass && pass.textContent !== passText) pass.textContent = passText;
         shoot?.classList.toggle('is-tackle', !own);
         shoot?.classList.toggle('is-resting', !own && controlledP1.userData.tackleCd > 0);
+        $('touch-high')?.classList.toggle('is-resting', !own);
     }
 }
 
@@ -835,6 +836,7 @@ const GAME_KEYS = new Set([
     'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
     'Space','Enter',
     'KeyQ','ShiftRight','ShiftLeft',     // pass (Q, right Shift) and sprint (left Shift)
+    'KeyE','Quote',                      // high shot: E for player 1, ' for player 2
     'AltRight','Slash',                  // player 2 sprints with right Alt/Option or /
 ]);
 // Numpad fallback — when NumLock is off some laptops fire Numpad codes for arrows.
@@ -856,6 +858,7 @@ const KEY_FROM_EKEY = {
     's': 'KeyS', 'S': 'KeyS',
     'd': 'KeyD', 'D': 'KeyD',
     'q': 'KeyQ', 'Q': 'KeyQ',
+    'e': 'KeyE', 'E': 'KeyE', "'": 'Quote',
 };
 function resolveKeyCode(e) {
     if (e.code && KEY_ALIASES[e.code]) return KEY_ALIASES[e.code];
@@ -971,6 +974,7 @@ function gameTick() {
                 sprint: ['ShiftLeft', 'ShiftRight'],
             });
             handleShoot(controlledP1, ['Space']);
+            handleHighShot(controlledP1, ['KeyE']);
             handlePass(controlledP1, ['KeyQ']);
         } else {
             movePlayer(controlledP1, {
@@ -982,6 +986,8 @@ function gameTick() {
             });
             handleShoot(controlledP1, ['Space']);
             handleShoot(controlledP2, ['Enter']);
+            handleHighShot(controlledP1, ['KeyE']);
+            handleHighShot(controlledP2, ['Quote']);
             handlePass(controlledP1, ['KeyQ']);
             handlePass(controlledP2, ['ShiftRight']);
         }
@@ -993,6 +999,7 @@ function gameTick() {
     updateCarry();
     applyCurl();
     updateBall();
+    countPossession();
 
     // Update the bot's perception of the ball: smoothed lerp with ~150 ms lag.
     // Bot AI uses this for strategy, not the raw ball position.
@@ -1230,7 +1237,7 @@ function updateCarry() {
             if (d < reach && d < bestD) { bestD = d; best = p; }
         });
         carrier = best;
-        if (carrier) { passTarget = null; lastKick = null; }
+        if (carrier) { passTarget = null; lastKick = null; shotLive = null; }
     }
 
     updateBallCall();                 // a teammate who was asked for it plays it now
@@ -1286,10 +1293,68 @@ function handleShoot(player, key) {
     player.userData.shootHeld = isHeld;
 }
 
+// The high shot (E, ', or Hoog on a phone): charged the same way, it rises
+// over the defenders. A short press dips in just under the bar, a full one is
+// struck at the top corner and may sail over. Without the ball it does nothing.
+function handleHighShot(player, key) {
+    if (!player) return;
+    const u = player.userData;
+    const isHeld = pressed(key), wasHeld = !!u.highHeld;
+    if (isHeld && !wasHeld && hasBall(player)) {
+        u.highCharging = true;
+        u.charging = true;                    // the ring under the player fills, he slows to set himself
+        u.chargeStart = performance.now();
+    }
+    if (!isHeld && wasHeld && u.highCharging) {
+        const heldMs = performance.now() - (u.chargeStart || 0);
+        const t = Math.min(1, Math.max(0, (heldMs - CHARGE_MIN_MS) / (CHARGE_MAX_MS - CHARGE_MIN_MS)));
+        u.highCharging = false;
+        u.charging = false;
+        u.chargeStart = 0;
+        if (carrier === player || ballDistTo(player) < CARRY_REACH + 0.6) {
+            fireShot(player, POWER_MIN + (POWER_MAX - POWER_MIN) * t, t, true);
+        }
+    }
+    u.highHeld = isHeld;
+}
+
 // Every shot goes at the other goal, wherever you face. Up or down (held, or
 // the last way you ran) picks that corner; otherwise it goes low towards the
 // middle, on your side of it.
-function fireShot(player, power, charge01) {
+// High shots: the height at the goal line it is struck for, short press ..
+// full charge (the bar is at 10, a full one may go over), and the least height
+// it must have where the keeper stands, about 6 units off his line.
+const HIGH_LOW = 8.4, HIGH_TOP = 9.6, HIGH_OVER_KEEPER = 7.7, KEEPER_LINE = 6;
+// [height where the keeper stands, height at the line] for a ball struck this
+// far at this speed and lift, run through the same steps as updateBall
+function highFlight(dist, speed, lift) {
+    let x = 0, y = BALL_SIZE + 0.2, vx = speed, vy = lift, atKeeper = null;
+    for (let t = 0; t < 600; t++) {
+        vy -= 0.022;
+        if (y > BALL_SIZE + 0.05) vx *= 0.996;
+        x += vx; y += vy;
+        if (y > 16) { y = 16; vy = Math.min(vy, 0); }
+        if (atKeeper === null && x >= dist - KEEPER_LINE) atKeeper = y;
+        if (x >= dist) return [atKeeper ?? y, y];
+        if (y <= BALL_SIZE && t > 3) return [atKeeper ?? y, -1];      // lands short
+    }
+    return [atKeeper ?? y, y];
+}
+// the lift that crosses the line at `want`, raised if that would leave it
+// low enough for the keeper to take in front of his goal
+function highLift(dist, speed, want) {
+    const search = (ok) => {
+        let lo = 0.05, hi = 1.6;
+        for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; }
+        return (lo + hi) / 2;
+    };
+    let lift = search(m => highFlight(dist, speed, m)[1] >= want);
+    if (highFlight(dist, speed, lift)[0] < HIGH_OVER_KEEPER) {
+        lift = search(m => highFlight(dist, speed, m)[0] >= HIGH_OVER_KEEPER);
+    }
+    return lift;
+}
+function fireShot(player, power, charge01, high) {
     const f = facingOf(player);
     const goalX = player.team === 1 ? FIELD_W / 2 : -FIELD_W / 2;
     const reach = GOAL_W * 0.45;                               // just inside the post
@@ -1300,8 +1365,16 @@ function fireShot(player, power, charge01) {
     const len = Math.hypot(dx, dz) || 1;
     const nx = dx / len, nz = dz / len;
 
-    // a tap lifts a little, a full shot stays low and flat
-    knockBall(nx, nz, power, 0.2 - charge01 * 0.12);
+    if (high) {
+        // pick the height it should cross the line at, and the lift that gets it
+        // there over this distance (a full one may go over: a little spread)
+        const speed = power * 0.88;
+        const want = HIGH_LOW + (HIGH_TOP - HIGH_LOW) * charge01 + (Math.random() - 0.5) * 1.4 * charge01;
+        knockBall(nx, nz, speed, highLift(len, speed, want));
+    } else {
+        // a tap lifts a little, a full shot stays low and flat
+        knockBall(nx, nz, power, 0.2 - charge01 * 0.12);
+    }
     ball.position.x = player.position.x + nx * CARRY_DIST;
     ball.position.z = player.position.z + nz * CARRY_DIST;
     ball.position.y = BALL_SIZE + 0.2;
@@ -1309,7 +1382,8 @@ function fireShot(player, power, charge01) {
     player.userData.kickT = 0.28;           // swing the leg (animatePlayers)
     if (carrier === player) carrier = null;
     passTarget = null;
-    lastKick = { by: player, team: player.team, kind: 'shot' };
+    lastKick = { by: player, team: player.team, kind: 'shot', high: !!high };
+    shotTaken(player.team);
     // aftertouch: what is held now aimed the shot, a fresh up/down curls it
     curl = { by: player, t: CURL_TICKS, z0: player.userData.inZ || 0, curled: false };
 }
@@ -1475,6 +1549,7 @@ function handlePass(player, keyArr) {
 }
 
 function passBall(from, to) {
+    MATCH.passes[from.team - 1]++;
     const fromKeeper = !!from.userData.isKeeper;
     const startX = from.position.x, startZ = from.position.z;
     let tx = to.position.x, tz = to.position.z;
@@ -1557,11 +1632,13 @@ function updateKeeper(k) {
             u.react = (u.react || 0) + 1;
             // no keeper reads every shot equally well: a tick quicker or up to
             // two slower than his level, decided when he first sees it
-            if (u.react === 1) u.reactAt = skill.react - 1 + Math.floor(Math.random() * 4);
+            // a high shot is harder to read and to get across to: later, and slower
+            const highShot = !!(lastKick && lastKick.kind === 'shot' && lastKick.high);
+            if (u.react === 1) u.reactAt = skill.react - 1 + Math.floor(Math.random() * 4) + (highShot ? 3 : 0);
             targetX = k.position.x;
             // once he has dived he is committed: a ball that curls late beats him
             targetZ = u.diveT > 0 && u.diveAt !== undefined ? u.diveAt : shotZ;
-            top = u.react > u.reactAt ? skill.lunge : 0;
+            top = u.react > u.reactAt ? skill.lunge * (highShot ? 0.85 : 1) : 0;
             // he goes down for anything that isn't straight at him, as soon as
             // he has read it; whether he gets there depends on his level
             const gap = shotZ - k.position.z;
@@ -1611,17 +1688,27 @@ function updateKeeper(k) {
     const reach = carrier
         ? KEEPER_REACH * 0.7
         : KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive : 0);
-    const catchable = ball.position.y < GOAL_H * 0.75;
+    const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
+    // a high ball (a high shot): held when it comes straight at him, tipped away
+    // when he has to stretch for it; his reach up there is shorter than low down,
+    // so a high shot into the top corner beats him more often than a low one
+    const highBall = !carrier && ball.position.y >= GOAL_H * 0.75 && ball.position.y < GOAL_H + 0.6;
+    // up there a dive gains him a bit over half as much as low down
+    const highReach = KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive * 0.58 : 0);
+    const catchable = ball.position.y < GOAL_H * 0.75
+        || (highBall && d2 < KEEPER_REACH * KEEPER_REACH && speed < 1.6);
 
     // a hard shot taken at full stretch is pushed away, not held
-    const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
-    if (catchable && !carrier && !u.holdingBall && d2 < reach * reach && d2 > KEEPER_REACH * KEEPER_REACH && speed > 1.7) {
+    const stretchedLow = catchable && !highBall && d2 < reach * reach && d2 > KEEPER_REACH * KEEPER_REACH && speed > 1.7;
+    const stretchedHigh = highBall && !catchable && d2 < highReach * highReach;
+    if (!carrier && !u.holdingBall && (stretchedLow || stretchedHigh)) {
         const side = Math.sign(dz) || 1;
-        knockBall(out * 0.35, side * 0.9, Math.min(1.2, speed * 0.45), 0.3);
+        knockBall(out * 0.35, side * 0.9, Math.min(1.2, speed * 0.45), stretchedHigh ? 0.1 : 0.3);
         ball.position.x = k.position.x + out * 1.5;
         u.parryT = 20;
         curl = null;
         lastKick = null;
+        shotSaved(k.team);
         return;
     }
     if (u.parryT > 0) { u.parryT--; return; }      // let the parried ball get away
@@ -1630,6 +1717,7 @@ function updateKeeper(k) {
     if (catchable && d2 < reach * reach && !u.holdingBall) {
         if (carrier) carrier.userData.cooldown = 40;
         carrier = null;
+        shotSaved(k.team);
         u.holdingBall = true;
         u.holdStart = performance.now();
         // like a real keeper he takes his time: two to three and a half seconds
@@ -1842,6 +1930,7 @@ function updateBotFieldPlayer(p) {
         passTarget = null;
         curl = null;
         lastKick = { by: p, team: p.team, kind: 'shot' };
+        shotTaken(p.team);                                   // the full-time statistics
         return;
     }
 
@@ -1861,6 +1950,96 @@ function updateBotFieldPlayer(p) {
 // who has the ball: the carrier, else nobody
 function getBallOwner() {
     return carrier;
+}
+
+// ----------- match statistics (the full-time screen) -----------
+// Per side, index 0 = team 1 (red, left on the scoreboard), 1 = team 2 (blue):
+//   poss      ticks the side had the ball (a loose ball stays with the side
+//             that had it last; the keeper holding it counts for his side)
+//   shots     every shot, low or high
+//   onTarget  shots that went in or that the keeper had to stop
+//   passes    every pass, the keeper's throws and kicks included
+const MATCH = { poss: [0, 0], shots: [0, 0], onTarget: [0, 0], passes: [0, 0] };
+let possTeam = 0;
+let shotLive = null;            // { team }: a shot on its way, not yet decided
+function resetMatchStats() {
+    ['poss', 'shots', 'onTarget', 'passes'].forEach(k => { MATCH[k][0] = 0; MATCH[k][1] = 0; });
+    possTeam = 0;
+    shotLive = null;
+}
+function countPossession() {
+    if (STATE.scoring || STATE.inputLocked || STATE.paused) return;
+    let t = carrier ? carrier.team : 0;
+    if (!t && team1Players[0] && team1Players[0].userData.holdingBall) t = 1;
+    if (!t && team2Players[0] && team2Players[0].userData.holdingBall) t = 2;
+    if (t) possTeam = t;
+    if (possTeam) MATCH.poss[possTeam - 1]++;
+}
+function shotTaken(team) {
+    MATCH.shots[team - 1]++;
+    shotLive = { team };
+}
+// the keeper of keeperTeam stops a shot: it was on target
+function shotSaved(keeperTeam) {
+    if (shotLive && shotLive.team !== keeperTeam) MATCH.onTarget[shotLive.team - 1]++;
+    shotLive = null;
+}
+// the side's share of the ball, in whole percents that add up to 100
+function possessionShare() {
+    const total = MATCH.poss[0] + MATCH.poss[1];
+    const red = total ? Math.round((MATCH.poss[0] / total) * 100) : 50;
+    return [red, 100 - red];
+}
+// Shown under the final score: red on the left, blue on the right, like the
+// scoreboard. "8 (5)" = eight shots, five of them on target.
+function renderMatchStats() {
+    const box = $('over-stats');
+    if (!box) return;
+    const [pr, pb] = possessionShare();
+    const rows = [
+        { label: 'Balbezit', red: `${pr}%`, blue: `${pb}%`, split: [pr, pb] },
+        { label: 'Schoten (op doel)', red: `${MATCH.shots[0]} (${MATCH.onTarget[0]})`, blue: `${MATCH.shots[1]} (${MATCH.onTarget[1]})` },
+        { label: 'Passes', red: String(MATCH.passes[0]), blue: String(MATCH.passes[1]) },
+    ];
+    box.replaceChildren(...rows.map(r => {
+        const row = document.createElement('div');
+        row.className = 'match-stats__row';
+        const cell = (cls, text) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; };
+        row.append(cell('match-stats__value match-stats__value--red', r.red),
+                   cell('match-stats__label', r.label),
+                   cell('match-stats__value match-stats__value--blue', r.blue));
+        if (r.split) {
+            const bar = document.createElement('span');
+            bar.className = 'match-stats__bar';
+            bar.setAttribute('aria-hidden', 'true');
+            const a = cell('match-stats__bar-red', ''), b = cell('match-stats__bar-blue', '');
+            a.style.flexGrow = String(Math.max(1, r.split[0]));
+            b.style.flexGrow = String(Math.max(1, r.split[1]));
+            bar.append(a, b);
+            row.appendChild(bar);
+        }
+        return row;
+    }));
+}
+
+// A ball over the bar (or high over the line): the keeper of that goal takes
+// it for a goal kick, and plays it out after his usual wait.
+function goalKick(team) {
+    const k = (team === 1 ? team1Players : team2Players)[0];
+    shotLive = null;
+    if (!k) return;
+    carrier = null;
+    curl = null;
+    passTarget = null;
+    lastKick = null;
+    ballCall = null;
+    const u = k.userData;
+    u.holdingBall = true;
+    u.holdStart = performance.now();
+    u.holdFor = KEEPER_HOLD_MIN + Math.random() * (KEEPER_HOLD_MAX - KEEPER_HOLD_MIN);
+    u.calledBy = null;
+    ball.velocity = { x: 0, y: 0, z: 0 };
+    ball.position.set(k.position.x, BALL_SIZE + 1.6, k.position.z);
 }
 
 // ----------- ball physics -----------
@@ -1885,9 +2064,9 @@ function updateBall() {
         ball.position.z += ball.velocity.z;
     }
 
-    // ceiling
-    if (ball.position.y > 9) {
-        ball.position.y = 9;
+    // ceiling: high enough for a high shot to clear the bar (10)
+    if (ball.position.y > 16) {
+        ball.position.y = 16;
         ball.velocity.y = Math.min(ball.velocity.y, 0);
     }
 
@@ -1913,6 +2092,12 @@ function updateBall() {
             scoreGoal(ball.position.x > 0 ? 1 : 2);
             return;
         }
+        // over the bar (or high and wide): a goal kick for the keeper of that goal
+        if (ball.position.y >= GOAL_H) {
+            goalKick(ball.position.x > 0 ? 2 : 1);
+            return;
+        }
+        shotLive = null;                                   // wide: the shot missed
         ball.velocity.x *= -0.45;
         ball.position.x = Math.sign(ball.position.x) * FIELD_W/2;
     }
@@ -1995,6 +2180,8 @@ function scoreGoal(scoringTeam) {
 
     if (scoringTeam === 1) STATE.score1++;
     else STATE.score2++;
+    if (shotLive && shotLive.team === scoringTeam) MATCH.onTarget[scoringTeam - 1]++;
+    shotLive = null;
 
     $('hud-s1').textContent = STATE.score1;
     $('hud-s2').textContent = STATE.score2;
@@ -2085,6 +2272,7 @@ function endGame() {
     else if (STATE.score2 > STATE.score1) winner = `${bluePlayer.name} wint`;
     else winner = 'Gelijkspel';
     $('over-winner').textContent = winner;
+    renderMatchStats();
     // a WK match: record it, and the result screen leads back to the tournament
     if (typeof wkAfterMatch === 'function') wkAfterMatch();
     if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(true);       // statistics (game.stats.js)
