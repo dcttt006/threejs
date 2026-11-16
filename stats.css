@@ -232,6 +232,7 @@ details.st-table-view summary { color: var(--dim); font-size: 13px; cursor: poin
 
 @media (min-width: 600px) {
     :root { --pad: 24px; }
+    .st-card--wide .st-bar { grid-template-columns: minmax(0, 22em) minmax(0, 1fr) auto; }
     .st-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .st-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

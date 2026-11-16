@@ -128,7 +128,7 @@
                 s = {
                     id: r.session, visitor: r.visitor, start: r.created_at, end: r.created_at,
                     device: r.device, os: r.os, browser: r.browser, screen: r.screen, lang: r.lang,
-                    referrer: '', secs: null, matches: 0, names: new Set(),
+                    referrer: '', secs: null, matches: 0, names: new Set(), model: '', osv: '',
                 };
                 sessions.set(r.session, s);
             }
@@ -136,6 +136,7 @@
             if (r.referrer && !s.referrer) s.referrer = r.referrer;
             const d = r.data || {};
             if (r.type === 'time') s.secs = Math.max(s.secs || 0, d.secs || 0);
+            if (r.type === 'visit' && d.model) { s.model = d.model; s.osv = d.osVersion || ''; }
             if (r.type === 'match') {
                 s.matches++;
                 if (d.wk) s.names.add(d.wk.teamName || d.wk.team);
@@ -395,6 +396,13 @@
         g1.append(c1, c2, c3, c4);
         dash.appendChild(g1);
 
+        // which phone, tablet or computer exactly (an iPhone by its screen size)
+        const cd = card('Toestel');
+        cd.classList.add('st-card--wide');
+        cd.appendChild(bars(count(m.list.filter(s => s.model), s => s.model), 12));
+        cd.appendChild(el('p', 'st-note', 'Android geeft het echte model door. Apple verbergt het: een iPhone of iPad wordt herkend aan zijn schermmaat, die een paar modellen delen.'));
+        dash.appendChild(cd);
+
         // names and choices
         dash.appendChild(el('h2', 'st-section-title', 'Spelen'));
         const g2 = el('div', 'st-grid st-grid--3');
@@ -459,11 +467,11 @@
         dash.appendChild(el('h2', 'st-section-title', 'Bezoeken'));
         const cv = card('Alle bezoeken');
         cv.appendChild(table([
-            { label: 'Wanneer' }, { label: 'Apparaat' }, { label: 'Systeem' }, { label: 'Browser' }, { label: 'Scherm' },
+            { label: 'Wanneer' }, { label: 'Apparaat' }, { label: 'Toestel' }, { label: 'Systeem' }, { label: 'Browser' }, { label: 'Scherm' },
             { label: 'Taal' }, { label: 'Vandaan' }, { label: 'Tijd', num: true }, { label: 'Wedstrijden', num: true },
             { label: 'Namen', cls: 'wrap' },
         ], m.list.map(s => [
-            fmtWhen(s.start), s.device, s.os, s.browser, s.screen, s.lang, s.referrer || 'direct',
+            fmtWhen(s.start), s.device, s.model || '–', s.osv ? `${s.os} ${s.osv}` : s.os, s.browser, s.screen, s.lang, s.referrer || 'direct',
             fmtSecs(s.secs), fmtInt(s.matches), [...s.names].join(', ') || '–',
         ]), 60));
         dash.appendChild(cv);
