@@ -249,6 +249,8 @@ function callCoin(choice) {
         }
 
         $('kickoff-btn').hidden = false;
+        // on a short phone on its side the button can sit just below the edge
+        $('kickoff-btn').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }, COIN_FLIP_MS);
 }
 
@@ -435,7 +437,7 @@ function runKickoffCountdown(done) {
 // Q key: back to your keeper, or ask him for the ball). The stick is analogue;
 // movePlayer() reads touchMove for player 1.
 const touchMove = { active: false, x: 0, z: 0 };
-const STICK_TRAVEL = 52;        // px the knob can move from the centre
+const STICK_TRAVEL = 52;        // px the knob can move from the centre, on the full-size stick
 const STICK_DEAD = 0.18;        // ignore tiny movements of the thumb
 
 function isPortrait() {
@@ -459,15 +461,15 @@ function bindTouch() {
     if (!zone || !stick || !knob || !shoot || !pass) return;
 
     // ---- the stick ----
-    let stickId = null, cx = 0, cy = 0;
+    let stickId = null, cx = 0, cy = 0, travel = STICK_TRAVEL;
     const moveStick = (e) => {
         let dx = e.clientX - cx, dy = e.clientY - cy;
         const d = Math.hypot(dx, dy);
-        if (d > STICK_TRAVEL) { dx = dx / d * STICK_TRAVEL; dy = dy / d * STICK_TRAVEL; }
+        if (d > travel) { dx = dx / d * travel; dy = dy / d * travel; }
         knob.style.transform = `translate(${dx}px, ${dy}px)`;
         // screen right is +x, screen down is +z (towards the camera)
-        touchMove.x = dx / STICK_TRAVEL;
-        touchMove.z = dy / STICK_TRAVEL;
+        touchMove.x = dx / travel;
+        touchMove.z = dy / travel;
         touchMove.active = Math.hypot(touchMove.x, touchMove.z) > STICK_DEAD;
     };
     zone.addEventListener('pointerdown', (e) => {
@@ -476,6 +478,8 @@ function bindTouch() {
         stickId = e.pointerId;
         try { zone.setPointerCapture(stickId); } catch (_) {}   // keeps the thumb's moves when it leaves the zone
         const r = zone.getBoundingClientRect();
+        // the stick is smaller on a small phone (styles.css): so is the knob's travel
+        travel = Math.max(34, (stick.offsetWidth || 132) * STICK_TRAVEL / 132);
         cx = e.clientX; cy = e.clientY;
         stick.style.left = `${cx - r.left}px`;
         stick.style.top = `${cy - r.top}px`;

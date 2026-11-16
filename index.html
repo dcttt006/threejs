@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=94">
+    <link rel="stylesheet" href="styles.css?v=95">
 </head>
 <body>
     <!-- shared icons -->
@@ -266,7 +266,9 @@
 
         <!-- a phone held upright: the pitch needs the width -->
         <div class="rotate-hint">
+            <div class="rotate-hint__phone" aria-hidden="true"></div>
             <p class="rotate-hint__text">Draai je telefoon een kwartslag</p>
+            <p class="rotate-hint__sub">Draait het beeld niet mee? Zet de rotatievergrendeling uit in het bedieningspaneel.</p>
         </div>
     </div>
 
@@ -293,15 +295,20 @@
                 <button id="wk-resume-go" class="btn" type="button">Verder spelen</button>
             </div>
 
-            <!-- twelve groups, filled from WK_GROUPS by wkRenderPick() -->
-            <div class="wk-groups" id="wk-groups"></div>
-
-            <div class="wk__foot">
-                <div class="seg" id="wk-level" role="radiogroup" aria-label="Niveau van de tegenstanders">
+            <div class="wk__level">
+                <p class="wk__level-label" id="wk-level-label">Niveau van de tegenstanders</p>
+                <div class="seg" id="wk-level" role="radiogroup" aria-labelledby="wk-level-label">
                     <button class="seg__btn" type="button" role="radio" data-level="easy">Makkelijk</button>
                     <button class="seg__btn" type="button" role="radio" data-level="medium">Gemiddeld</button>
                     <button class="seg__btn" type="button" role="radio" data-level="hard">Moeilijk</button>
                 </div>
+            </div>
+
+            <!-- twelve groups, filled from WK_GROUPS by wkRenderPick() -->
+            <div class="wk-groups" id="wk-groups"></div>
+
+            <!-- stays at the bottom of the screen while you scroll through the groups -->
+            <div class="wk__foot">
                 <button id="wk-start" class="btn" type="button" disabled>Kies je land</button>
             </div>
         </main>
@@ -416,10 +423,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=94"></script>
-    <script src="game.stadium.js?v=94"></script>
-    <script src="game.ui.js?v=94"></script>
-    <script src="game.wk.js?v=94"></script>
-    <script src="game.js?v=94"></script>
+    <script src="game.core.js?v=95"></script>
+    <script src="game.stadium.js?v=95"></script>
+    <script src="game.ui.js?v=95"></script>
+    <script src="game.wk.js?v=95"></script>
+    <script src="game.js?v=95"></script>
 </body>
 </html>

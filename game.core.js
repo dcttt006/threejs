@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v88-wk2026 (2026-11-13)';
+const GAME_BUILD = 'v89-mobile-first (2026-11-16)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -234,7 +234,13 @@ const SCREEN_TO_DOM = {
     wkhub:   'wk-hub-screen',
 };
 function showScreen(id) {
-    screens.forEach(s => $(s)?.classList.toggle('active', s === id));
+    screens.forEach(s => {
+        const el = $(s);
+        if (!el) return;
+        // a screen you come back to starts at the top, not where you left it
+        if (s === id && !el.classList.contains('active')) el.scrollTop = 0;
+        el.classList.toggle('active', s === id);
+    });
 }
 
 function gotoScreen(target, { replace = false } = {}) {
