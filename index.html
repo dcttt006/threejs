@@ -9,8 +9,8 @@
     <title>Pitch Royale</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=108">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=113">
 </head>
 <body>
     <!-- shared icons -->
@@ -29,41 +29,57 @@
     </div>
 
     <!-- ============ START ============ -->
-    <div id="launch-screen" class="screen menu">
-        <div class="launch">
-            <h1 class="launch__title">Pitch<br>Royale</h1>
+    <!-- night blue, the name in white and yellow, slanted menu, the pitch in perspective -->
+    <div id="launch-screen" class="screen home">
+        <div class="home__decor" aria-hidden="true">
+        <span class="home__stripe home__stripe--top"></span>
+        <span class="home__stripe home__stripe--bottom"></span>
 
-            <!-- the scoreboard as it stands before kick-off -->
-            <div class="board" role="img" aria-label="Thuis tegen uit, 0-0, negentig seconden op de klok">
-                <span class="board__team board__team--red">Thuis</span>
-                <span class="board__score">0 - 0</span>
-                <span class="board__team board__team--blue">Uit</span>
-                <span class="board__clock">1:30</span>
-            </div>
-
-            <div class="launch__row">
-                <p class="launch__lead no-touch">Met z'n tweeën op één toetsenbord, of alleen tegen de computer. Wie na negentig seconden de meeste goals heeft, wint.</p>
-                <p class="launch__lead touch-only">Jij tegen de computer. Wie na negentig seconden de meeste goals heeft, wint.</p>
-                <div class="launch__menu">
-                    <button id="launch-cta" class="btn" type="button">
-                        <span>2 spelers</span>
-                        <span class="btn__meta">één toetsenbord</span>
-                    </button>
-                    <button id="launch-cpu" class="btn btn--line" type="button">
-                        <span>Tegen de computer</span>
-                        <span class="btn__meta" id="launch-cpu-level">Gemiddeld</span>
-                    </button>
-                    <button id="launch-wk" class="btn btn--line" type="button">
-                        <span>WK 2026</span>
-                        <span class="btn__meta">48 landen</span>
-                    </button>
-                    <button id="launch-stadium-pick" class="btn btn--line" type="button">
-                        <span>Stadion kiezen</span>
-                        <span class="btn__meta" id="launch-stadium-name">Camp Nou</span>
-                    </button>
-                </div>
-            </div>
+        <svg class="home__pitch" viewBox="0 0 1050 680">
+            <g fill="none" stroke="currentColor" stroke-width="4">
+                <rect x="2" y="2" width="1046" height="676"/>
+                <line x1="525" y1="2" x2="525" y2="678"/>
+                <circle cx="525" cy="340" r="91.5"/>
+                <rect x="2" y="138.5" width="165" height="403"/>
+                <rect x="2" y="248.5" width="55" height="183"/>
+                <path d="M167 266.9a91.5 91.5 0 0 1 0 146.2"/>
+                <rect x="883" y="138.5" width="165" height="403"/>
+                <rect x="993" y="248.5" width="55" height="183"/>
+                <path d="M883 266.9a91.5 91.5 0 0 0 0 146.2"/>
+                <path d="M2 30a28 28 0 0 0 28-28M1020 2a28 28 0 0 0 28 28M2 650a28 28 0 0 1 28 28M1020 678a28 28 0 0 1 28-28"/>
+            </g>
+            <g fill="currentColor">
+                <circle cx="525" cy="340" r="8"/>
+                <circle cx="112" cy="340" r="6"/>
+                <circle cx="938" cy="340" r="6"/>
+            </g>
+        </svg>
         </div>
+
+        <main class="home__main">
+            <h1 class="home__title"><span>Pitch</span> <span class="home__title-gold">Royale</span></h1>
+            <p class="home__tag">90 seconden. Meeste goals wint.</p>
+
+            <div class="home__menu">
+                <button id="launch-cta" class="home__btn home__btn--gold" type="button">
+                    <span class="home__btn-label">2 spelers</span>
+                    <span class="home__btn-meta">Eén toetsenbord</span>
+                </button>
+                <button id="launch-cpu" class="home__btn" type="button">
+                    <span class="home__btn-label">Tegen de computer</span>
+                    <span class="home__btn-meta" id="launch-cpu-level">Gemiddeld</span>
+                </button>
+                <button id="launch-wk" class="home__btn" type="button">
+                    <span class="home__btn-label">WK 2026</span>
+                    <span class="home__btn-meta">48 landen</span>
+                </button>
+            </div>
+
+            <button id="launch-stadium-pick" class="home__stadium" type="button">
+                <span class="home__stadium-label">Stadion kiezen</span>
+                <span class="home__stadium-name" id="launch-stadium-name">Camp Nou</span>
+            </button>
+        </main>
     </div>
 
     <!-- ============ SETUP ============ -->
@@ -437,10 +453,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=108"></script>
-    <script src="game.stadium.js?v=108"></script>
-    <script src="game.ui.js?v=108"></script>
-    <script src="game.wk.js?v=108"></script>
-    <script src="game.js?v=108"></script>
+    <script src="game.core.js?v=113"></script>
+    <script src="game.stadium.js?v=113"></script>
+    <script src="game.ui.js?v=113"></script>
+    <script src="game.wk.js?v=113"></script>
+    <script src="game.js?v=113"></script>
 </body>
 </html>

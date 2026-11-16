@@ -1026,92 +1026,204 @@ kbd {
     text-transform: uppercase;
 }
 
-/* ---------- start ---------- */
-/* upright: the name at the top, the menu at the bottom where the thumb is */
-.launch {
+/* =====================================================
+   START — the landing page (img/landingspagina.png)
+   Night blue, the name in white and gold, a slanted menu,
+   the pitch drawn in perspective, gold stripes in two
+   corners. Upright on a phone the pitch lies behind the
+   menu; on its side and on a desktop it fills the right.
+   ===================================================== */
+.home {
+    --home-bg:    #07101f;
+    --home-gold:  #ffc21a;
+    --home-ink:   #0b1220;
+    --home-slate: #1b2434;
+    --home-edge:  #2f3b51;
+    --home-dim:   #98a3b6;
+    --home-line:  #213a63;
+    --pad: 20px;
+    overflow-x: hidden;
+    background:
+        radial-gradient(60% 55% at 100% 100%, rgba(255, 176, 0, .2), transparent 70%),
+        var(--home-bg);
+    color: #fff;
+    font-family: var(--font-text);
+}
+#launch-screen.active { display: flex; }
+.home :focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+
+/* stripes and pitch sit in a layer cut off at the screen's edges */
+.home__decor { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+
+/* gold stripes: top left and bottom right */
+.home__stripe {
+    position: absolute;
+    z-index: 0;
+    width: 30px;
+    height: 260px;
+    background: linear-gradient(90deg, var(--home-gold) 0 9px, transparent 9px 17px, rgba(255, 194, 26, .55) 17px 23px, transparent 23px);
+    pointer-events: none;
+}
+.home__stripe--top    { top: -90px; left: 6px; transform: rotate(36deg); }
+.home__stripe--bottom { right: 8px; bottom: -110px; transform: rotate(36deg); height: 300px; }
+
+/* the pitch: thin blue chalk, in perspective */
+.home__pitch {
+    position: absolute;
+    z-index: 0;
+    right: -55%;
+    bottom: 4%;
+    width: 130%;
+    height: auto;
+    color: var(--home-line);
+    opacity: .6;
+    transform: perspective(1400px) rotateY(-18deg) rotateX(6deg);
+    transform-origin: 0 50%;
+    pointer-events: none;
+}
+
+.home__main {
+    position: relative;
+    z-index: 1;
     flex: 1 0 auto;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 20px;
-    padding: calc(var(--pad) + 8px) var(--pad) calc(var(--pad) + var(--safe-b));
+    justify-content: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 560px;
+    padding: calc(var(--pad) + 24px) var(--pad) calc(var(--pad) + var(--safe-b));
 }
-.launch__title {
+.home__title {
     margin: 0;
-    color: var(--amber);
-    font: 400 clamp(40px, min(16vw, calc(var(--vh) * 11)), 120px)/1 var(--font-led);
+    font: italic 900 clamp(64px, min(23vw, calc(var(--vh) * 15)), 132px)/.84 var(--font-cond);
+    letter-spacing: -.01em;
     text-transform: uppercase;
 }
-/* the scoreboard as it stands before kick-off */
-.board {
+.home__title span { display: block; }
+.home__title-gold { color: var(--home-gold); }
+.home__tag {
+    margin: 4px 0 14px;
+    font: italic 600 clamp(16px, 4.4vw, 22px)/1.3 var(--font-text);
+}
+
+.home__menu { display: grid; gap: 12px; }
+.home__btn {
+    position: relative;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px 14px;
-    font: 400 clamp(22px, 7.2vw, 34px)/1.3 var(--font-led);
-    text-transform: uppercase;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 22px 8px 26px;
+    border: 1px solid var(--home-edge);
+    border-radius: 3px;
+    background: var(--home-slate);
+    color: #fff;
+    text-align: left;
+    transform: skewX(-10deg);
+    transition: background-color .12s, border-color .12s, color .12s, transform .12s;
 }
-.board__team { padding: 0 .28em; color: #fff; }
-.board__team--red  { background: var(--red); }
-.board__team--blue { background: var(--blue); }
-.board__score { color: var(--amber); }
-.board__clock { color: var(--dim); font-size: .5em; }
+.home__btn > span { transform: skewX(10deg); }
+.home__btn:active { transform: skewX(-10deg) translateY(2px); }
+.home__btn--gold { border-color: var(--home-gold); background: var(--home-gold); color: var(--home-ink); }
+.home__btn-label {
+    font: italic 800 clamp(22px, 6.6vw, 30px)/1 var(--font-cond);
+    white-space: nowrap;
+}
+.home__btn-meta {
+    position: relative;
+    flex: none;
+    padding-left: 18px;
+    font: italic 500 clamp(13px, 3.6vw, 16px)/1.1 var(--font-text);
+    white-space: nowrap;
+    opacity: .9;
+}
+/* the slash between label and meta */
+.home__btn-meta::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -6px;
+    bottom: -6px;
+    width: 1.5px;
+    background: currentColor;
+    opacity: .55;
+    transform: skewX(-22deg);
+}
 
-.launch__row { display: grid; gap: 16px; }
-.launch__lead {
-    display: none;
-    max-width: 26em;
-    margin: 0;
-    color: var(--text);
-    font-size: 16px;
-    line-height: 1.4;
+.home__stadium {
+    position: relative;
+    display: grid;
+    justify-items: start;
+    gap: 2px;
+    align-self: start;
+    margin-top: 14px;
+    padding: 6px 8px 6px 22px;
+    border: 0;
+    background: none;
+    color: #fff;
+    text-align: left;
 }
-@media (min-height: 520px) {
-    .launch__lead { display: block; }
+.home__stadium::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    background: var(--home-gold);
+    transform: skewX(-18deg);
 }
-.launch__menu { display: grid; gap: 12px; }
-.launch__menu .btn { justify-content: space-between; width: 100%; text-align: left; }
+.home__stadium-label { font: italic 700 clamp(19px, 5vw, 24px)/1.1 var(--font-text); }
+.home__stadium-name  { color: var(--home-dim); font: italic 600 clamp(14px, 3.8vw, 17px)/1.2 var(--font-text); }
 
-/* on its side: name and scoreboard on the left, the menu on the right */
+@media (hover: hover) {
+    .home__btn:hover { border-color: var(--home-gold); }
+    .home__btn--gold:hover { background: #fff; border-color: #fff; }
+    .home__stadium:hover .home__stadium-label { color: var(--home-gold); }
+}
+
+/* on its side and on a desktop: the menu on the left, the pitch on the right */
 @media (orientation: landscape) and (min-width: 560px) {
-    .launch {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(260px, 1.2fr);
-        grid-template-areas: "title menu" "board menu";
-        align-content: center;
-        align-items: center;
-        gap: 14px 28px;
-        padding: 16px var(--pad) calc(16px + var(--safe-b));
+    .home__pitch {
+        right: -4%;
+        top: 50%;
+        bottom: auto;
+        width: 62%;
+        opacity: 1;
+        transform: translateY(-50%) perspective(1600px) rotateY(-16deg) rotateX(5deg);
     }
-    .launch__title { grid-area: title; font-size: clamp(30px, min(7vw, calc(var(--vh) * 15)), 80px); }
-    .board { grid-area: board; font-size: clamp(18px, calc(var(--vh) * 6.5), 34px); }
-    .launch__row { grid-area: menu; display: block; max-width: 440px; }
-    .launch__lead { margin-bottom: 16px; }
-    .launch__menu { gap: 10px; }
+    .home__main {
+        width: 44%;
+        max-width: 640px;
+        padding: calc(var(--pad) + 8px) var(--pad) calc(var(--pad) + var(--safe-b)) calc(var(--pad) + 24px);
+    }
+    .home__title { font-size: clamp(48px, min(9.5vw, calc(var(--vh) * 19)), 190px); }
+    .home__tag { font-size: clamp(15px, min(1.7vw, calc(var(--vh) * 3.2)), 26px); }
+    .home__btn { min-height: clamp(46px, calc(var(--vh) * 8.6), 76px); }
+    .home__btn-label { font-size: clamp(20px, min(2.4vw, calc(var(--vh) * 4.6)), 36px); }
+    .home__btn-meta { font-size: clamp(12px, min(1.3vw, calc(var(--vh) * 2.4)), 18px); }
+    .home__stadium-label { font-size: clamp(15px, min(1.8vw, calc(var(--vh) * 3.4)), 26px); }
+    .home__stadium-name { font-size: clamp(12px, min(1.3vw, calc(var(--vh) * 2.6)), 18px); }
 }
-@media (min-width: 700px) and (min-height: 560px) {
-    .board { font-size: clamp(28px, 4.4vw, 64px); gap: 10px clamp(14px, 2vw, 28px); }
+/* a phone on its side: less height, so tighter */
+@media (orientation: landscape) and (max-height: 519px) {
+    .home__main { width: 52%; gap: 6px; padding-top: 12px; padding-bottom: calc(8px + var(--safe-b)); }
+    .home__title { font-size: clamp(38px, calc(var(--vh) * 15), 80px); }
+    .home__tag { margin: 0 0 4px; white-space: nowrap; }
+    .home__menu { gap: 8px; }
+    .home__btn { min-height: 42px; }
+    .home__stadium { margin-top: 2px; padding-top: 2px; padding-bottom: 2px; }
+    .home__stripe--top { height: 180px; top: -70px; }
 }
 @media (min-width: 900px) and (min-height: 560px) {
-    .launch {
-        display: flex;
-        align-items: stretch;
-        gap: clamp(12px, calc(var(--vh) * 2.6), 24px);
-        padding: var(--pad);
-    }
-    /* the name shrinks faster than the screen gets lower, so the menu still fits at 720px */
-    .launch__title { font-size: clamp(54px, min(11.5vw, calc(var(--vh) * 30.5 - 110px)), 190px); }
-    .board { font-size: clamp(28px, min(4.4vw, calc(var(--vh) * 7)), 64px); }
-    .launch__menu .btn { min-height: clamp(52px, calc(var(--vh) * 7.5), 64px); }
-    .launch__row {
-        display: grid;
-        max-width: none;
-        grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
-        align-items: end;
-        gap: 20px clamp(24px, 5vw, 80px);
-    }
-    .launch__lead { margin: 0; font-size: clamp(18px, 1.6vw, 23px); }
-    .launch__menu { gap: clamp(10px, calc(var(--vh) * 1.6), 14px); }
+    .home { --pad: clamp(28px, 4vw, 64px); }
+    .home__menu { gap: 16px; }
+    .home__stripe { width: 40px; height: 340px; background: linear-gradient(90deg, var(--home-gold) 0 12px, transparent 12px 22px, rgba(255, 194, 26, .55) 22px 30px, transparent 30px); }
+    .home__stripe--top { top: -110px; left: 20px; }
+    .home__stripe--bottom { right: 30px; bottom: -120px; height: 380px; }
 }
 
 /* ---------- team sheet ---------- */
@@ -2016,6 +2128,217 @@ kbd {
 }
 @media (min-width: 1100px) {
     .wk-groups, .wk-all__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+
+/* =====================================================
+   NIGHT BLUE — every menu in the style of the start screen
+   (img/landingspagina.png): night blue with a gold glow, the
+   bold italic Barlow Condensed instead of the pixel letters,
+   slanted gold and slate buttons, slate panels with the
+   chosen item in gold. Only colours, type and shapes change
+   here; the layouts above stay as they are.
+   ===================================================== */
+.menu {
+    --amber:     #ffc21a;
+    --amber-dim: #7d6a2c;
+    --panel:     #07101f;
+    --pit:       #111b2c;
+    --edge:      #27344b;
+    --dim:       #98a3b6;
+    --text:      #e6ebf3;
+    --slate:     #1b2434;
+    --font-led:  var(--font-cond);
+    --font-menu: var(--font-text);
+    background:
+        radial-gradient(60% 55% at 100% 100%, rgba(255, 176, 0, .16), transparent 70%),
+        #07101f;
+}
+/* the pixel letters become bold italic condensed */
+html .back,
+html .caption__cap,
+html .caption__name,
+html .coin-result__text,
+html .coin__face,
+html .field__input,
+html .level__name,
+html .menu .btn,
+html .menu .btn__meta,
+html .menu .seg__btn,
+html .menu .title,
+html .menu kbd,
+html .pick-btn,
+html .splash__name,
+html .stadium-row,
+html .stadium-row__tag,
+html .swap,
+html .team-card__cpu-name,
+html .team-card__side,
+html .topbar__brand,
+html .viewer.is-loading::after,
+html .viewer__msg,
+html .wk-all > summary,
+html .wk-all__name,
+html .wk-fixture__score,
+html .wk-group__name,
+html .wk-next__label,
+html .wk-next__name,
+html .wk-next__result,
+html .wk-panel__title,
+html .wk-path__step,
+html .wkhub__sub {
+    font-family: var(--font-cond);
+    font-style: italic;
+    font-weight: 800;
+    letter-spacing: .01em;
+}
+/* a gold stripe in the top corner, like on the start screen */
+.menu::before {
+    content: '';
+    position: absolute;
+    top: -112px;
+    left: -16px;
+    width: 26px;
+    height: 200px;
+    background: linear-gradient(90deg, var(--amber) 0 8px, transparent 8px 15px, rgba(255, 194, 26, .55) 15px 20px, transparent 20px);
+    transform: rotate(36deg);
+    pointer-events: none;
+}
+.menu > * { position: relative; }
+
+/* top bar */
+html .back { font: italic 600 17px/1 var(--font-text); color: var(--dim); text-transform: none; }
+html .topbar__brand { color: #fff; font-size: 20px; font-weight: 900; text-transform: uppercase; }
+html .menu .title { color: #fff; font-weight: 900; line-height: .9; }
+
+/* buttons: slanted; gold for the next step, slate for the others */
+html .menu .btn {
+    border: 0;
+    border-radius: 0;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    padding-left: 24px;
+    padding-right: 24px;
+    background: var(--amber);
+    color: #0b1220;
+    text-transform: none;
+}
+html .menu .btn--line { background: var(--slate); color: #fff; box-shadow: inset 0 0 0 1px var(--edge); }
+html .menu .btn__meta { color: inherit; font: italic 500 .62em/1 var(--font-text); text-transform: none; opacity: .9; }
+html .menu .btn:disabled { background: var(--slate); color: var(--dim); }
+html .menu .btn:focus-visible { outline: 0; background: #fff; color: #0b1220; }
+@media (hover: hover) {
+    html .menu .btn:hover { background: #fff; color: #0b1220; }
+    html .menu .btn--line:hover { background: #26324a; color: #fff; box-shadow: inset 0 0 0 1px var(--amber); }
+    html .menu .btn:disabled:hover { background: var(--slate); color: var(--dim); }
+}
+
+/* segmented choice */
+html .menu .seg { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); overflow: hidden; }
+html .menu .seg__btn + .seg__btn { border-left: 1px solid var(--edge); }
+html .menu .seg__btn { color: var(--dim); text-transform: none; font-size: 18px; }
+html .menu .seg__btn.active { background: var(--amber); color: #0b1220; }
+
+/* team sheet */
+html .team-card__side { font-weight: 900; }
+html .field__input { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); color: #fff; text-transform: none; }
+html .field__input::placeholder { color: #5f6b80; }
+html .field__input:focus-visible { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); }
+html .swap { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); color: var(--amber); text-transform: none; }
+html .level { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); overflow: hidden; }
+html .level__btn { border-top: 1px solid var(--edge); }
+html .level__name { text-transform: none; font-size: 1.2em; }
+html .team-card__cpu-name { color: #fff; text-transform: none; }
+html .menu kbd { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); color: #fff; }
+html .keys > div { border-top: 1px solid var(--edge); }
+
+/* toss */
+html .toss__circle { border: 1px solid var(--edge); background: var(--pit); }
+html .pick-btn {
+    border: 0;
+    border-radius: 0;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    background: var(--slate);
+    box-shadow: inset 0 0 0 1px var(--edge);
+    color: #fff;
+    text-transform: none;
+}
+html .pick-btn__coin { border-color: var(--amber); }
+html .pick-btn.chosen { background: var(--amber); color: #0b1220; }
+html .pick-btn:disabled:not(.chosen) { color: var(--dim); }
+html .coin__face { font-weight: 900; border-width: 4px; }
+html .coin__face--tails { background: #0b1424; }
+html .coin-result__text { text-transform: none; font-weight: 900; }
+
+/* stadium picker */
+html .stadium__view,
+html .menu .stadium__side { border: 1px solid var(--edge); border-radius: 3px; background: #0b1424; }
+html .caption { border-top: 1px solid var(--edge); background: var(--slate); }
+html .caption__name { color: #fff; font-weight: 900; }
+html .caption__cap { color: var(--amber); font-weight: 700; }
+html .stadium-list__head { border-bottom: 1px solid var(--edge); }
+html .stadium-row { border-bottom: 1px solid var(--edge); text-transform: none; font-size: 1.12em; font-weight: 700; }
+html .stadium__foot { border-top: 1px solid var(--edge); background: #0b1424; }
+html .menu .stadium__foot .btn { border: 0; }
+
+/* WK */
+html .wk-group,
+html .wk-panel,
+html .wk-all,
+html .wk-photo { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); }
+html .wk-group__name { border-bottom: 1px solid var(--edge); color: var(--amber); font-size: 19px; }
+html .wk-team { border-top: 1px solid var(--edge); }
+html .wk-team.is-picked { background: var(--amber); color: #0b1220; }
+html .wk__resume { border: 1px solid var(--amber); border-radius: 3px; background: var(--slate); }
+html .wk-path__step { border: 1px solid var(--edge); border-radius: 3px; background: var(--slate); font-weight: 700; font-size: clamp(12px, 3.4vw, 15px); }
+html .wk-path__step.is-done { border-color: var(--amber); color: var(--amber); background: transparent; }
+html .wk-path__step.is-now  { border-color: var(--amber); background: var(--amber); color: #0b1220; }
+html .wk-path__step.is-out  { border-color: var(--red); background: var(--red); color: #fff; }
+html .wk-table td { border-top: 1px solid var(--edge); }
+html .wk-table tr.is-me { background: rgba(255, 194, 26, .12); }
+html .wk-fixture { border-top: 1px solid var(--edge); }
+html .wk-fixture__score { font-size: 15px; text-transform: none; }
+html .wk-next__name { font-weight: 900; }
+html .wk-next.is-champion { border-color: var(--amber); }
+html .wk__foot,
+html .menu .page__foot { background: #07101f; }
+
+/* splash */
+#loading-screen { background: #07101f; }
+html .splash__name { color: #fff; font-weight: 900; }
+
+/* no frame round the menus on a big screen either: full screen, like the start */
+@media (min-width: 700px) and (min-height: 560px) {
+    .menu { inset: 0; border: 0; padding: var(--safe-t) var(--safe-r) 0 var(--safe-l); }
+    .menu::before { top: -150px; left: -10px; width: 36px; height: 300px;
+        background: linear-gradient(90deg, var(--amber) 0 11px, transparent 11px 20px, rgba(255, 194, 26, .55) 20px 27px, transparent 27px); }
+}
+
+/* full time: the same night, the result as a scoreboard */
+#over-screen {
+    background:
+        radial-gradient(60% 55% at 100% 100%, rgba(255, 176, 0, .16), transparent 70%),
+        #07101f;
+}
+#over-screen .title { font-style: italic; font-weight: 900; }
+#over-screen .final__team { background: #1b2434; color: #fff; font-style: italic; }
+#over-screen .final__score,
+#over-screen .final__score > span { background: #eef0f7; color: #0d1a6e; }
+@media (min-width: 600px), (orientation: landscape) and (min-width: 560px) {
+    #over-screen .final__score > span { background: none; }
+}
+#over-screen .final__verdict { font-style: italic; color: #ffc21a; }
+#over-screen .btn {
+    border: 0;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    background: #ffc21a;
+    color: #0b1220;
+    font-style: italic;
+    text-transform: none;
+    padding: 0 30px;
+}
+#over-screen .btn--line { background: #1b2434; color: #fff; box-shadow: inset 0 0 0 1px #27344b; }
+@media (hover: hover) {
+    #over-screen .btn:hover { background: #fff; color: #0b1220; }
 }
 
 @media (prefers-reduced-motion: reduce) {
