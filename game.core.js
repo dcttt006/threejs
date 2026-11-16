@@ -207,6 +207,39 @@ const STADIUMS = [
         capacity: '7.066',
         pitch: { x: -8.59, z: 4.97, w: 128.2, l: 81.6, angle: 0.912, y: 4.63 },
     },
+    {
+        id: 'olympiastadion',
+        name: 'Olympiastadion',
+        club: 'Hertha BSC',
+        city: 'Berlijn',
+        file: 'media/models/stadiums/berlin_olympiastadion.glb',
+        capacity: '74.475',
+        // the pitch lies below street level, inside the athletics track
+        pitch: { x: -7.55, z: -2.92, w: 52.7, l: 34.8, angle: -3.121, y: 0.58 },
+        // the roof's shadow lies across half the grass in the photos: lifted to the sunlit part
+        look: { photo: true, gain: 1.05, sat: 1.0, contrast: 1.04, grassLift: 1, grassLevel: 0.21, grassSat: 1.1, shadowGreen: 1 },
+    },
+    {
+        id: 'jeju',
+        name: 'Jeju World Cup Stadium',
+        club: 'Jeju SK FC',
+        city: 'Seogwipo',
+        file: 'media/models/stadiums/jeju_world_cup_stadium.glb',
+        capacity: '29.791',
+        pitch: { x: -39.64, z: 26.27, w: 54.24, l: 35.08, angle: 2.811, y: 8.09, sink: 8 },
+        look: { photo: true, gain: 1.3, sat: 1.0, contrast: 1.04, grassLift: 1, grassLevel: 0.07, grassSat: 1.12 },
+    },
+    {
+        id: 'jordan-hare',
+        name: 'Jordan-Hare Stadium',
+        club: 'Auburn Tigers',
+        city: 'Auburn',
+        file: 'media/models/stadiums/jordan_hare_stadium.glb',
+        capacity: '88.043',
+        // an American football field: no football lines, so our pitch covers it
+        pitch: { x: -2.64, z: -2.96, w: 35, l: 21.8, angle: -0.987, y: 7.5, own: true },
+        look: { photo: true, gain: 1.5, sat: 1.0, contrast: 1.04 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';

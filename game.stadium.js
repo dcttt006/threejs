@@ -463,7 +463,7 @@ function buildStadium() {
         // a newer match (or leaving the match) makes this load stale
         if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
         const rig = fitStadiumToPitch(gltf.scene, stadium);
-        if (!stadium.pitch.own) levelStadiumPitch(rig);
+        if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
         dressStadium(rig, stadium);
         rig.userData.tag = 'stadium';
         scene.add(rig);
@@ -535,7 +535,10 @@ function fitStadiumToPitch(arena, stadium) {
 const PITCH_BAND = 1.6;       // what counts as "pitch surface" around the grass level
 const PITCH_SQUASH = 0.03;
 
-function levelStadiumPitch(rig) {
+function levelStadiumPitch(rig, stadium) {
+    // sink: scans whose grass droops towards the edges; that far below the
+    // grass level still counts as pitch surface (else our ground hides it)
+    const sink = (stadium && stadium.pitch && stadium.pitch.sink) || PITCH_BAND;
     const meshes = [];
     const seen = new Set();
     rig.traverse((o) => {
@@ -591,7 +594,7 @@ function levelStadiumPitch(rig) {
         let changed = false;
         for (let i = 0; i < pos.count; i++) {
             v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-            if (Math.abs(v.x) > maxX || Math.abs(v.z) > maxZ || Math.abs(v.y) > PITCH_BAND) continue;
+            if (Math.abs(v.x) > maxX || Math.abs(v.z) > maxZ || v.y > PITCH_BAND || v.y < -sink) continue;
             v.y *= PITCH_SQUASH;
             v.applyMatrix4(inv);
             pos.setXYZ(i, v.x, v.y, v.z);
@@ -692,6 +695,7 @@ function photoMaterial(src, look, clip) {
         uLift: { value: look.grassLift ?? 0 },
         uTarget: { value: look.grassLevel ?? 0.15 },      // linear brightness of the sunlit grass
         uGrassSat: { value: look.grassSat ?? 1.3 },
+        uGreen: { value: look.shadowGreen ?? 0.6 },     // how much lifted shadow is turned green
         uPitch: { value: new THREE.Vector2(FIELD_W / 2 + 6, FIELD_L / 2 + 5) },
     };
     m.onBeforeCompile = (sh) => {
@@ -702,7 +706,7 @@ function photoMaterial(src, look, clip) {
         sh.fragmentShader = sh.fragmentShader
             .replace('#include <common>', `#include <common>
 varying vec3 vWorldPos;
-uniform float uGain, uSat, uContrast, uLift, uTarget, uGrassSat;
+uniform float uGain, uSat, uContrast, uLift, uTarget, uGrassSat, uGreen;
 uniform vec2 uPitch;`)
             .replace('#include <map_fragment>', `#include <map_fragment>
 {
@@ -718,7 +722,7 @@ uniform vec2 uPitch;`)
         float newL = mix(l, uTarget * 0.85, shadow);
         vec3 lifted = c * clamp(newL / max(l, 0.012), 1.0, 7.0);
         // lifted shadow comes out grey-blue: turn it green
-        vec3 grass = mix(lifted, vec3(0.055, 0.19, 0.04) * (newL / 0.157), shadow * 0.6);
+        vec3 grass = mix(lifted, vec3(0.055, 0.19, 0.04) * (newL / 0.157), shadow * uGreen);
         // and a richer green on the whole pitch
         float gl = dot(grass, vec3(0.2126, 0.7152, 0.0722));
         grass = mix(vec3(gl), grass, uGrassSat);
