@@ -31,6 +31,9 @@ LODGE_R, LODGE_Z0, LODGE_Z1 = 24.0, 6.34, 8.8                   # glass boxes be
 UP = dict(r=23.6, z=9.8, rows=27, depth=0.8, rise=0.45)         # upper ring
 SEAT_W = 0.5
 ROOF_Z = 26.34                  # top of the roof
+R_LOW, R_CLAD = 40.5, 45.3      # outside: the brick building, and the upper ring's cladding that hangs out over it
+Z_SOFF0, Z_SOFF1 = 12.6, 14.0   # the underside of that overhang, rising outwards
+Z_CLAD1 = 25.7                  # the cladding runs up to the roof
 GAIN = 2.0                      # the game draws the model unlit at this gain (catalog: look.gain)
 
 
@@ -140,7 +143,7 @@ def ring_path(r):
     return pts
 
 
-def ring(bm, r0, z0, r1, z1, mat=0, skip=(), only=None, want=None, step=4.0, u_len=None):
+def ring(bm, r0, z0, r1, z1, mat=0, skip=(), only=None, want=None, step=4.0, u_len=None, v_range=(0, 1)):
     # a band of quads all the way round, from (r0, z0) to (r1, z1). Long
     # stretches are split, so light baked into the corners can vary along them.
     p0, p1 = ring_path(r0), ring_path(r1)
@@ -166,7 +169,7 @@ def ring(bm, r0, z0, r1, z1, mat=0, skip=(), only=None, want=None, step=4.0, u_l
             if u_len:
                 u0 = (cum[i] + (cum[i + 1] - cum[i]) * k / n) / u_len
                 u1 = (cum[i] + (cum[i + 1] - cum[i]) * (k + 1) / n) / u_len
-                uvs = [(u0, 0), (u1, 0), (u1, 1), (u0, 1)]
+                uvs = [(u0, v_range[0]), (u1, v_range[0]), (u1, v_range[1]), (u0, v_range[1])]
             face(bm, [(a0.x, a0.y, z0), (a1.x, a1.y, z0), (b1.x, b1.y, z1), (b0.x, b0.y, z1)], w, mat, uvs)
 
 
@@ -593,6 +596,27 @@ for k in range(LOW['rows']):
                  [Vector((p1[i][0], p1[i][1], 0)), Vector((p1[j][0], p1[j][1], 0))], z)
 new_obj('Standing_Rails', bm, '03_Seats', [principled('M_Galvanised', (0.38, 0.39, 0.41), 0.5), rail_seat])
 
+# The yellow gates in the fence along the front of the lower ring behind both
+# goals, as in the stadium: one at the foot of every stair and one at each end,
+# a double gate of bright yellow steel with a mesh of bars, on top of the wall.
+bm = bmesh.new()
+GATE_W, GATE_H, GZ = 2.4, 1.4, 1.2
+for sx in (1, -1):
+    xg = sx * (CX + LOW['r'] + 0.03)
+    for yc in (-(CY - 1.3), -16.0, 0.0, 16.0, CY - 1.3):
+        def bar(tc, z0, z1, hw, hd=0.04):
+            box(bm, (xg, yc + tc), (0, 1), hw, (1, 0), hd, z0, z1, 0)
+        for tc in (-GATE_W / 2, GATE_W / 2):
+            bar(tc, GZ, GZ + GATE_H + 0.05, 0.045, 0.045)             # the posts
+        bar(0.0, GZ + 0.04, GZ + GATE_H, 0.03)                         # where the two leaves meet
+        bar(0.0, GZ + GATE_H - 0.07, GZ + GATE_H, GATE_W / 2)          # top rail
+        bar(0.0, GZ + 0.04, GZ + 0.11, GATE_W / 2)                     # bottom rail
+        bar(0.0, GZ + 0.70, GZ + 0.75, GATE_W / 2, 0.025)              # middle rail
+        for tc in np.arange(-GATE_W / 2 + 0.12, GATE_W / 2 - 0.06, 0.12):
+            if abs(tc) > 0.06:
+                bar(tc, GZ + 0.11, GZ + GATE_H - 0.07, 0.012, 0.012)   # the bars
+new_obj('Gates_Yellow', bm, '03_Seats', [principled('M_GateYellow', (0.86, 0.62, 0.02), 0.5)])
+
 # the dugouts and the players' tunnel, at pitch level in front of the south
 # stand (the side with the office block), as on the photos from the stands
 plexi = principled('M_Plexi', (0.70, 0.75, 0.82), 0.2)
@@ -689,11 +713,11 @@ for sx in (1, -1):
 # far left when you face the RSC ANDERLECHT end: an open concrete deck with
 # the office block on it, and blank end walls where the upper ring stops
 bm = bmesh.new()
-ring(bm, LODGE_R, LODGE_Z0, 45.5, LODGE_Z0, 0, only=CORNER)
+ring(bm, LODGE_R, LODGE_Z0, R_LOW, LODGE_Z0, 0, only=CORNER)
 top = UP['z'] + UP['rise'] * UP['rows']
 diag = Vector((CSX, CSY, 0)).normalized()
 for d in ((CSX, 0), (0, CSY)):
-    p = [Vector((CSX * CX + d[0] * r, CSY * CY + d[1] * r, z)) for r, z in ((UP['r'], LODGE_Z0), (45.5, LODGE_Z0), (45.5, top), (UP['r'], LODGE_Z1))]
+    p = [Vector((CSX * CX + d[0] * r, CSY * CY + d[1] * r, z)) for r, z in ((UP['r'], LODGE_Z0), (R_LOW, LODGE_Z0), (R_LOW, Z_SOFF0), (R_CLAD, Z_SOFF1), (R_CLAD, top), (UP['r'], LODGE_Z1))]
     face(bm, p, diag - Vector((d[0], d[1], 0)), 1)
 new_obj('Corner_Deck', bm, '02_Bowl', [concrete, concrete_light])
 
@@ -898,50 +922,332 @@ face(bm, [(x0, -CY, z), (x1, -CY, z), (x1, CY, z), (x0, CY, z)], UP_V, 2, [(0, 0
 new_obj('Roof_Top', bm, '04_Roof', [roof_white, roof_dark, solar])
 
 # ================================================================ outside
-# brick on the wall, raked concrete fins over every pillar
-wall = D.objects['Exterior_BrickWall']
-wall.data.materials.clear(); wall.data.materials.append(brick)
-box_uv(wall, 2.4, 1.2)
-bm = bmesh.new()
-for o in [o for o in D.objects if o.name.startswith('Exterior_Pillar_')]:
-    bb = [o.matrix_world @ Vector(c) for c in o.bound_box]
-    p = sum(bb, Vector()) / 8
-    out_v = Vector((p.x - max(-CX, min(CX, p.x)), p.y - max(-CY, min(CY, p.y)), 0)).normalized()
-    side = Vector((-out_v.y, out_v.x, 0))
-    base = Vector((p.x, p.y, 0))
-    prof = [(0.0, 12.0), (0.0, 24.6), (3.4, 24.6), (3.4, 21.6)]
-    for s in (-0.25, 0.25):
-        face(bm, [base + out_v * r + side * s + Vector((0, 0, z)) for r, z in prof], side * s)
-    for i in range(4):
-        (r0, z0), (r1, z1) = prof[i], prof[(i + 1) % 4]
-        face(bm, [base + out_v * r0 + side * -0.25 + Vector((0, 0, z0)), base + out_v * r0 + side * 0.25 + Vector((0, 0, z0)),
-                  base + out_v * r1 + side * 0.25 + Vector((0, 0, z1)), base + out_v * r1 + side * -0.25 + Vector((0, 0, z1))])
-new_obj('Exterior_Fins', bm, '06_Exterior', [D.materials['M_ConcretePillar']])
+# As on the photos from the street: the upper ring hangs out over a brick
+# building. Its back is dark corrugated sheet with a dark underside, carried by
+# raked concrete beams that run up past the cladding and stick out over the
+# roof line. Under it: brick stair towers, the office block wrapped round the
+# corner, the red framed glass stair over the main entrance, the banner wall,
+# the white hall with its red trim; turnstiles at both ends; cobbles all round.
+for cn in ('06_Exterior', '09_Entrance'):
+    for o in list(D.collections[cn].objects):
+        remove(o)
+remove(D.objects['Bowl_OuterBack'])                  # the plain wall round the back: the facade below replaces it
 
-# entrance: it was hidden from renders, and its lettering faced the wall
-for o in D.collections['09_Entrance'].objects:
-    o.hide_render = False; o.hide_viewport = False
-D.objects['Entrance_WText'].rotation_euler.z += math.pi
-remove(D.objects['Entrance_LogoBG'])
-tower = D.objects['Entrance_Tower_Brick']
-tower.data.materials.clear(); tower.data.materials.append(brick)
-box_uv(tower, 2.4, 1.2)
 
-# vertical lettering, read bottom to top from the street (as on the real towers)
-UPRIGHT = Matrix(((0, 1, 0), (0, 0, 1), (1, 0, 0))).to_4x4()
-principled('M_EntLogo', (0.33, 0.12, 0.66), 0.5)
-logo = D.objects['Entrance_LogoText']
-logo.data.body = 'lotto Park'; logo.data.size = 2.5; logo.data.align_x = 'CENTER'
-logo.matrix_world = Matrix.Translation((-13.0, 76.58, 10.5)) @ UPRIGHT
+def cladding_tex():
+    # corrugated sheet, the ribs running up: 1.2 x 1.2 m
+    w = 64
+    x = np.arange(w) / w
+    rib = 0.70 + 0.30 * np.clip(np.sin(x * 2 * np.pi * 6) * 1.3, -1, 1)
+    t = np.ones((w, w, 3), 'f') * np.array((0.13, 0.13, 0.13), 'f') * rib[None, :, None]
+    return t * (1 + 0.04 * rng.normal(0, 1, (w, 1, 1))).astype('f')
+
+
+def hall_tex():
+    # the white hall: light ribbed sheet, 1.2 x 1.2 m
+    w = 64
+    x = np.arange(w) / w
+    rib = 0.88 + 0.12 * np.clip(np.sin(x * 2 * np.pi * 4) * 1.6, -1, 1)
+    return np.ones((w, w, 3), 'f') * np.array((0.80, 0.80, 0.80), 'f') * rib[None, :, None]
+
+
+def cobble_tex():
+    # cobbles in big squares framed by bands of lighter stone: one 4 x 4 m square
+    w = 512
+    yy, xx = np.mgrid[0:w, 0:w].astype('f') / w * 4.0              # metres
+    row = np.floor(yy / 0.16)
+    xs = xx + (row % 2) * 0.09
+    col = np.floor(xs / 0.18)
+    fy, fx = (yy / 0.16) % 1, (xs / 0.18) % 1
+    gap = np.minimum(np.minimum(fy, 1 - fy) / 0.12, np.minimum(fx, 1 - fx) / 0.10)
+    tone = (np.sin(row * 12.9898 + col * 78.233) * 43758.5453) % 1
+    t = (0.24 + 0.10 * tone)[..., None] * np.array((1.0, 0.97, 0.93), 'f')
+    t = t * np.clip(0.55 + 0.45 * np.clip(gap, 0, 1), 0, 1)[..., None]
+    edge = (np.minimum(np.minimum(yy, 4 - yy), np.minimum(xx, 4 - xx)) < 0.18)
+    t[edge] = np.array((0.36, 0.35, 0.33), 'f') * (1 + 0.05 * rng.normal(0, 1, (int(edge.sum()), 1))).astype('f')
+    return t
+
+
+clad = image_material('M_Cladding', painted('lottopark_cladding', cladding_tex()), 0.6)
+soffit_dark = principled('M_Soffit', (0.05, 0.05, 0.055), 0.9)
+beam_conc = principled('M_BeamConcrete', (0.43, 0.43, 0.42), 0.9)
+office_band = principled('M_OfficeBand', (0.50, 0.50, 0.51), 0.8)
+red_frame = principled('M_RedFrame', (0.48, 0.03, 0.03), 0.5)
+ent_dark = principled('M_EntDark', (0.07, 0.07, 0.08), 0.7)
+ent_white = principled('M_EntWhite', (0.92, 0.92, 0.94), 0.4, (0.92, 0.92, 0.94), 2.0)
+ent_logo = principled('M_EntLogo', (0.33, 0.12, 0.66), 0.5, (0.33, 0.12, 0.66), 2.0)
+banner = principled('M_Banner', (0.15, 0.07, 0.46), 0.6)
+banner_pale = principled('M_BannerPale', (0.58, 0.60, 0.72), 0.6)
+frame_white = principled('M_FrameWhite', (0.80, 0.80, 0.82), 0.5)
+gold = principled('M_StarGold', (0.85, 0.62, 0.18), 0.5)
+hall_white = image_material('M_HallWhite', painted('lottopark_hall', hall_tex()), 0.6)
+cobbles = image_material('M_Cobbles', painted('lottopark_cobbles', cobble_tex()), 0.95)
+roller = principled('M_RollerDoor', (0.42, 0.43, 0.45), 0.7)
+
+
+def z_soff(r):
+    return Z_SOFF0 + (r - R_LOW) / (R_CLAD - R_LOW) * (Z_SOFF1 - Z_SOFF0)
+
+
+def text_out(name, body, loc, n, size, mat, upright=True):
+    # lettering on an outside wall facing along n; upright=False: turned a
+    # quarter, reading from the bottom up, as on the towers
+    t = wall_text(name, body, loc, math.atan2(-n.y, -n.x), size, '06_Exterior', mat)
+    if not upright:
+        side = Vector((n.y, -n.x, 0))                    # the viewer's left, looking at the wall
+        R = Matrix((Vector((0, 0, 1)), side, n)).transposed()   # columns: reading up, letter tops left, facing out
+        t.matrix_world = Matrix.Translation(loc) @ R.to_4x4()
+    return t
+
+
+def prism(bm, base, n, t, prof, half, mat):
+    # a flat shape drawn in (distance out, height), `half` thick across
+    a = [base + n * r + t * -half + Vector((0, 0, z)) for r, z in prof]
+    b = [base + n * r + t * half + Vector((0, 0, z)) for r, z in prof]
+    face(bm, a, -t, mat); face(bm, b, t, mat)
+    cr = sum(r for r, _ in prof) / len(prof); cz = sum(z for _, z in prof) / len(prof)
+    for i in range(len(prof)):
+        j = (i + 1) % len(prof)
+        (r0, z0), (r1, z1) = prof[i], prof[j]
+        face(bm, [a[i], a[j], b[j], b[i]], n * ((r0 + r1) / 2 - cr) + Vector((0, 0, (z0 + z1) / 2 - cz)), mat)
+
+
+def star(bm, c, right, up, rad, mat):
+    pts = []
+    for k in range(10):
+        a = math.pi / 2 + k * math.pi / 5
+        rr = rad if k % 2 == 0 else rad * 0.42
+        pts.append(c + right * (rr * math.cos(a)) + up * (rr * math.sin(a)))
+    cv = bm.verts.new(c)
+    vs = [bm.verts.new(p) for p in pts]
+    nrm = right.cross(up)
+    for k in range(10):
+        f = bm.faces.new((cv, vs[k], vs[(k + 1) % 10]))
+        f.material_index = mat
+        f.normal_update()
+        if f.normal.dot(nrm) < 0:
+            f.normal_flip()
+
+
+# the brick building, the dark underside of the overhang, the cladding over it
 bm = bmesh.new()
-box(bm, (-9.3, 76.55), (1, 0), 0.9, (0, 1), 0.06, 2.0, 19.0, 0)                 # dark strip beside it
-box(bm, (29.5, 73.85), (1, 0), 3.5, (0, 1), 2.65, 0.0, 19.0, 1)                 # the second tower
-box(bm, (29.5, 73.95), (1, 0), 3.7, (0, 1), 2.75, 19.0, 22.5, 0)
-bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-t2 = new_obj('Entrance_Tower_2', bm, '09_Entrance', [D.materials['M_EntDark'], brick])
-box_uv(t2, 2.4, 1.2)
-rsca = wall_text('Entrance_RSCA', 'RSCA', (0, 0, 0), 0, 1.5, '09_Entrance', 'M_EntWhite')
-rsca.matrix_world = Matrix.Translation((-9.75, 76.63, 12.0)) @ UPRIGHT
+ring(bm, R_LOW, 0.0, R_LOW, Z_SOFF0, 0, want='out', u_len=2.4, v_range=(0, Z_SOFF0 / 1.2))
+wall_o = new_obj('Exterior_Brick', bm, '06_Exterior', [brick])
+bm = bmesh.new()
+ring(bm, R_LOW, Z_SOFF0, R_CLAD, Z_SOFF1, 0, want='down')
+ring(bm, R_CLAD, Z_SOFF1, R_CLAD, Z_CLAD1, 1, want='out', u_len=1.2, v_range=(0, (Z_CLAD1 - Z_SOFF1) / 1.2))
+new_obj('Exterior_Overhang', bm, '06_Exterior', [soffit_dark, clad])
+
+# the raked beams: a strut from the brick up and out to the cladding, then a
+# post in front of it up past the roof edge, its top cut at a slant
+STRUT = [(R_LOW, 7.0), (R_CLAD + 0.1, 11.6), (R_CLAD + 0.1, 13.9), (R_LOW, 8.9)]
+POST = [(R_CLAD + 0.1, 11.6), (R_CLAD + 1.1, 12.4), (R_CLAD + 1.1, 26.3), (R_CLAD + 0.1, 27.6)]
+bm = bmesh.new()
+for x, y, a in ring_points(R_CLAD, 10.0):
+    n, t = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+    base = Vector((x, y, 0)) - n * R_CLAD
+    prism(bm, base, n, t, STRUT, 0.42, 0)
+    prism(bm, base, n, t, POST, 0.45, 0)
+new_obj('Exterior_Beams', bm, '06_Exterior', [beam_conc])
+
+# lamps under the overhang, shining down the brick
+bm = bmesh.new()
+SOFFIT_LAMPS = ring_points(R_LOW + 0.7, 9.0)
+for x, y, a in SOFFIT_LAMPS:
+    n, t = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+    c = Vector((x, y, 0))
+    box(bm, (c.x, c.y), (t.x, t.y), 0.3, (n.x, n.y), 0.2, z_soff(R_LOW + 0.7) - 0.45, z_soff(R_LOW + 0.7) - 0.1, 0)
+    q = c + n * 0.21
+    face(bm, [q - t * 0.25 + Vector((0, 0, z_soff(R_LOW + 0.7) - 0.42)), q + t * 0.25 + Vector((0, 0, z_soff(R_LOW + 0.7) - 0.42)),
+              q + t * 0.25 + Vector((0, 0, z_soff(R_LOW + 0.7) - 0.15)), q - t * 0.25 + Vector((0, 0, z_soff(R_LOW + 0.7) - 0.15))], n, 1)
+new_obj('Exterior_Lamps', bm, '06_Exterior', [ent_dark, D.materials['M_FloodLight']])
+
+# brick stair towers round the building (the street front and the ends get
+# their own below)
+Y0 = -(CY + R_LOW)                                   # the street front: the south side
+TOWERS = []                                          # (front centre, outward) for the lights
+bm = bmesh.new()
+for x, y, a in ring_points(R_LOW, 34.0):
+    if y < Y0 + 3 and abs(x) < CX + 4:
+        continue
+    if abs(x) > CX + R_LOW - 3 and abs(y) < 12:
+        continue
+    if x < -CX and y < -CY:                          # the office block wraps that corner
+        continue
+    n, t = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+    c = Vector((x, y, 0)) + n * 1.3
+    box(bm, (c.x, c.y), (t.x, t.y), 3.4, (n.x, n.y), 1.3, 0.0, z_soff(R_LOW + 2.6), 0)
+    TOWERS.append((Vector((x, y, 0)) + n * 2.6, n))
+towers_o = new_obj('Exterior_Towers', bm, '06_Exterior', [brick])
+box_uv(towers_o, 2.4, 1.2)
+
+# ---- the ends: two towers round a tall glass stair, turnstiles under a purple
+# beam, black fences out to the towers (as on the photo of the turnstiles)
+bm, fb = bmesh.new(), bmesh.new()
+for sx in (1, -1):
+    n, t = Vector((sx, 0, 0)), Vector((0, sx, 0))
+    O_ = Vector((sx * (CX + R_LOW), 0, 0))
+    for s in (-6.4, 6.4):
+        c = O_ + t * s + n * 1.3
+        box(fb, (c.x, c.y), (t.x, t.y), 3.0, (n.x, n.y), 1.3, 0.0, z_soff(R_LOW + 2.6), 0)
+        TOWERS.append((O_ + t * s + n * 2.6, n))
+    P_ = lambda tt, z, off: O_ + t * tt + n * off + Vector((0, 0, z))
+    face(bm, [P_(-3.4, 4.6, 0.12), P_(3.4, 4.6, 0.12), P_(3.4, 12.4, 0.12), P_(-3.4, 12.4, 0.12)], n, 1,
+         [(0, 0), (6.8 / (PANE_W * PANES), 0), (6.8 / (PANE_W * PANES), 1), (0, 1)])
+    for tt in np.linspace(-3.4, 3.4, 5):                                   # the window frames
+        cc = P_(tt, 0, 0.2)
+        box(bm, (cc.x, cc.y), (t.x, t.y), 0.06, (n.x, n.y), 0.1, 4.6, 12.4, 0)
+    for z in (4.6, 6.55, 8.5, 10.45, 12.4):
+        cc = P_(0, 0, 0.2)
+        box(bm, (cc.x, cc.y), (t.x, t.y), 3.45, (n.x, n.y), 0.1, z - 0.06, z + 0.06, 0)
+    face(bm, [P_(-3.4, 0, 0.1), P_(3.4, 0, 0.1), P_(3.4, 4.6, 0.1), P_(-3.4, 4.6, 0.1)], n, 0)   # dark gate behind bars
+    for tt in np.arange(-3.3, 3.31, 0.22):
+        cc = P_(tt, 0, 0.18)
+        box(bm, (cc.x, cc.y), (t.x, t.y), 0.025, (n.x, n.y), 0.025, 0.0, 4.4, 0)
+    sg = P_(0, 0, 0.25)
+    box(bm, (sg.x, sg.y), (t.x, t.y), 1.1, (n.x, n.y), 0.04, 3.2, 4.3, 3)                      # the purple sign
+    text_out('End_Sign_%d' % sx, 'INGANG', P_(0, 3.55, 0.31), n, 0.42, 'M_EntWhite')
+    # turnstiles under a purple beam, fences to the towers
+    for tt in (-2.7, -0.9, 0.9, 2.7):
+        cc = P_(tt, 0, 3.5)
+        box(bm, (cc.x, cc.y), (t.x, t.y), 0.35, (n.x, n.y), 0.5, 0.0, 2.2, 2)
+    cc = P_(0, 0, 3.5)
+    box(bm, (cc.x, cc.y), (t.x, t.y), 3.6, (n.x, n.y), 0.55, 2.2, 2.6, 3)
+    text_out('End_Turnstile_%d' % sx, '3   ENTREE  INGANG', P_(0, 2.27, 4.07), n, 0.24, 'M_EntWhite')
+    for s in (-1, 1):
+        t0, t1 = 3.6 * s, 9.4 * s
+        for tt in np.arange(min(t0, t1), max(t0, t1) + 0.01, 0.2):
+            cc = P_(tt, 0, 3.5)
+            box(bm, (cc.x, cc.y), (t.x, t.y), 0.022, (n.x, n.y), 0.022, 0.0, 2.2, 0)
+        cc = P_((t0 + t1) / 2, 0, 3.5)
+        for z0, z1 in ((0.15, 0.22), (2.1, 2.2)):
+            box(bm, (cc.x, cc.y), (t.x, t.y), abs(t1 - t0) / 2, (n.x, n.y), 0.03, z0, z1, 0)
+new_obj('Exterior_EndEntrances', bm, '06_Exterior', [ent_dark, glass_lit, steel, banner])
+fo = new_obj('Exterior_EndTowers', fb, '06_Exterior', [brick])
+box_uv(fo, 2.4, 1.2)
+
+# ---- the street front (south), from left to right as you face it
+
+
+def fq(bm, x0, x1, z0, z1, off, mat, uvs=None):
+    y = Y0 - off
+    face(bm, [(x0, y, z0), (x1, y, z0), (x1, y, z1), (x0, y, z1)], Vector((0, -1, 0)), mat, uvs)
+
+
+def fbox(bm, x0, x1, z0, z1, o0, o1, mat):
+    box(bm, ((x0 + x1) / 2, Y0 - (o0 + o1) / 2), (1, 0), (x1 - x0) / 2, (0, 1), (o1 - o0) / 2, z0, z1, mat)
+
+
+S_OUT = Vector((0, -1, 0))
+# materials of the front: 0 brick-coloured stone, 1 lit glass, 2 grey bands,
+# 3 dark, 4 red frames, 5 purple, 6 pale banner panels, 7 white frames,
+# 8 concrete, 9 steel, 10 gold
+front, fbrick = bmesh.new(), bmesh.new()
+OFFICE = [(1.4, 3.9, 'win'), (3.9, 4.9, 'band'), (4.9, 7.6, 'win'), (7.6, 8.6, 'band'), (8.6, 11.3, 'win'), (11.3, Z_SOFF0, 'band')]
+for z0, z1, kind in OFFICE:                       # the office block: round the south-west corner ...
+    if kind == 'win':
+        ring(front, R_LOW + 0.12, z0, R_LOW + 0.12, z1, 1, only=CORNER, want='out', u_len=PANE_W * PANES)
+        u0 = rng.integers(0, PANES)
+        fq(front, -CX, -27.6, z0, z1, 0.12, 1, [(u0 / PANES, 0), ((u0 + 15.4 / PANE_W) / PANES, 0), ((u0 + 15.4 / PANE_W) / PANES, 1), (u0 / PANES, 1)])
+        for xm in np.arange(-CX + 1.6, -27.7, 1.6):
+            fbox(front, xm - 0.05, xm + 0.05, z0, z1, 0.0, 0.22, 3)
+    else:
+        ring(front, R_LOW + 0.3, z0, R_LOW + 0.3, z1, 2, only=CORNER, want='out')
+        ring(front, R_LOW + 0.3, z1, R_LOW, z1, 2, only=CORNER, want='up')
+        fbox(front, -CX, -27.6, z0, z1, 0.0, 0.3, 2)
+for x, y, a in ring_points(R_LOW + 0.12, 1.6):    # and its mullions on the corner
+    if x < -CX and y < -CY:
+        n_, t_ = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+        for z0, z1, kind in OFFICE:
+            if kind == 'win':
+                box(front, (x, y), (t_.x, t_.y), 0.05, (n_.x, n_.y), 0.1, z0, z1, 3)
+
+# tower A: "lotto Park" reading up, RSCA in a dark strip, a lamp on top
+fbox(fbrick, -27.6, -20.6, 0.0, z_soff(R_LOW + 2.8), 0.0, 2.8, 0)
+fbox(front, -23.1, -21.7, 2.0, 13.0, 2.8, 2.92, 3)
+for k, ch in enumerate('RSCA'):
+    text_out('Front_RSCA_%d' % k, ch, Vector((-22.4, Y0 - 2.96, 11.7 - 1.45 * k)), S_OUT, 1.25, 'M_EntWhite')
+text_out('Front_LottoPark', 'lotto Park', Vector((-24.6, Y0 - 2.95, 8.2)), S_OUT, 1.75, 'M_EntLogo', upright=False)
+TOWERS.append((Vector((-24.1, Y0 - 2.8, 0)), S_OUT))
+
+# the red framed glass stair, the main entrance under it
+fq(front, -20.6, -14.6, 3.9, 12.5, 0.15, 1, [(0.1, 0), (0.1 + 6 / (PANE_W * PANES), 0), (0.1 + 6 / (PANE_W * PANES), 1), (0.1, 1)])
+for xm in np.linspace(-20.6, -14.6, 5):
+    fbox(front, xm - 0.06, xm + 0.06, 3.9, 12.5, 0.1, 0.32, 4)
+for z in (3.9, 5.6, 7.3, 9.0, 10.7, 12.4):
+    fbox(front, -20.66, -14.54, z - 0.06, z + 0.06, 0.1, 0.32, 4)
+fq(front, -20.0, -15.2, 0.9, 3.3, 0.18, 1, [(0.5, 0), (0.5 + 4.8 / (PANE_W * PANES), 0), (0.5 + 4.8 / (PANE_W * PANES), 0.6), (0.5, 0.6)])
+for xm in (-20.0, -18.4, -16.8, -15.2):
+    fbox(front, xm - 0.07, xm + 0.07, 0.9, 3.35, 0.12, 0.3, 4)
+fbox(front, -20.07, -15.13, 3.28, 3.42, 0.12, 0.3, 4)
+fbox(front, -21.2, -14.0, 3.5, 3.95, -0.1, 1.9, 3)                 # the canopy
+fq(front, -21.2, -14.0, 3.5, 3.95, 1.92, 5)
+for k in range(4):                                                 # the steps
+    fbox(front, -21.6, -13.4, 0.0, (k + 1) * 0.225, 0.0, (4 - k) * 0.62, 8)
+for xr in (-19.4, -15.8):                                          # hand rails
+    tube(front, Vector((xr, Y0 - 0.3, 1.85)), Vector((xr, Y0 - 2.5, 0.95)), 0.03, 9, seg=6)
+    for oy, zz in ((0.3, 1.85), (2.5, 0.95)):
+        tube(front, Vector((xr, Y0 - oy, zz - 0.95)), Vector((xr, Y0 - oy, zz)), 0.025, 9, seg=6)
+
+# tower B: the banner wall, the W15-W17 and W13-W14 signs under it
+fbox(fbrick, -14.6, 2.4, 0.0, z_soff(R_LOW + 1.6), 0.0, 1.6, 0)
+fq(front, -12.4, 0.2, 4.4, 12.4, 1.64, 7)
+fq(front, -12.2, 0.0, 4.6, 12.2, 1.67, 5)
+for i in range(5):                                                 # the photos on it
+    for j in range(2):
+        x0, z0 = -12.05 + i * 2.43, 4.75 + j * 3.73
+        fq(front, x0, x0 + 2.33, z0, z0 + 3.6, 1.69, 6 if (i + j) % 3 else 5)
+for xs, sign_rows in ((-8.4, ('W15', 'W16', 'W17')), (-1.6, ('W13', 'W14'))):
+    fq(front, xs - 1.1, xs + 1.1, 4.1 - 0.75 * len(sign_rows) - 0.2, 4.1, 1.7, 5)
+    for k, row_txt in enumerate(sign_rows):
+        text_out('Front_Sign_%s' % row_txt, row_txt, Vector((xs, Y0 - 1.74, 3.5 - 0.72 * k)), S_OUT, 0.52, 'M_EntWhite')
+    fq(front, xs - 1.0, xs + 1.0, 0.0, 4.1 - 0.75 * len(sign_rows) - 0.25, 1.66, 3)
+TOWERS.append((Vector((-6.1, Y0 - 1.6, 0)), S_OUT))
+
+# tower C: two hanging banners, the club's name and the three stars
+fbox(fbrick, 2.4, 9.4, 0.0, z_soff(R_LOW + 2.8), 0.0, 2.8, 0)
+for x0 in (3.0, 6.2):
+    fq(front, x0 - 0.1, x0 + 2.7, 4.1, 12.7, 2.84, 7)
+    fq(front, x0, x0 + 2.6, 4.2, 12.6, 2.87, 5)
+for xx, ban_txt in ((3.75, 'ROYAL'), (4.35, 'SPORTING CLUB'), (4.95, 'ANDERLECHT')):
+    text_out('Front_Banner_%s' % ban_txt.split()[0], ban_txt, Vector((xx, Y0 - 2.9, 8.4)), S_OUT, 0.5, 'M_EntWhite', upright=False)
+for k in range(3):
+    star(front, Vector((6.85 + 0.65 * k, Y0 - 2.9, 9.0)), Vector((1, 0, 0)), Vector((0, 0, 1)), 0.27, 10)
+TOWERS.append((Vector((5.9, Y0 - 2.8, 0)), S_OUT))
+new_obj('Exterior_Front', front, '06_Exterior',
+        [brick, glass_lit, office_band, ent_dark, red_frame, banner, banner_pale, frame_white, concrete, steel, gold])
+fo = new_obj('Exterior_FrontTowers', fbrick, '06_Exterior', [brick])
+box_uv(fo, 2.4, 1.2)
+
+# the white hall with its red trim, out in front to the right
+HX0, HX1, HD, HH = 11.0, 41.0, 13.0, 6.5
+hb, rb = bmesh.new(), bmesh.new()
+box(hb, ((HX0 + HX1) / 2, Y0 - HD / 2), (1, 0), (HX1 - HX0) / 2, (0, 1), HD / 2, 0.0, HH, 0)
+hall = new_obj('Exterior_Hall', hb, '06_Exterior', [hall_white])
+box_uv(hall, 1.2, 1.2)
+box(rb, ((HX0 + HX1) / 2, Y0 - HD / 2), (1, 0), (HX1 - HX0) / 2 + 0.08, (0, 1), HD / 2 + 0.08, HH, HH + 0.9, 0)       # the red top
+for i in range(10):
+    for j in range(4):
+        xa, xb = HX0 + (HX1 - HX0) * i / 10, HX0 + (HX1 - HX0) * (i + 1) / 10
+        ya, yb = Y0 - HD * j / 4, Y0 - HD * (j + 1) / 4
+        face(rb, [(xa, ya, HH + 0.92), (xb, ya, HH + 0.92), (xb, yb, HH + 0.92), (xa, yb, HH + 0.92)], Vector((0, 0, 1)), 1)
+box(rb, ((HX0 + HX1) / 2, Y0 - HD / 2), (1, 0), (HX1 - HX0) / 2 + 0.05, (0, 1), HD / 2 + 0.05, 1.9, 2.1, 0)           # the red line
+yf = Y0 - HD - 0.06
+u0 = rng.integers(0, PANES)
+face(rb, [(HX0 + 0.6, yf, 4.9), (HX1 - 0.6, yf, 4.9), (HX1 - 0.6, yf, 6.1), (HX0 + 0.6, yf, 6.1)], Vector((0, -1, 0)), 2,
+     [(u0 / PANES, 0.2), ((u0 + 28.8 / PANE_W) / PANES, 0.2), ((u0 + 28.8 / PANE_W) / PANES, 0.8), (u0 / PANES, 0.8)])
+face(rb, [(HX0 - 0.06, Y0 - 0.6, 4.9), (HX0 - 0.06, Y0 - HD + 0.6, 4.9), (HX0 - 0.06, Y0 - HD + 0.6, 6.1), (HX0 - 0.06, Y0 - 0.6, 6.1)],
+     Vector((-1, 0, 0)), 2, [(0.3, 0.2), (0.3 + 11.8 / (PANE_W * PANES), 0.2), (0.3 + 11.8 / (PANE_W * PANES), 0.8), (0.3, 0.8)])
+for x0 in (30.0, 35.5):                                                   # roller doors
+    face(rb, [(x0, yf, 0.0), (x0 + 4.0, yf, 0.0), (x0 + 4.0, yf, 3.4), (x0, yf, 3.4)], Vector((0, -1, 0)), 3)
+new_obj('Exterior_HallTrim', rb, '06_Exterior', [red_frame, office_band, glass_lit, roller])
+
+# cobbles all round, in narrow rings so the baked light stays smooth
+bm = bmesh.new()
+for k in range(6):
+    r0, r1 = R_LOW - 0.5 + 4 * k, R_LOW - 0.5 + 4 * (k + 1)
+    ring(bm, r0, -0.12, r1, -0.12, 0, want='up', u_len=4.0, v_range=(k, k + 1))
+new_obj('Exterior_Cobbles', bm, '06_Exterior', [cobbles])
 
 # ================================================================ screens
 screen = principled('M_ScreenFace', (0.07, 0.04, 0.15), 0.5)
@@ -1156,12 +1462,24 @@ def setup_night():
                   target=(q + Vector((0, 0, 19)))[:], size=75, blend=0.9, radius=1.5)
     light(coll, 'SPOT', (O - diag * 9 + Vector((0, 0, 4)))[:], NIGHT['corner'] * 0.6, (0.55, 0.38, 1.0),
           target=(O + Vector((0, 0, 22)))[:], size=40, blend=0.5)
-    # outside: warm light on the facade
-    for x, y, a in ring_points(51.5, 26.0):
-        light(coll, 'SPOT', (x, y, 0.4), NIGHT['facade'], (1.0, 0.78, 0.5), target=(x - 5 * math.cos(a), y - 5 * math.sin(a), 13), size=75, blend=0.5)
+    # the front of the lower ring behind both goals, with its yellow gates
+    for sx in (1, -1):
+        for y in (-18, -6, 6, 18):
+            light(coll, 'SPOT', (sx * (CX + LAMP_R), y, 24.5), NIGHT['ends'], FLOOD, target=(sx * (CX + 12.5), y, 1.6), size=40, blend=0.5)
+    # outside: down the brick from under the overhang, on the towers, up on the beams
+    for x, y, a in SOFFIT_LAMPS:
+        n = Vector((math.cos(a), math.sin(a), 0))
+        light(coll, 'SPOT', (x + 0.4 * n.x, y + 0.4 * n.y, z_soff(R_LOW + 0.7) - 0.6), NIGHT['facade'], (1.0, 0.80, 0.55),
+              target=(x - 0.3 * n.x, y - 0.3 * n.y, 0), size=110, blend=0.7, radius=0.4)
+    for c, n in TOWERS:
+        light(coll, 'SPOT', (c + n * 1.2 + Vector((0, 0, 12.4)))[:], NIGHT['tower'], (1.0, 0.86, 0.64),
+              target=(c + Vector((0, 0, 1.0)))[:], size=70, blend=0.5)
+    for x, y, a in ring_points(R_CLAD + 18, 22.0):
+        light(coll, 'SPOT', (x, y, 0.5), NIGHT['clad'], (0.88, 0.92, 1.0),
+              target=(x - 18 * math.cos(a), y - 18 * math.sin(a), 19), size=60, blend=0.5)
 
 
-NIGHT = dict(roof=14000, mast=45000, stand=900, blue=55, facade=2500, corner=2600)
+NIGHT = dict(roof=14000, mast=45000, stand=900, blue=55, ends=2500, facade=1500, tower=1800, clad=4000, corner=2600)
 setup_night()
 for o in (grass, lines, surround, goals):          # no shadows of things the game does not show
     o.hide_render = True
@@ -1269,6 +1587,12 @@ order = np.argsort(ls)
 loop_own = np.repeat(own[mi][order], lt[order])
 lv = np.empty(len(me.loops), 'i'); me.loops.foreach_get('vertex_index', lv)
 vert_own = np.zeros(len(me.vertices), bool); vert_own[lv[loop_own]] = True
+# the yellow gates stay yellow: the floodlit pitch side never lets them go dark
+for name, lo in {'M_GateYellow': 0.34}.items():
+    idx = [k for k, m in enumerate(me.materials) if m is not None and m.name.split('.')[0] == name]
+    loop_m = np.repeat(np.isin(mi, idx)[order], lt[order])
+    vm = np.zeros(len(me.vertices), bool); vm[lv[loop_m]] = True
+    c[vm, :3] = np.maximum(c[vm, :3], lo)
 lit_mask = ~vert_own
 print('LIGHT p10/p50/p90', [round(float(v), 3) for v in np.percentile(c[lit_mask, :3].mean(1), (10, 50, 90))])
 c[~lit_mask, :3] = 1.0 / GAIN

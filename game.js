@@ -516,6 +516,7 @@ function buildPlayers() {
     controlledP1 = STATE.p1.team === 1 ? redField : blueField;
     controlledP2 = isCpu ? null : (STATE.p2.team === 1 ? redField : blueField);
     [controlledP1, controlledP2].forEach(p => p && addStaminaBar(p));
+    [controlledP1, controlledP2].forEach((p, i) => p && addPlayerArrow(p, i === 0 ? ARROW_P1 : ARROW_P2));
 }
 
 // ----------- sprint and stamina -----------
@@ -562,11 +563,39 @@ function addStaminaBar(p) {
     p.add(bar);
     p.userData.staminaBar = { bar, fg };
 }
+// A flat arrow over the head of each human player, pointing down at him, so you
+// always see which one is yours: yellow for player 1, light blue for player 2.
+// It sits above the stamina bar and is drawn over everything else.
+const ARROW_P1 = 0xffd60a, ARROW_P2 = 0x3cc8ff;
+function addPlayerArrow(p, hex) {
+    const tri = (w, h) => {
+        const sh = new THREE.Shape();
+        sh.moveTo(-w / 2, h / 2); sh.lineTo(w / 2, h / 2); sh.lineTo(0, -h / 2); sh.closePath();
+        return new THREE.ShapeGeometry(sh);
+    };
+    const flat = (c) => new THREE.MeshBasicMaterial({ color: srgb(c), transparent: true, depthTest: false, depthWrite: false });
+    const arrow = new THREE.Group();
+    const edge = new THREE.Mesh(tri(3.1, 2.6), flat(0x121512));     // a dark edge: readable on grass and stands alike
+    const fill = new THREE.Mesh(tri(2.3, 1.9), flat(hex));
+    fill.position.set(0, 0.12, 0.01);
+    edge.renderOrder = 22;
+    fill.renderOrder = 23;
+    arrow.add(edge, fill);
+    arrow.position.y = ARROW_Y;
+    p.add(arrow);
+    p.userData.arrow = arrow;
+}
+const ARROW_Y = 11.5;                 // clear of the stamina bar (9.3)
 const STAMINA_COLOR = srgb(0xffd60a);
 const TIRED_COLOR   = srgb(0xd91e36);
 
 function updateStaminaBars() {
     [controlledP1, controlledP2].forEach(p => {
+        const ar = p && p.userData.arrow;
+        if (ar) {
+            ar.quaternion.copy(camera.quaternion);       // always face the camera
+            ar.position.y = ARROW_Y + Math.sin(performance.now() / 260) * 0.25;   // a slow bob
+        }
         const sb = p && p.userData.staminaBar;
         if (!sb) return;
         const st = p.userData.stamina ?? 1;
