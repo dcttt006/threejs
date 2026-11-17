@@ -54,7 +54,7 @@ function initThree() {
     // clear previous scene contents
     while (scene.children.length) scene.remove(scene.children[0]);
 
-    const viewOf = (!STATE.wkMatch && getSelectedStadium().view) || {};
+    const viewOf = ((!STATE.wkMatch || matchStadium().screen === 'wk') && matchStadium().view) || {};
     camLookShift = viewOf.lookZ || 0;
 
     buildSky();

@@ -255,6 +255,21 @@ const STADIUMS = [
         // the camera aims a little further out, so the big screen in the far corner stays in frame
         view: { lookZ: -8 },
     },
+    {
+        id: 'metlife',
+        name: 'MetLife Stadium',
+        club: 'New York New Jersey',
+        city: 'East Rutherford',
+        // built from nothing by tools/metlife_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/metlife.glb?v=5',
+        screen: 'wk',                  // World Cup screens: team colours, flags, the clock on navy
+        capacity: '82.500',
+        pitch: { x: 0, z: 0, w: 60.19, l: 38.30, angle: Math.PI, y: 0.03 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // a tall bowl: the camera aims further out, so the big screens over
+        // the club band on the far side stay in frame (-17: they sit just under the top, the near touchline still in view)
+        view: { lookZ: -17 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
@@ -262,6 +277,15 @@ function getSelectedStadium() {
     let id = null;
     try { id = localStorage.getItem(STADIUM_STORAGE_KEY); } catch (_) {}
     return STADIUMS.find(s => s.id === id) || STADIUMS[0];
+}
+// the stadium a match is played in: a WK match goes to the World Cup stadium
+// (the one with World Cup screens, MetLife), otherwise the chosen one
+function matchStadium() {
+    if (typeof STATE !== 'undefined' && STATE.wkMatch) {
+        const wkStadium = STADIUMS.find(s => s.screen === 'wk' && s.file);
+        if (wkStadium) return wkStadium;
+    }
+    return getSelectedStadium();
 }
 function setSelectedStadium(id) {
     if (!STADIUMS.find(s => s.id === id)) return;

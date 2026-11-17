@@ -312,7 +312,7 @@ const STADIUM_PREVIEW = (() => {
         const obj = gltf.scene;
         obj.rotation.y = stadium.rotateY ?? 0;
         // its big screens before kick-off: 00:00 and 0-0
-        if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(obj)) STADIUM_SCREEN.update('00:00', 0, 0);
+        if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(obj, stadium.screen)) STADIUM_SCREEN.update('00:00', 0, 0);
 
         // The catalog's colorScale exists to blend stadiums into the night-time
         // gameplay scene; in the picker we want them to look vivid, so we skip
@@ -450,13 +450,13 @@ function usesStadiumPitch(stadium) {
 }
 
 function buildStadium() {
-    const stadium = getSelectedStadium();
+    const stadium = matchStadium();
     const token = ++stadiumLoadToken;
     // play on the drawn pitch until the stadium (and its own grass) is in
     const ownPitch = scene.getObjectByName('own-pitch');
     if (ownPitch) ownPitch.visible = true;
-    // a WK match is played in a built stand bowl, not a downloaded model
-    if (STATE.wkMatch && typeof buildWkStadium === 'function') {
+    // a WK match without a World Cup stadium model: the built stand bowl
+    if (STATE.wkMatch && stadium.screen !== 'wk' && typeof buildWkStadium === 'function') {
         $('stadium-loading') && ($('stadium-loading').hidden = true);
         buildWkStadium();
         return;
@@ -485,7 +485,7 @@ function buildStadium() {
         const modelGoals = gltf.scene.getObjectByName('StadiumGoals');
         if (modelGoals) modelGoals.parent.remove(modelGoals);
         // the stadium's big screens show the live clock and score (game.screen.js)
-        if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.attach(gltf.scene);
+        if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.attach(gltf.scene, stadium.screen);
         const rig = fitStadiumToPitch(gltf.scene, stadium);
         if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
         dressStadium(rig, stadium);
