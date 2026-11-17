@@ -287,6 +287,20 @@ const STADIUMS = [
         nets: ['#d8141c', '#ffffff'],     // the nets: red on the left, white on the right, at both goals
         view: { lookZ: -12 },
     },
+    {
+        id: 'el-campin',
+        name: 'El Campín',
+        club: 'Millonarios · Santa Fe',
+        city: 'Bogotá',
+        // built from nothing by tools/campin_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/el_campin.glb?v=1',
+        capacity: '36.343',
+        pitch: { x: 0, z: 0, w: 79.73, l: 50.73, angle: Math.PI, y: 0.07 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // the big screen over the north end: both teams' colours, score and clock
+        screen: 'campin',
+        view: { lookZ: -12 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';

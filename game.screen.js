@@ -14,6 +14,9 @@
 // the CPU shield, a white end with DE KUIP and the clock in a dark tab on top.
 // The home logo is the file the catalog names (screenLogo); without it a white
 // disc with the club's short name.
+// screen: 'campin' (El Campín) is the big screen of Bogotá: the two teams'
+// colours running into each other, a plain shield for each with its short
+// name, the score '0 : 0' in the middle and the clock under it.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -219,6 +222,7 @@ const STADIUM_SCREEN = (() => {
         [wCanvas, wCtx, wTexture] = make(1024, 512, 512 / WKH);
         wCtx.setTransform(1024 / WKW, 0, 0, 512 / WKH, 0, 0);
         [kCanvas, kCtx, kTexture] = make(1024, 256, 256 / KH);
+        [eCanvas, eCtx, eTexture] = make(CW2, CH2, 1);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -316,6 +320,59 @@ const STADIUM_SCREEN = (() => {
         im.onload = () => { kuipLogo = im; last = ''; redraw(); };
         im.src = src;                              // missing file: the white disc stays
     }
+    // ---- El Campín: the big screen (2:1) ----
+    const CW2 = 1024, CH2 = 512;
+    const CF = '"Montserrat", "Arial", sans-serif';
+    let eCanvas = null, eCtx = null, eTexture = null, campinFont = false;
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+        Promise.all([document.fonts.load(`500 150px "Montserrat"`), document.fonts.load(`600 80px "Montserrat"`)])
+            .then(() => { campinFont = true; last = ''; redraw(); }).catch(() => {});
+    }
+    function campinTeams() {
+        if (typeof STATE !== 'undefined' && STATE.screen === 'playing' && typeof KIT !== 'undefined') {
+            const codes = typeof hudCodes === 'function' ? hudCodes() : { red: 'RED', blue: 'BLU' };
+            return [{ code: codes.red, color: hex(KIT[1].shirt) }, { code: codes.blue, color: hex(KIT[2].shirt) }];
+        }
+        return [{ code: 'BOG', color: '#1d5cd6' }, { code: 'CPU', color: '#12a150' }];   // blue against green, as on the photo
+    }
+    const mix = (c1, c2, t) => {
+        const a = parseInt(c1.slice(1), 16), b = parseInt(c2.slice(1), 16);
+        const ch = (sh) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
+        return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+    };
+    function drawCampin(clock, s1, s2) {
+        const c = eCtx, [ta, tb] = campinTeams();
+        c.fillStyle = '#08080a'; c.fillRect(0, 0, CW2, CH2);
+        const x0 = 60, x1 = CW2 - 60, y0 = 50, y1 = CH2 - 50;
+        const g = c.createLinearGradient(x0, 0, x1, 0);
+        g.addColorStop(0, ta.color); g.addColorStop(0.3, ta.color);
+        g.addColorStop(0.5, mix(mix(ta.color, tb.color, 0.5), '#000000', 0.55));     // darker where they meet
+        g.addColorStop(0.7, tb.color); g.addColorStop(1, tb.color);
+        c.fillStyle = g; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+        const shade = c.createLinearGradient(0, y0, 0, y1);
+        shade.addColorStop(0, 'rgba(255,255,255,0.08)'); shade.addColorStop(1, 'rgba(0,0,0,0.25)');
+        c.fillStyle = shade; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+        const shieldAt = (cx, cy, col, code) => {
+            const path = (k) => {
+                c.beginPath();
+                c.moveTo(cx - 70 * k, cy - 85 * k); c.lineTo(cx + 70 * k, cy - 85 * k); c.lineTo(cx + 70 * k, cy + 10 * k);
+                c.lineTo(cx, cy + 90 * k); c.lineTo(cx - 70 * k, cy + 10 * k); c.closePath();
+            };
+            path(1); c.fillStyle = '#ffffff'; c.fill();
+            path(0.83); c.fillStyle = col; c.fill();
+            c.font = `700 44px ${CF}`; c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(code, cx, cy - 6);
+        };
+        shieldAt(230, 230, ta.color, ta.code);
+        shieldAt(794, 230, tb.color, tb.code);
+        c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `500 150px ${CF}`;
+        c.fillText(`${s1} : ${s2}`, 512, 236);
+        c.font = `600 80px ${CF}`;
+        c.fillText(clock, 512, 372);
+        eTexture.needsUpdate = true;
+    }
+
     function drawKuip(clock, s1, s2) {
         const c = kCtx, mid = KTOP + (KH - KTOP) / 2;
         c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, KW, KH);
@@ -380,13 +437,14 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
         drawRibbon(current.clock, current.s1, current.s2);
         drawWk(current.clock, current.s1, current.s2);
         drawKuip(current.clock, current.s1, current.s2);
+        drawCampin(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -401,7 +459,7 @@ const STADIUM_SCREEN = (() => {
             mats.forEach((m) => { m.map = tex; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
         });
         if (style === 'kuip') loadKuipLogo(logo);
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();
