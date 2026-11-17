@@ -270,6 +270,23 @@ const STADIUMS = [
         // the club band on the far side stay in frame (-17: they sit just under the top, the near touchline still in view)
         view: { lookZ: -17 },
     },
+    {
+        id: 'de-kuip',
+        name: 'De Kuip',
+        club: 'Feyenoord',
+        city: 'Rotterdam',
+        // built from nothing by tools/dekuip_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/de_kuip.glb?v=3',
+        capacity: '47.500',
+        pitch: { x: 0, z: 0, w: 77.18, l: 49.12, angle: Math.PI, y: 0.10 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // the long red scoreboard, in the band behind both goals; the home logo
+        // shows when this file exists (put the official logo there yourself)
+        screen: 'kuip',
+        screenLogo: 'img/feyenoord.png',
+        nets: ['#d8141c', '#ffffff'],     // the nets: red on the left, white on the right, at both goals
+        view: { lookZ: -12 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';

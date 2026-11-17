@@ -10,6 +10,10 @@
 // A stadium with screen: 'wk' in the catalog (MetLife) shows the World Cup
 // layout instead: each team's panel in its colour with its flag and score,
 // in the middle the clock on navy with gold rays and a gold band.
+// screen: 'kuip' (De Kuip) is one long red board: the home logo, the score,
+// the CPU shield, a white end with DE KUIP and the clock in a dark tab on top.
+// The home logo is the file the catalog names (screenLogo); without it a white
+// disc with the club's short name.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -214,6 +218,8 @@ const STADIUM_SCREEN = (() => {
         [rCanvas, rCtx, rTexture] = make(RW, RCH, RCH / RH);
         [wCanvas, wCtx, wTexture] = make(1024, 512, 512 / WKH);
         wCtx.setTransform(1024 / WKW, 0, 0, 512 / WKH, 0, 0);
+        [kCanvas, kCtx, kTexture] = make(1024, 256, 256 / KH);
+        kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
     // the band panel: [|0][|0][  00:00  ]
@@ -273,25 +279,80 @@ const STADIUM_SCREEN = (() => {
         narrow(text, (x0 + x1) / 2, (y0 + y1 - capH) / 2, size, color);
     }
 
-    function shieldPath(cx, cy, w, h) {
+    function shieldPath(cx, cy, w, h, c = ctx) {
         const r = w / 2, yTop = cy - h / 2, yMid = cy + h * 0.05;
-        ctx.beginPath();
-        ctx.moveTo(cx - r, yTop);
-        ctx.lineTo(cx + r, yTop);
-        ctx.lineTo(cx + r, yMid);
-        ctx.ellipse(cx, yMid, r, h * 0.45, 0, 0, Math.PI);
-        ctx.closePath();
+        c.beginPath();
+        c.moveTo(cx - r, yTop);
+        c.lineTo(cx + r, yTop);
+        c.lineTo(cx + r, yMid);
+        c.ellipse(cx, yMid, r, h * 0.45, 0, 0, Math.PI);
+        c.closePath();
     }
 
-    function cpuShield(cx, cy, s) {
-        shieldPath(cx, cy, 147 * s, 186 * s); ctx.fillStyle = '#eceef2'; ctx.fill();
-        shieldPath(cx, cy, 128 * s, 166 * s); ctx.fillStyle = '#1c2c5c'; ctx.fill();
-        ctx.fillStyle = '#eceef2';
-        ctx.fillRect(cx - 64 * s, cy - 45 * s, 128 * s, 19 * s);
-        ctx.font = `bold ${42 * s}px Arial, Helvetica, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('CPU', cx, cy + 16 * s);
+    function cpuShield(cx, cy, s, c = ctx) {
+        shieldPath(cx, cy, 147 * s, 186 * s, c); c.fillStyle = '#eceef2'; c.fill();
+        shieldPath(cx, cy, 128 * s, 166 * s, c); c.fillStyle = '#1c2c5c'; c.fill();
+        c.fillStyle = '#eceef2';
+        c.fillRect(cx - 64 * s, cy - 45 * s, 128 * s, 19 * s);
+        c.font = `bold ${42 * s}px Arial, Helvetica, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText('CPU', cx, cy + 16 * s);
+    }
+
+    // ---- De Kuip: the long red board (16:3.2, drawn 1200 x 240) ----
+    const KW = 1200, KH = 240, KTOP = 22, KSPLIT = 905;
+    const KF = '"Barlow Semi Condensed", "Arial Narrow", sans-serif';
+    const KRED = '#e3302a', KINK = '#2a2326', KWHITE = '#f4f2ee';
+    let kCanvas = null, kCtx = null, kTexture = null;
+    let kuipFont = false, kuipLogo = null, kuipLogoSrc = null;
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+        document.fonts.load(`700 120px "Barlow Semi Condensed"`).then(() => { kuipFont = true; last = ''; redraw(); }).catch(() => {});
+    }
+    function loadKuipLogo(src) {
+        if (!src || src === kuipLogoSrc) return;
+        kuipLogoSrc = src;
+        const im = new Image();
+        im.onload = () => { kuipLogo = im; last = ''; redraw(); };
+        im.src = src;                              // missing file: the white disc stays
+    }
+    function drawKuip(clock, s1, s2) {
+        const c = kCtx, mid = KTOP + (KH - KTOP) / 2;
+        c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, KW, KH);
+        c.fillStyle = KRED; c.fillRect(0, KTOP, KSPLIT, KH - KTOP);
+        c.fillStyle = KWHITE; c.fillRect(KSPLIT + 10, KTOP, KW - KSPLIT - 10, KH - KTOP);
+        const text = (str, x, y, size, color) => {
+            c.font = `700 ${size}px ${KF}`;
+            c.fillStyle = color;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(str, x, y);
+        };
+        // the home logo
+        if (kuipLogo) {
+            const box = 168, k = Math.min(box / kuipLogo.width, box / kuipLogo.height);
+            const w = kuipLogo.width * k, h = kuipLogo.height * k;
+            c.drawImage(kuipLogo, 105 - w / 2, mid - h / 2, w, h);
+        } else {
+            c.fillStyle = KWHITE;
+            c.beginPath(); c.arc(105, mid, 70, 0, Math.PI * 2); c.fill();
+            text('FEY', 105, mid + 3, 60, KRED);
+        }
+        // the score, under the clock tab
+        text(String(s1), 300, mid + 14, 196, '#ffffff');
+        c.fillStyle = '#ffffff'; c.fillRect(432, mid + 6, 56, 20);
+        text(String(s2), 620, mid + 14, 196, '#ffffff');
+        cpuShield(805, mid + 4, 0.82, c);
+        // the clock in its dark tab, hanging from the top edge
+        c.fillStyle = KINK;
+        c.beginPath();
+        c.moveTo(345, 0); c.lineTo(575, 0); c.lineTo(575, 60);
+        c.quadraticCurveTo(575, 88, 547, 88); c.lineTo(373, 88);
+        c.quadraticCurveTo(345, 88, 345, 60); c.closePath();
+        c.fill();
+        text(clock, 460, 46, 68, '#ffffff');
+        text('DE KUIP', (KSPLIT + 10 + KW) / 2, mid + 2, 66, KRED);
+        kTexture.needsUpdate = true;
     }
 
     function draw(clock, s1, s2) {
@@ -319,16 +380,17 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
         drawRibbon(current.clock, current.s1, current.s2);
         drawWk(current.clock, current.s1, current.s2);
+        drawKuip(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
-    function attach(root, style) {
+    function attach(root, style, logo) {
         const node = root && root.getObjectByName('StadiumScreens');
         const band = root && root.getObjectByName('StadiumRibbonScore');
         if (!node && !band) return false;
@@ -338,7 +400,8 @@ const STADIUM_SCREEN = (() => {
             const mats = Array.isArray(c.material) ? c.material : [c.material];
             mats.forEach((m) => { m.map = tex; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
         });
-        use(node, style === 'wk' ? wTexture : texture);
+        if (style === 'kuip') loadKuipLogo(logo);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();

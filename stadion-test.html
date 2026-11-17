@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stadion test</title>
-<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&display=swap" rel="stylesheet">
 <style>
     html, body { margin: 0; height: 100%; background: #14171a; color: #e9ecef; font: 14px/1.3 system-ui, sans-serif; overflow: hidden; }
     canvas { display: block; }
@@ -106,7 +106,7 @@ function load(reframe) {
         const baked = !!(stadium.look && stadium.look.baked);
         const gain = baked ? (stadium.look.gain ?? 1) : 1;
         renderer.setClearColor(baked ? 0x0b1220 : 0x8fa3b5);
-        if (STADIUM_SCREEN.attach(model, stadium.screen)) STADIUM_SCREEN.update('00:00', 0, 0);       // the live screens, before kick-off
+        if (STADIUM_SCREEN.attach(model, stadium.screen, stadium.screenLogo)) STADIUM_SCREEN.update('00:00', 0, 0);       // the live screens, before kick-off
         model.traverse((c) => {
             if (!c.isMesh) return;
             if (baked) {

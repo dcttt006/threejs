@@ -253,16 +253,21 @@ function makeNetTexture() {
     return tex;
 }
 
+// A stadium can colour the nets (catalog nets: [left, right], as seen from the
+// pitch looking into the goal; De Kuip: red | white). Otherwise they are white.
 function buildGoals() {
     const postMat = litMat(0xffffff);
     const baseNet = makeNetTexture();
-    const netPanel = (wUnits, hUnits) => {
+    const st = typeof matchStadium === 'function' ? matchStadium() : null;
+    const colours = (st && st.nets) || null;
+    const netPanel = (wUnits, hUnits, colour) => {
         const tex = baseNet.clone();
         tex.needsUpdate = true;
         tex.repeat.set(wUnits / 0.9, hUnits / 0.9);   // one mesh square ≈ 0.9 units
         return new THREE.Mesh(
             new THREE.PlaneGeometry(wUnits, hUnits),
-            new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
+            new THREE.MeshBasicMaterial({ map: tex, color: srgb(colour || 0xffffff), transparent: true,
+                opacity: colour ? 0.85 : 0.6, side: THREE.DoubleSide, depthWrite: false })
         );
     };
     const R = 0.24;
@@ -270,6 +275,9 @@ function buildGoals() {
     [-1, 1].forEach(side => {
         const x = side * FIELD_W / 2;
         const back = x + side * GOAL_DEPTH;
+        // looking into this goal from the pitch, your left hand is at z = leftZ
+        const leftZ = side > 0 ? -1 : 1;
+        const colourAt = (zs) => colours ? colours[zs === leftZ ? 0 : 1] : null;
 
         [-1, 1].forEach(zs => {
             const post = new THREE.Mesh(new THREE.CylinderGeometry(R, R, GOAL_H, 12), postMat);
@@ -281,19 +289,19 @@ function buildGoals() {
         bar.position.set(x, GOAL_H, 0);
         scene.add(bar);
 
-        const rear = netPanel(GOAL_W, GOAL_H);
-        rear.rotation.y = Math.PI / 2;
-        rear.position.set(back, GOAL_H / 2, 0);
-        scene.add(rear);
-
-        const roof = netPanel(GOAL_DEPTH, GOAL_W);
-        roof.rotation.x = -Math.PI / 2;
-        roof.rotation.z = Math.PI / 2;
-        roof.position.set(x + side * GOAL_DEPTH / 2, GOAL_H, 0);
-        scene.add(roof);
-
+        // rear and roof in two halves, one per colour; each side panel in its half's colour
         [-1, 1].forEach(zs => {
-            const flank = netPanel(GOAL_DEPTH, GOAL_H);
+            const rear = netPanel(GOAL_W / 2, GOAL_H, colourAt(zs));
+            rear.rotation.y = Math.PI / 2;
+            rear.position.set(back, GOAL_H / 2, zs * GOAL_W / 4);
+            scene.add(rear);
+
+            const roof = netPanel(GOAL_DEPTH, GOAL_W / 2, colourAt(zs));
+            roof.rotation.x = -Math.PI / 2;                    // depth along x, width along z
+            roof.position.set(x + side * GOAL_DEPTH / 2, GOAL_H, zs * GOAL_W / 4);
+            scene.add(roof);
+
+            const flank = netPanel(GOAL_DEPTH, GOAL_H, colourAt(zs));
             flank.position.set(x + side * GOAL_DEPTH / 2, GOAL_H / 2, zs * GOAL_W / 2);
             scene.add(flank);
         });
