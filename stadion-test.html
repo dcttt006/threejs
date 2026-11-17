@@ -34,6 +34,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="game.screen.js"></script>
 <script>
 // Shows a stadium .glb on its own and reloads it as soon as the file changes,
 // so every new export from Blender appears here without refreshing.
@@ -104,6 +105,7 @@ function load(reframe) {
         const baked = !!(stadium.look && stadium.look.baked);
         const gain = baked ? (stadium.look.gain ?? 1) : 1;
         renderer.setClearColor(baked ? 0x0b1220 : 0x8fa3b5);
+        if (STADIUM_SCREEN.attach(model)) STADIUM_SCREEN.update('00:00', 0, 0);       // the live screens, before kick-off
         model.traverse((c) => {
             if (!c.isMesh) return;
             if (baked) {

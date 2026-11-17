@@ -311,6 +311,8 @@ const STADIUM_PREVIEW = (() => {
     function prepareModel(gltf, stadium) {
         const obj = gltf.scene;
         obj.rotation.y = stadium.rotateY ?? 0;
+        // its big screens before kick-off: 00:00 and 0-0
+        if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(obj)) STADIUM_SCREEN.update('00:00', 0, 0);
 
         // The catalog's colorScale exists to blend stadiums into the night-time
         // gameplay scene; in the picker we want them to look vivid, so we skip
@@ -482,6 +484,8 @@ function buildStadium() {
         // a model's own goals are for looking at it; a match uses the game's
         const modelGoals = gltf.scene.getObjectByName('StadiumGoals');
         if (modelGoals) modelGoals.parent.remove(modelGoals);
+        // the stadium's big screens show the live clock and score (game.screen.js)
+        if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.attach(gltf.scene);
         const rig = fitStadiumToPitch(gltf.scene, stadium);
         if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
         dressStadium(rig, stadium);

@@ -246,12 +246,14 @@ const STADIUMS = [
         club: 'RSC Anderlecht',
         city: 'Brussel',
         // ?v=: raise it with every new export, or browsers keep showing the old model
-        file: 'media/models/stadiums/lotto_park.glb?v=6',
+        file: 'media/models/stadiums/lotto_park.glb?v=8',
         capacity: '22.500',
         // our own Blender model; turned so the stand with the three stars is the far one
         pitch: { x: 0, z: 0, w: 98.23, l: 62.51, angle: Math.PI, y: 0.17 },
         // its floodlit night is baked into the model: drawn unlit, at twice the stored light
         look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // the camera aims a little further out, so the big screen in the far corner stays in frame
+        view: { lookZ: -8 },
     },
 ];
 

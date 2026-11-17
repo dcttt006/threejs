@@ -759,6 +759,7 @@ wall_text('Corner_Sign', 'lotto Park', (sign.x, sign.y, sign.z), math.atan2(diag
 # blue-violet band on the nose of a roof that tapers towards the pitch, with
 # a pale trim on top and the lamps tucked under it.
 FASCIA_R, FASCIA_Z0, FASCIA_Z1 = 15.5, 24.38, ROOF_Z - 0.16
+SCREEN_DROP = 4.9          # the screens hang this far below their old place, into the game camera's view
 D.materials['M_FasciaDark'].node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.10, 0.14, 0.56, 1)
 fascia = D.objects['Roof_InnerFascia']
 bm = bmesh.new()
@@ -941,19 +942,41 @@ for side in ('NorthWest', 'SouthEast'):
     c = D.objects['LEDScreen_' + side].matrix_world.translation.copy()
     sx, sy = (1 if c.x > 0 else -1), (1 if c.y > 0 else -1)
     off = Vector((c.x - sx * CX, c.y - sy * CY, 0))
-    move = off.normalized() * (16.4 - off.length) + Vector((0, 0, -1.35))
+    move = off.normalized() * (16.4 - off.length) + Vector((0, 0, -SCREEN_DROP))      # low enough for the game camera to see it
     for o in [o for o in D.objects if o.name.startswith('LEDScreen_' + side)]:
         o.location += move
     bpy.context.view_layer.update()
     for o in [o for o in D.objects if o.name.startswith('LEDScreen_' + side + '_Hanger')]:
         inv = o.matrix_world.inverted()
-        for v in o.data.vertices:
+        ztop = max((o.matrix_world @ v.co).z for v in o.data.vertices)
+        for v in o.data.vertices:                     # the hangers run up to the roof nose
             w = o.matrix_world @ v.co
-            w.z = 24.85 if w.z > 24.38 else 24.3
+            if w.z > ztop - 1e-4:
+                w.z = 24.85
             v.co = inv @ w
-for o in D.objects:          # the scoreboard text was flipped top to bottom (the 5 read as a 2)
-    if o.type == 'FONT' and o.name.startswith('LEDScreen_'):
-        o.scale.y *= -1
+# the screens show the live match (drawn by the game, game.screen.js): the
+# fixed lettering goes, the faces get UVs across their width and height and
+# their own material, and are exported as their own node 'StadiumScreens'
+for o in [o for o in D.objects if o.type == 'FONT' and o.name.startswith('LEDScreen_')]:
+    remove(o)
+live = principled('M_LiveScreen', (1.0, 1.0, 1.0), 0.4, (0.13, 0.05, 0.28), 2.0)
+SCREENS = []
+bpy.context.view_layer.update()
+for side in ('NorthWest', 'SouthEast'):
+    o = D.objects['LEDScreen_' + side]
+    me = o.data
+    pts = [o.matrix_world @ v.co for v in me.vertices]
+    c = sum(pts, Vector()) / len(pts)
+    n = Vector((-c.x, -c.y, 0)).normalized()                  # towards the pitch
+    right = (-n).cross(Vector((0, 0, 1))).normalized()        # as seen by someone facing the screen
+    us = [(p - c).dot(right) for p in pts]; zs = [p.z for p in pts]
+    uvl = me.uv_layers.get('UVMap') or me.uv_layers.new(name='UVMap')
+    for l in me.loops:
+        p = pts[l.vertex_index]
+        uvl.data[l.index].uv = (((p - c).dot(right) - min(us)) / (max(us) - min(us)), (p.z - min(zs)) / (max(zs) - min(zs)))
+    me.materials.clear(); me.materials.append(live)
+    print('SCREEN', side, 'width %.2f height %.2f' % (max(us) - min(us), max(zs) - min(zs)))
+    SCREENS.append(o)
 principled('M_EntLogo', (0.45, 0.20, 0.90), 0.5, (0.45, 0.20, 0.90), 2.0)
 
 bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, copy=True)
@@ -1183,7 +1206,7 @@ for o in [o for o in D.objects if o.type == 'FONT']:
     remove(o)
 bpy.context.view_layer.update()
 
-skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals')
+skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals', 'LEDScreen_NorthWest', 'LEDScreen_SouthEast')
 export = [o for o in sc.objects if o.type == 'MESH' and not o.name.startswith(skip)]
 for o in export + [goals]:
     o.hide_set(False)
@@ -1191,6 +1214,10 @@ for o in export + [goals]:
         o.data.uv_layers.new(name='UVMap')
     else:
         o.data.uv_layers[0].name = 'UVMap'
+select_only(SCREENS, SCREENS[0])
+bpy.ops.object.join()
+screens = SCREENS[0]
+screens.name = 'StadiumScreens'
 select_only(export, target)
 bpy.ops.object.join()
 target.name = 'LottoPark'
@@ -1234,6 +1261,12 @@ gc = goals.data.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
 gc.data.foreach_set('color', [0.45, 0.45, 0.45, 1.0] * len(gc.data))
 goals.data.color_attributes.active_color = gc
 goals.data.color_attributes.render_color_index = goals.data.color_attributes.find('Col')
+scc = screens.data.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')     # self-lit: shown at its own colour
+scc.data.foreach_set('color', [1.0 / GAIN, 1.0 / GAIN, 1.0 / GAIN, 1.0] * len(scc.data))
+screens.data.color_attributes.active_color = scc
+screens.data.color_attributes.render_color_index = screens.data.color_attributes.find('Col')
+if not screens.data.uv_layers:
+    screens.data.uv_layers.new(name='UVMap')
 
 # the light is in the model now: no emission in the file
 for m in D.materials:
@@ -1250,7 +1283,7 @@ print('BOUNDS', mn, mx)
 print('PITCH x=%.2f z=%.2f w=%.2f l=%.2f y=%.2f' % (-cx * s, cy * s, PW * s, PL * s, -mn[2] * s))
 print('TRIS', sum(len(p.vertices) - 2 for p in target.data.polygons), 'MATS', len(target.data.materials))
 
-select_only([target, goals], target)
+select_only([target, goals, screens], target)
 props = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
 extra = {}
 if 'export_vertex_color' in props: extra['export_vertex_color'] = 'ACTIVE'

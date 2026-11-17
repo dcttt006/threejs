@@ -52,6 +52,9 @@ function initThree() {
     // clear previous scene contents
     while (scene.children.length) scene.remove(scene.children[0]);
 
+    const viewOf = (!STATE.wkMatch && getSelectedStadium().view) || {};
+    camLookShift = viewOf.lookZ || 0;
+
     buildSky();
     buildLights();
     buildField();
@@ -81,6 +84,7 @@ function initThree() {
 // keep the far stand in frame, tracking the ball sideways like a TV main camera.
 const CAM = { height: 30, back: 78, lookZ: 0, fov: 38, follow: 0.55, maxX: 24 };
 let camX = 0;
+let camLookShift = 0;      // per stadium (catalog view.lookZ): aim a little further out, e.g. to keep a big screen in frame
 
 function cameraTargetX() {
     if (!ball) return 0;
@@ -88,7 +92,7 @@ function cameraTargetX() {
 }
 function placeCamera() {
     camera.position.set(camX, CAM.height, CAM.back);
-    camera.lookAt(camX, 0, CAM.lookZ);
+    camera.lookAt(camX, 0, CAM.lookZ + camLookShift);
 }
 function applyGameplayCamera() {
     const aspect = window.innerWidth / window.innerHeight;
@@ -2206,12 +2210,16 @@ function updateTimer() {
     if (STATE.paused) return;
     if (!STATE.gameStartTime) {
         $('hud-timer').textContent = formatClock(0);
+        if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.update(formatClock(0), STATE.score1, STATE.score2);
         return;
     }
     const elapsed = Math.floor((Date.now() - STATE.gameStartTime) / 1000);
     const remaining = Math.max(0, STATE.gameDuration - elapsed);
     // the clock counts up, like on TV: 00:00 to 01:30 (02:00 after extra time)
-    $('hud-timer').textContent = formatClock(Math.min(elapsed, STATE.gameDuration));
+    const clock = formatClock(Math.min(elapsed, STATE.gameDuration));
+    $('hud-timer').textContent = clock;
+    // the big screens in the stadium show the same (game.screen.js)
+    if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.update(clock, STATE.score1, STATE.score2);
     $('hud-timer').classList.toggle('warning', remaining <= 10 && remaining > 0);
     if (remaining === 0 && STATE.screen === 'playing') {
         endGame();
