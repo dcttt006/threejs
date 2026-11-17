@@ -27,6 +27,7 @@
     <button data-view="ingang">Ingang</button>
     <button data-view="foto">Zoals foto 2</button>
     <button data-view="doel">Doel</button>
+    <button data-view="dugouts">Dug-outs</button>
     <span id="status">laden…</span>
 </div>
 
@@ -62,7 +63,8 @@ const VIEWS = {
     tribune:   [[0.05, 0.075, -0.2], [0, 0.01, 0.1]],
     boven:     [[0, 1.2, -0.001], [0, 0, 0]],
     ingang:    [[0.25, 0.1, -0.75], [0, 0.05, -0.3]],
-    foto:      [[-0.2474, 0.0201, 0.0634], [0.148, 0.0239, -0.0085]],     // as photo 2: low in the west end, facing RSC ANDERLECHT
+    foto:      [[0.2474, 0.0201, -0.0634], [-0.148, 0.0239, 0.0085]],     // as photo 2: low in the east end, facing RSC ANDERLECHT (west)
+    dugouts:   [[0.042, 0.0135, 0.059], [-0.017, 0.0042, 0.152]],
     doel:      [[-0.1184, 0.0154, 0.0507], [-0.1945, 0.0057, 0]],
 };
 let span = 200, centre = new THREE.Vector3();

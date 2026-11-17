@@ -22,8 +22,9 @@ SEG = 12                                   # segments per corner
 N_RING = 4 * (SEG + 1)
 NE, NW, SW, SE = (set(range(k * (SEG + 1), k * (SEG + 1) + SEG)) for k in range(4))   # corner segments
 N_SIDE, W_SIDE, S_SIDE, E_SIDE = (k * (SEG + 1) + SEG for k in range(4))              # straight segments
-# the office block: far left when you face the RSC ANDERLECHT end (east), as on the photos
-CORNER, CSX, CSY = NE, 1, 1
+# the office block: far left when you face the RSC ANDERLECHT end (west), and at
+# the end of the dugout side (south), as on the photos
+CORNER, CSX, CSY = SW, -1, -1
 
 LOW = dict(r=12.0, z=1.3, rows=15, depth=0.8, rise=0.36)        # lower ring
 LODGE_R, LODGE_Z0, LODGE_Z1 = 24.0, 6.34, 8.8                   # glass boxes behind it
@@ -529,10 +530,10 @@ def build_tier(name, t, base_z, skip=(), standing=(), pattern=False):
     new_obj('Seats_' + name, seats, '03_Seats', [seat_mat, seat_white])
 
 
-# The lower ring is safe standing on the four straight stretches, as on the
-# photos from the lower rows: a steel rail on posts in front of every row,
-# grey seats folded up beneath it. The corners of the lower ring have seats.
-STANDING = {N_SIDE, W_SIDE, S_SIDE, E_SIDE}
+# The lower ring behind both goals is safe standing, as on the photos from
+# there: a steel rail on posts in front of every row, grey seats folded up
+# beneath it. The long sides and the corners have seats.
+STANDING = {W_SIDE, E_SIDE}          # behind the goals; the long sides and the corners have seats
 
 
 def spans_of(length):
@@ -591,6 +592,27 @@ for k in range(LOW['rows']):
         rail_row(bm, [Vector((p0[i][0], p0[i][1], 0)), Vector((p0[j][0], p0[j][1], 0))],
                  [Vector((p1[i][0], p1[i][1], 0)), Vector((p1[j][0], p1[j][1], 0))], z)
 new_obj('Standing_Rails', bm, '03_Seats', [principled('M_Galvanised', (0.38, 0.39, 0.41), 0.5), rail_seat])
+
+# the dugouts and the players' tunnel, at pitch level in front of the south
+# stand (the side with the office block), as on the photos from the stands
+plexi = principled('M_Plexi', (0.70, 0.75, 0.82), 0.2)
+bm, sb = bmesh.new(), bmesh.new()
+YB, YF = -(CY + 11.85), -(CY + 9.35)            # back (in front of the boards) and front
+for x0, x1 in ((-17.5, -3.2), (3.2, 17.5)):
+    face(bm, [(x0, YB, 0), (x1, YB, 0), (x1, YB, 2.35), (x0, YB, 2.35)], Vector((0, 1, 0)), 0)      # white back
+    for zz, nrm in ((2.36, (0, 0, 1)), (2.34, (0, 0, -1))):                                       # plexi roof
+        face(bm, [(x0, YB, zz), (x1, YB, zz), (x1, YF, zz - 0.3), (x0, YF, zz - 0.3)], Vector(nrm), 1)
+    for xx, nx in ((x0, -1), (x1, 1)):                                                            # plexi ends
+        for off in (0.0, 0.02):
+            face(bm, [(xx + off * nx, YB, 0), (xx + off * nx, YF, 0), (xx + off * nx, YF, 2.04), (xx + off * nx, YB, 2.34)], Vector((nx if off else -nx, 0, 0)), 1)
+    box(bm, ((x0 + x1) / 2, YB + 0.75), (1, 0), (x1 - x0) / 2 - 0.1, (0, 1), 0.7, 0, 0.35, 2)     # step for the back row
+    for yf, zz in ((YB + 1.45, 0.35), (YB + 2.35, 0.0)):
+        seat_row(sb, [Vector((x0 + 0.2, yf, zz)), Vector((x1 - 0.2, yf, zz))],
+                 [Vector((x0 + 0.2, yf - 0.8, zz)), Vector((x1 - 0.2, yf - 0.8, zz))], 0, False)
+box(bm, (0, YB + 1.5), (1, 0), 1.6, (0, 1), 1.5, 0, 2.5, 0)                                      # tunnel
+box(bm, (0, YB + 1.5), (1, 0), 1.65, (0, 1), 1.55, 1.7, 2.05, 3)
+new_obj('Dugouts', bm, '02_Bowl', [corner_wall, plexi, concrete_dark, led_purple])
+new_obj('Dugout_Seats', sb, '03_Seats', [seat_mat, seat_white])
 
 # the boxes between the rings: concrete sill, glass, concrete head, mullions
 bm = bmesh.new()
@@ -754,12 +776,21 @@ for n in ('Fascia_RSCText', 'Fascia_SinceText'):                              # 
     t.data.size = 1.55
     t.data.offset = 1.55 * 0.022
     t.location.z = FASCIA_Z0 + 0.34
-for o in [o for o in D.objects if o.name.startswith('Fascia_Star_')]:
+D.objects['Fascia_RSCText'].data.body, D.objects['Fascia_SinceText'].data.body = 'SINCE 1908', 'RSC ANDERLECHT'
+stars_s = [o for o in D.objects if o.name.startswith('Fascia_Star_')]
+for o in stars_s:
     bb = [o.matrix_world @ Vector(c) for c in o.bound_box]
     c = sum(bb, Vector()) / 8
     cx_all = 0.0                                                             # the three stars sit around x = 0
     k = 0.6
     o.matrix_world = Matrix.Translation(Vector((cx_all + (c.x - cx_all) * k, c.y, (FASCIA_Z0 + FASCIA_Z1) / 2))) @ Matrix.Scale(k, 4) @ Matrix.Translation(-c) @ o.matrix_world
+
+bpy.context.view_layer.update()
+for k, o in enumerate(stars_s):                 # the three stars on the north side too
+    n_ = o.copy()
+    n_.name = 'Fascia_StarN_%d' % k
+    n_.matrix_world = Matrix.Rotation(math.pi, 4, 'Z') @ o.matrix_world
+    o.users_collection[0].objects.link(n_)
 
 # lamps under the nose, in pairs of four-lamp clusters, on a dark carrier
 bm = bmesh.new()
@@ -840,7 +871,7 @@ roof_white = principled('M_RoofMembrane', MEMBRANE, 0.7)
 roof_dark = principled('M_RoofBitumen', (0.13, 0.13, 0.14), 0.95)
 solar = image_material('M_SolarPanel', painted('lottopark_solar', solar_tile()), 0.3, 0.2)
 R_IN, R_OUT = 16.0, 45.5
-dark = NE | NW | SW | {W_SIDE}
+dark = SW | SE | NE | {E_SIDE}
 bm = bmesh.new()
 ring(bm, R_IN, ROOF_Z, R_OUT, ROOF_Z, 0, skip=dark)
 ring(bm, R_IN, ROOF_Z, R_OUT, ROOF_Z, 1, only=dark)
@@ -848,8 +879,8 @@ z = ROOF_Z + 0.05
 for sy in (1, -1):                                                     # long stands: two rows of nine blocks
     y0, y1 = sy * (CY + 18.5), sy * (CY + 43.5)
     face(bm, [(-CX, y0, z), (CX, y0, z), (CX, y1, z), (-CX, y1, z)], UP_V, 2, [(0, 0), (9, 0), (9, 2), (0, 2)])
-x0, x1 = CX + 18.5, CX + 43.5                                         # east end: three rows of five
-face(bm, [(x0, -CY, z), (x0, CY, z), (x1, CY, z), (x1, -CY, z)], UP_V, 2, [(0, 0), (5, 0), (5, 3), (0, 3)])
+x0, x1 = -(CX + 43.5), -(CX + 18.5)                                   # west end: three rows of five
+face(bm, [(x0, -CY, z), (x1, -CY, z), (x1, CY, z), (x0, CY, z)], UP_V, 2, [(0, 0), (0, 3), (5, 3), (5, 0)])
 new_obj('Roof_Top', bm, '04_Roof', [roof_white, roof_dark, solar])
 
 # ================================================================ outside
