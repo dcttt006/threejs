@@ -307,7 +307,8 @@ const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
 function getSelectedStadium() {
     let id = null;
     try { id = localStorage.getItem(STADIUM_STORAGE_KEY); } catch (_) {}
-    return STADIUMS.find(s => s.id === id) || STADIUMS[0];
+    // no choice made yet: Lotto Park is the default
+    return STADIUMS.find(s => s.id === id) || STADIUMS.find(s => s.id === 'lotto-park');
 }
 // the stadium a match is played in: a WK match goes to the World Cup stadium
 // (the one with World Cup screens, MetLife), otherwise the chosen one
