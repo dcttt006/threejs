@@ -449,9 +449,16 @@ function wkDecorateHud() {
 // a knockout match level at full time: golden-goal extra time first
 function wkBeforeEnd() {
     const m = STATE.wkMatch;
-    if (!m || !m.knockout || m.extra || STATE.score1 !== STATE.score2) return false;
+    if (!m || !m.knockout || m.pens || STATE.score1 !== STATE.score2) return false;
+    if (m.extra) {
+        // still level after extra time: a penalty shoot-out (game.pens.js)
+        if (typeof PENS === 'undefined') return false;
+        STATE.inputLocked = true;
+        PENS.start((score) => { m.pens = score; endGame(); });
+        return true;
+    }
+    // level at full time: 30 seconds of extra time, played to the end (no golden goal)
     m.extra = true;
-    STATE.goldenGoal = true;
     STATE.gameDuration += 30;
     const b = $('wk-banner');
     if (b) {
@@ -472,7 +479,7 @@ function wkAfterMatch() {
     $('wk-banner') && ($('wk-banner').hidden = true);
     if (normal) return;
     const mine = STATE.score1, theirs = STATE.score2;
-    const pens = m.knockout && mine === theirs ? wkSimPens() : null;
+    const pens = m.knockout && mine === theirs ? (m.pens || wkSimPens()) : null;
     wkRecord(m.f, mine, theirs, pens);
     const me = WK_TEAMS[m.me].name, them = WK_TEAMS[m.opp].name;
     let verdict;

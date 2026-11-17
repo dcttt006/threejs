@@ -2596,3 +2596,66 @@ html .splash__name { color: #fff; font-weight: 900; }
     }
     .rotate-hint__phone, .home__rotate-phone { transform: rotate(-90deg); }
 }
+
+/* ---------- penalty shoot-out (game.pens.js) ---------- */
+#game-screen.is-pens .touch,
+#game-screen.is-pens .hud-keys { display: none; }          /* the match's controls don't apply to a penalty */
+.pens { position: absolute; inset: 0; z-index: 40; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pens-board {
+    position: absolute; bottom: calc(16px + var(--safe-b, 0px)); left: calc(16px + var(--safe-l, 0px));     /* bottom left */
+    display: grid; gap: 6px; padding: 10px 14px;
+    background: #141416; border-radius: 16px;
+    border: 4px solid transparent;
+    background-image: linear-gradient(#141416, #141416), linear-gradient(90deg, #8a6cf0, #2f5be8 45%, #43c24b 80%, #c6e23a);
+    background-origin: border-box; background-clip: padding-box, border-box;
+    pointer-events: none;
+}
+.pens-row { display: flex; align-items: center; gap: 8px; }
+.pens-flag { width: 40px; height: 26px; object-fit: cover; border-radius: 3px; }
+.pens-dot { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+.pens-code { min-width: 58px; font: 800 26px/1 var(--font-cond); color: #fff; letter-spacing: .02em; }
+.pens-total { min-width: 34px; height: 30px; display: grid; place-items: center; border-radius: 7px; background: #7fe0c7; color: #0f1f1a; font: 800 22px/1 var(--font-cond); }
+.pens-sep { width: 2px; align-self: stretch; background: rgba(255,255,255,.35); margin: 0 4px; }
+.pens-slots { display: flex; gap: 6px; }
+.pens-slot { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; background: #f4f4f2; color: #141416; font: 800 20px/1 var(--font-cond); }
+.pens-slot.is-in { background: #3fbf63; color: #0d2414; }
+.pens-slot.is-out { background: #df3a3f; color: #fff; }
+.pens-prompt {
+    position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%);
+    padding: 8px 16px; border-radius: 999px; background: rgba(10,12,16,.82); color: #fff;
+    font: 600 16px/1.2 var(--font-text); white-space: nowrap; pointer-events: none;
+}
+.pens-power {
+    position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%);
+    width: min(300px, 60vw); height: 14px; border-radius: 7px; overflow: hidden;
+    background: rgba(10,12,16,.75); box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); pointer-events: none;
+}
+.pens-power__over { position: absolute; top: 0; bottom: 0; right: 0; width: 25.9%; background: rgba(223,58,63,.45); }
+.pens-power__fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: #ffd60a; }
+.pens-power.is-over .pens-power__fill { background: #df3a3f; }
+.pens-reticle {
+    position: fixed; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+    border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none;
+}
+.pens-reticle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; }
+.pens-flash {
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+    font: 900 clamp(44px, 9vw, 96px)/1 var(--font-cond); letter-spacing: .03em; color: #fff;
+    text-shadow: 0 4px 0 rgba(0,0,0,.35); pointer-events: none;
+    animation: pens-pop .35s ease-out;
+}
+.pens-flash[data-kind="in"] { color: #4fd677; }
+.pens-flash[data-kind="out"] { color: #ff5a5f; }
+@keyframes pens-pop { from { transform: translate(-50%, -50%) scale(.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.pens-again {
+    position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 41;
+    padding: 12px 22px; border: 0; border-radius: 999px; background: #ffd60a; color: #141416;
+    font: 800 18px/1 var(--font-cond); text-transform: uppercase; cursor: pointer;
+}
+/* small screens: a smaller board bottom left, the bar and the hint to the right of it */
+@media (max-width: 900px) {
+    .pens-board { transform: scale(.72); transform-origin: left bottom; }
+    .pens-power, .pens-prompt { left: auto; right: calc(16px + var(--safe-r, 0px)); transform: none; }
+    .pens-power { width: min(240px, 40vw); }
+    .pens-prompt { white-space: normal; max-width: 44vw; text-align: center; }
+}

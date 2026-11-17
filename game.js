@@ -957,6 +957,13 @@ function animate(now) {
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = PHYSICS_STEP;
     if (frameDt > 0.25) frameDt = 0.25;     // tab/sleep recovery cap
 
+    // a penalty shoot-out runs its own scene (game.pens.js)
+    if (STATE.pens && typeof PENS !== 'undefined' && PENS.active()) {
+        PENS.frame(frameDt);
+        renderer.render(scene, camera);
+        return;
+    }
+
     if (!STATE.paused) {
         physicsAccum += frameDt;
         let safety = 5;
