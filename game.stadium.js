@@ -319,6 +319,23 @@ const STADIUM_PREVIEW = (() => {
             if (!c.isMesh) return;
             c.castShadow = false;
             c.receiveShadow = false;
+            // light baked into the model: shown as it is, not lit a second time
+            if (stadium.look && stadium.look.baked) {
+                const gain = stadium.look.gain ?? 1;
+                const swap = (m) => {
+                    const b = new THREE.MeshBasicMaterial({
+                        map: m.map || null,
+                        color: (m.color ? m.color.clone() : new THREE.Color(1, 1, 1)).multiplyScalar(gain),
+                        vertexColors: m.vertexColors,
+                        transparent: m.transparent, opacity: m.opacity, alphaTest: m.alphaTest,
+                        side: m.side, depthWrite: m.depthWrite,
+                    });
+                    b.toneMapped = false;
+                    return b;
+                };
+                c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
+                return;
+            }
             const mats = Array.isArray(c.material) ? c.material : (c.material ? [c.material] : []);
             mats.forEach(m => {
                 if (m.emissive && m.emissiveIntensity > 1) m.emissiveIntensity = 0.55;
@@ -462,6 +479,9 @@ function buildStadium() {
         done();
         // a newer match (or leaving the match) makes this load stale
         if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
+        // a model's own goals are for looking at it; a match uses the game's
+        const modelGoals = gltf.scene.getObjectByName('StadiumGoals');
+        if (modelGoals) modelGoals.parent.remove(modelGoals);
         const rig = fitStadiumToPitch(gltf.scene, stadium);
         if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
         dressStadium(rig, stadium);

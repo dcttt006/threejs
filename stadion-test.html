@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadion test</title>
+<style>
+    html, body { margin: 0; height: 100%; background: #14171a; color: #e9ecef; font: 14px/1.3 system-ui, sans-serif; overflow: hidden; }
+    canvas { display: block; }
+    #bar { position: fixed; left: 0; right: 0; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #1d2126; border-bottom: 1px solid #2c323a; }
+    #bar strong { margin-right: 6px; }
+    button, select { font: inherit; color: inherit; background: #2a3038; border: 1px solid #3a424d; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+    button:hover { background: #343c46; }
+    #status { margin-left: auto; color: #9aa4af; }
+    #status.new { color: #7fd18b; }
+    #status.err { color: #ff8a80; }
+</style>
+</head>
+<body>
+<div id="bar">
+    <strong>Stadion test</strong>
+    <select id="pick"></select>
+    <button data-view="overzicht">Overzicht</button>
+    <button data-view="wedstrijd">Wedstrijdcamera</button>
+    <button data-view="tribune">Vanaf de tribune</button>
+    <button data-view="boven">Van boven</button>
+    <button data-view="ingang">Ingang</button>
+    <button data-view="foto">Zoals foto 2</button>
+    <button data-view="doel">Doel</button>
+    <span id="status">laden…</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// Shows a stadium .glb on its own and reloads it as soon as the file changes,
+// so every new export from Blender appears here without refreshing.
+const status = document.getElementById('status');
+const pick = document.getElementById('pick');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.setClearColor(0x8fa3b5);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x5a6a55, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(120, 200, -80);
+scene.add(sun);
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// camera spots, in "longest side = 1" units around the model's centre
+const VIEWS = {
+    overzicht: [[0.65, 0.6, -0.8], [0, 0.02, 0]],
+    wedstrijd: [[0, 0.2, -0.3], [0, 0, 0.08]],
+    tribune:   [[0.05, 0.075, -0.2], [0, 0.01, 0.1]],
+    boven:     [[0, 1.2, -0.001], [0, 0, 0]],
+    ingang:    [[0.25, 0.1, -0.75], [0, 0.05, -0.3]],
+    foto:      [[-0.2474, 0.0201, 0.0634], [0.148, 0.0239, -0.0085]],     // as photo 2: low in the west end, facing RSC ANDERLECHT
+    doel:      [[-0.1184, 0.0154, 0.0507], [-0.1945, 0.0057, 0]],
+};
+let span = 200, centre = new THREE.Vector3();
+function setView(name) {
+    const [p, t] = VIEWS[name];
+    camera.position.set(centre.x + p[0] * span, centre.y + p[1] * span, centre.z + p[2] * span);
+    controls.target.set(centre.x + t[0] * span, centre.y + t[1] * span, centre.z + t[2] * span);
+    controls.update();
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+// stadium list from the game's own catalog (read out of game.core.js without
+// running the game); ?stadion=<id> picks one
+let list = [];
+async function readCatalog() {
+    const src = await (await fetch('game.core.js', { cache: 'no-store' })).text();
+    const m = src.match(/const STADIUMS = (\[[\s\S]*?\n\]);/);
+    list = (m ? new Function('return ' + m[1])() : []).filter(s => s.file);
+    list.forEach(s => pick.add(new Option(s.name, s.id)));
+    const wanted = new URLSearchParams(location.search).get('stadion') || 'lotto-park';
+    pick.value = list.some(s => s.id === wanted) ? wanted : (list[0] && list[0].id);
+}
+pick.onchange = () => { stamp = null; load(true); };
+
+let model = null, stamp = null, busy = false;
+function current() { return list.find(s => s.id === pick.value); }
+
+function load(reframe) {
+    const stadium = current();
+    if (!stadium || busy) return;
+    busy = true;
+    status.className = ''; status.textContent = 'laden…';
+    new THREE.GLTFLoader().load(encodeURI(stadium.file) + '?t=' + Date.now(), (gltf) => {
+        if (model) scene.remove(model);
+        model = gltf.scene;
+        // a stadium with its (night) light baked in is shown unlit, as the game draws it
+        const baked = !!(stadium.look && stadium.look.baked);
+        const gain = baked ? (stadium.look.gain ?? 1) : 1;
+        renderer.setClearColor(baked ? 0x0b1220 : 0x8fa3b5);
+        model.traverse((c) => {
+            if (!c.isMesh) return;
+            if (baked) {
+                const swap = (m) => {
+                    const b = new THREE.MeshBasicMaterial({
+                        map: m.map || null,
+                        color: (m.color ? m.color.clone() : new THREE.Color(1, 1, 1)).multiplyScalar(gain),
+                        vertexColors: m.vertexColors,
+                        transparent: m.transparent, opacity: m.opacity, alphaTest: m.alphaTest,
+                        side: m.side, depthWrite: m.depthWrite,
+                    });
+                    b.toneMapped = false;
+                    return b;
+                };
+                c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
+                return;
+            }
+            (Array.isArray(c.material) ? c.material : [c.material]).forEach((m) => {
+                if (m.metalness !== undefined && !m.metalnessMap && m.metalness >= 0.9) m.metalness = 0;
+            });
+        });
+        scene.add(model);
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        if (reframe) {
+            span = Math.max(size.x, size.z);
+            box.getCenter(centre); centre.y = box.min.y;
+            camera.far = span * 20; camera.near = span / 2000; camera.updateProjectionMatrix();
+            setView('overzicht');
+        }
+        busy = false;
+        status.className = 'new';
+        status.textContent = stadium.name + ' · bijgewerkt ' + new Date().toLocaleTimeString('nl-BE');
+    }, undefined, (err) => {
+        busy = false;
+        status.className = 'err';
+        status.textContent = 'kon ' + stadium.file + ' niet laden';
+        console.error(err);
+    });
+}
+
+// reload when the file on disk is newer than the one on screen
+async function watch() {
+    const stadium = current();
+    if (!stadium || busy) return;
+    try {
+        const r = await fetch(encodeURI(stadium.file), { method: 'HEAD', cache: 'no-store' });
+        const s = r.headers.get('last-modified') + '|' + r.headers.get('content-length');
+        if (stamp === null) stamp = s;
+        else if (s !== stamp) { stamp = s; load(false); }
+    } catch (_) { /* server stopped: keep showing what we have */ }
+}
+setInterval(watch, 2000);
+
+function resize() {
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+readCatalog().then(() => load(true)).catch((e) => { status.className = 'err'; status.textContent = 'kon de stadionlijst niet lezen'; console.error(e); });
+(function frame() { requestAnimationFrame(frame); controls.update(); renderer.render(scene, camera); })();
+</script>
+</body>
+</html>

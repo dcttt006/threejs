@@ -240,6 +240,18 @@ const STADIUMS = [
         pitch: { x: -2.64, z: -2.96, w: 35, l: 21.8, angle: -0.987, y: 7.5, own: true },
         look: { photo: true, gain: 1.5, sat: 1.0, contrast: 1.04 },
     },
+    {
+        id: 'lotto-park',
+        name: 'Lotto Park',
+        club: 'RSC Anderlecht',
+        city: 'Brussel',
+        file: 'media/models/stadiums/lotto_park.glb',
+        capacity: '22.500',
+        // our own Blender model; turned so the stand with the three stars is the far one
+        pitch: { x: 0, z: 0, w: 98.23, l: 62.51, angle: Math.PI, y: 0.17 },
+        // its floodlit night is baked into the model: drawn unlit, at twice the stored light
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
