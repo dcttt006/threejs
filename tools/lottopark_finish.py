@@ -653,10 +653,22 @@ n = 0
 rr = UP['r'] - 0.16
 for sy in (1, -1):
     for x in range(-40, 41, 10):
+        if sy < 0 and x == 0:
+            continue                          # the score panel sits there
         wall_text('Ribbon_RSCA_%d' % n, 'RSCA', (x, sy * (CY + rr), 8.98), sy * math.pi / 2, 0.92, '02_Bowl'); n += 1
 for sx in (1, -1):
     for y in (-18, -6, 6, 18):
         wall_text('Ribbon_RSCA_%d' % n, 'RSCA', (sx * (CX + rr), y, 8.98), 0 if sx > 0 else math.pi, 0.92, '02_Bowl'); n += 1
+
+# the little scoreboard in the band on the south stand (the side with the
+# stars the game camera looks at), as in the real stadium: score and clock,
+# drawn live by the game (game.screen.js) on its own node 'StadiumRibbonScore'
+RS_X, RS_W = 0.0, 4.2                         # in the middle of the band, under the three stars
+rs_y = -(CY + UP['r'] - 0.1) + 0.04
+bm = bmesh.new()
+face(bm, [(RS_X + RS_W / 2, rs_y, 8.82), (RS_X - RS_W / 2, rs_y, 8.82), (RS_X - RS_W / 2, rs_y, 9.78), (RS_X + RS_W / 2, rs_y, 9.78)],
+     Vector((0, 1, 0)), 0, [(0, 0), (1, 0), (1, 1), (0, 1)])           # u runs left to right as seen from the pitch
+ribbon_score = new_obj('StadiumRibbonScore', bm, '02_Bowl', [principled('M_RibbonScore', (1.0, 1.0, 1.0), 0.4, (0.13, 0.05, 0.28), 2.0)])
 
 # LED boards along the front of the lower ring (where the game keeps them)
 for o in ('AdvertBoardRing',):
@@ -1206,7 +1218,7 @@ for o in [o for o in D.objects if o.type == 'FONT']:
     remove(o)
 bpy.context.view_layer.update()
 
-skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals', 'LEDScreen_NorthWest', 'LEDScreen_SouthEast')
+skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals', 'LEDScreen_NorthWest', 'LEDScreen_SouthEast', 'StadiumRibbonScore')
 export = [o for o in sc.objects if o.type == 'MESH' and not o.name.startswith(skip)]
 for o in export + [goals]:
     o.hide_set(False)
@@ -1267,6 +1279,11 @@ screens.data.color_attributes.active_color = scc
 screens.data.color_attributes.render_color_index = screens.data.color_attributes.find('Col')
 if not screens.data.uv_layers:
     screens.data.uv_layers.new(name='UVMap')
+rsc = ribbon_score.data.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
+rsc.data.foreach_set('color', [1.0 / GAIN, 1.0 / GAIN, 1.0 / GAIN, 1.0] * len(rsc.data))
+ribbon_score.data.color_attributes.active_color = rsc
+ribbon_score.data.color_attributes.render_color_index = ribbon_score.data.color_attributes.find('Col')
+ribbon_score.data.uv_layers[0].name = 'UVMap'
 
 # the light is in the model now: no emission in the file
 for m in D.materials:
@@ -1283,7 +1300,7 @@ print('BOUNDS', mn, mx)
 print('PITCH x=%.2f z=%.2f w=%.2f l=%.2f y=%.2f' % (-cx * s, cy * s, PW * s, PL * s, -mn[2] * s))
 print('TRIS', sum(len(p.vertices) - 2 for p in target.data.polygons), 'MATS', len(target.data.materials))
 
-select_only([target, goals, screens], target)
+select_only([target, goals, screens, ribbon_score], target)
 props = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
 extra = {}
 if 'export_vertex_color' in props: extra['export_vertex_color'] = 'ACTIVE'

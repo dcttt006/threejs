@@ -3,8 +3,10 @@
 // The big screens in a stadium model (a node named 'StadiumScreens') show the
 // match: the clock in a purple block, the score in an orange and a white box,
 // the club logo on the left (img/logo2.png) and
-// the CPU shield on the right. Drawn on a canvas that is used as the texture
-// of the screens; redrawn only when the clock or the score changes.
+// the CPU shield on the right. A model can also have a small score panel in
+// the band between its tiers ('StadiumRibbonScore'): the score in an orange
+// and a white box, the clock on purple. Both are canvases used as textures,
+// redrawn only when the clock or the score changes.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -12,6 +14,8 @@ const STADIUM_SCREEN = (() => {
     const PURPLE = '#5c2db4', ORANGE = '#e88034', WHITE = '#f6f4f0', INK = '#282234', BLACK = '#08080c';
     const SERIF = '"Times New Roman", Times, serif';
     let canvas = null, ctx = null, texture = null, last = '';
+    const RW = 1024, RH = 234;                     // the band panel: 4.2 x 0.96 m
+    let rCanvas = null, rCtx = null, rTexture = null;
     let logo = null;                               // the club logo, once loaded
 
     const img = new Image();
@@ -27,6 +31,47 @@ const STADIUM_SCREEN = (() => {
         texture.encoding = THREE.sRGBEncoding;
         texture.flipY = false;                     // glTF UVs
         texture.anisotropy = 4;
+        rCanvas = document.createElement('canvas');
+        rCanvas.width = RW; rCanvas.height = RH;
+        rCtx = rCanvas.getContext('2d');
+        rTexture = new THREE.CanvasTexture(rCanvas);
+        rTexture.encoding = THREE.sRGBEncoding;
+        rTexture.flipY = false;
+        rTexture.anisotropy = 4;
+    }
+
+    // the band panel: [|0][|0][  00:00  ]
+    //   left block  black, white figure, a thin stripe on its left: purple over white
+    //   right block white, black figure, a thin stripe on its left: blue over yellow
+    //   the clock   white on purple
+    function drawRibbon(clock, s1, s2) {
+        const c = rCtx, sq = RH, gap = 6, stripe = 16;
+        c.fillStyle = BLACK; c.fillRect(0, 0, RW, RH);
+        c.fillStyle = '#111114'; c.fillRect(0, 0, sq, RH);
+        c.fillStyle = WHITE; c.fillRect(sq + gap, 0, sq, RH);
+        c.fillStyle = PURPLE; c.fillRect(2 * (sq + gap), 0, RW - 2 * (sq + gap), RH);
+        const bar = (x, top, bottom) => {
+            c.fillStyle = top; c.fillRect(x, 0, stripe, RH / 2);
+            c.fillStyle = bottom; c.fillRect(x, RH / 2, stripe, RH / 2);
+        };
+        bar(0, PURPLE, WHITE);
+        bar(sq + gap, '#1f5dff', '#f2c230');
+        const text = (str, cx, size, color) => {
+            c.save();
+            c.font = `bold ${size}px ${SERIF}`;
+            c.fillStyle = color;
+            c.textAlign = 'center';
+            c.textBaseline = 'alphabetic';
+            const capH = c.measureText('0').actualBoundingBoxAscent || size * 0.66;
+            c.translate(cx, (RH + capH) / 2);
+            c.scale(0.8, 1);
+            c.fillText(str, 0, 0);
+            c.restore();
+        };
+        text(String(s1), stripe + (sq - stripe) / 2, 190, WHITE);
+        text(String(s2), sq + gap + stripe + (sq - stripe) / 2, 190, '#08080c');
+        text(clock, 2 * (sq + gap) + (RW - 2 * (sq + gap)) / 2, 210, WHITE);
+        rTexture.needsUpdate = true;
     }
 
     // the screen's lettering: Times Bold, narrowed and set tight, centred in a box
@@ -101,18 +146,22 @@ const STADIUM_SCREEN = (() => {
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
+        drawRibbon(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
     function attach(root) {
         const node = root && root.getObjectByName('StadiumScreens');
-        if (!node) return false;
+        const band = root && root.getObjectByName('StadiumRibbonScore');
+        if (!node && !band) return false;
         ensure();
-        node.traverse((c) => {
+        const use = (n, tex) => n && n.traverse((c) => {
             if (!c.isMesh) return;
             const mats = Array.isArray(c.material) ? c.material : [c.material];
-            mats.forEach((m) => { m.map = texture; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
+            mats.forEach((m) => { m.map = tex; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
         });
+        use(node, texture);
+        use(band, rTexture);
         last = '';
         redraw();
         return true;
