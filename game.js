@@ -12,7 +12,9 @@ function initThree() {
 
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         // cap pixel ratio harder — Retina at 2× quadruples GPU work for marginal gain
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        // a phone's screen is small and dense: at 1.5 the stadium (and the
+        // text on its screens) came out soft, so touch devices get 2
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) ? 2 : 1.5));
         renderer.setSize(window.innerWidth, window.innerHeight);
         // Real-time shadows are intentionally OFF. With them on, the corner
         // spotlight projects player + stadium-mesh silhouettes onto the pitch

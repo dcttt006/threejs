@@ -10,7 +10,11 @@
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
-    const W = 1024, H = 576;                       // the screens are 8 x 4.5 m
+    // Layouts are drawn in these sizes (16:9 and the band's 4.4:1) and squeezed
+    // onto power-of-two canvases, which the GPU can shrink smoothly (mipmaps):
+    // without that a far screen breaks up into a few flickering pixels.
+    const W = 1024, H = 576;                       // the big screens are 16:9
+    const CW = 1024, CH = 512, RCH = 256;
     const PURPLE = '#5c2db4', ORANGE = '#e88034', WHITE = '#f6f4f0', INK = '#282234', BLACK = '#08080c';
     const SERIF = '"Times New Roman", Times, serif';
     let canvas = null, ctx = null, texture = null, last = '';
@@ -24,20 +28,21 @@ const STADIUM_SCREEN = (() => {
 
     function ensure() {
         if (canvas) return;
-        canvas = document.createElement('canvas');
-        canvas.width = W; canvas.height = H;
-        ctx = canvas.getContext('2d');
-        texture = new THREE.CanvasTexture(canvas);
-        texture.encoding = THREE.sRGBEncoding;
-        texture.flipY = false;                     // glTF UVs
-        texture.anisotropy = 4;
-        rCanvas = document.createElement('canvas');
-        rCanvas.width = RW; rCanvas.height = RH;
-        rCtx = rCanvas.getContext('2d');
-        rTexture = new THREE.CanvasTexture(rCanvas);
-        rTexture.encoding = THREE.sRGBEncoding;
-        rTexture.flipY = false;
-        rTexture.anisotropy = 4;
+        let aniso = 8;
+        try { if (typeof renderer !== 'undefined' && renderer) aniso = renderer.capabilities.getMaxAnisotropy(); } catch (_) {}
+        const make = (w, h, sy) => {
+            const cv = document.createElement('canvas');
+            cv.width = w; cv.height = h;
+            const cx = cv.getContext('2d');
+            cx.setTransform(1, 0, 0, sy, 0, 0);    // draw in layout units
+            const tex = new THREE.CanvasTexture(cv);
+            tex.encoding = THREE.sRGBEncoding;
+            tex.flipY = false;                     // glTF UVs
+            tex.anisotropy = aniso;                // sharp when seen at an angle
+            return [cv, cx, tex];
+        };
+        [canvas, ctx, texture] = make(CW, CH, CH / H);
+        [rCanvas, rCtx, rTexture] = make(RW, RCH, RCH / RH);
     }
 
     // the band panel: [|0][|0][  00:00  ]

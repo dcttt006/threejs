@@ -772,6 +772,7 @@ wall_text('Corner_Sign', 'lotto Park', (sign.x, sign.y, sign.z), math.atan2(diag
 # a pale trim on top and the lamps tucked under it.
 FASCIA_R, FASCIA_Z0, FASCIA_Z1 = 15.5, 24.38, ROOF_Z - 0.16
 SCREEN_DROP = 4.9          # the screens hang this far below their old place, into the game camera's view
+SCREEN_GROW = 1.35         # and are this much larger than the original 8 x 4.5 m
 D.materials['M_FasciaDark'].node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.10, 0.14, 0.56, 1)
 fascia = D.objects['Roof_InnerFascia']
 bm = bmesh.new()
@@ -957,6 +958,15 @@ for side in ('NorthWest', 'SouthEast'):
     move = off.normalized() * (16.4 - off.length) + Vector((0, 0, -SCREEN_DROP))      # low enough for the game camera to see it
     for o in [o for o in D.objects if o.name.startswith('LEDScreen_' + side)]:
         o.location += move
+    bpy.context.view_layer.update()
+    # a third larger, so it can be read from the game camera (on a phone too);
+    # the top edge stays where it hangs from, it grows down and sideways
+    face_o = D.objects['LEDScreen_' + side]
+    pts = [face_o.matrix_world @ v.co for v in face_o.data.vertices]
+    pivot = Vector((sum(p.x for p in pts) / len(pts), sum(p.y for p in pts) / len(pts), max(p.z for p in pts)))
+    grow = Matrix.Translation(pivot) @ Matrix.Scale(SCREEN_GROW, 4) @ Matrix.Translation(-pivot)
+    for o in [o for o in D.objects if o.name.startswith('LEDScreen_' + side) and '_Hanger' not in o.name and o.type == 'MESH']:
+        o.matrix_world = grow @ o.matrix_world
     bpy.context.view_layer.update()
     for o in [o for o in D.objects if o.name.startswith('LEDScreen_' + side + '_Hanger')]:
         inv = o.matrix_world.inverted()
