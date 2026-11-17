@@ -97,7 +97,7 @@ function load(reframe) {
     if (!stadium || busy) return;
     busy = true;
     status.className = ''; status.textContent = 'laden…';
-    new THREE.GLTFLoader().load(encodeURI(stadium.file) + '?t=' + Date.now(), (gltf) => {
+    new THREE.GLTFLoader().load(encodeURI(stadium.file) + (stadium.file.includes('?') ? '&' : '?') + 't=' + Date.now(), (gltf) => {
         if (model) scene.remove(model);
         model = gltf.scene;
         // a stadium with its (night) light baked in is shown unlit, as the game draws it
