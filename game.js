@@ -1111,7 +1111,7 @@ function movePlayer(player, k) {
     player.userData.inZ = Math.abs(inZ) > 0.35 ? Math.sign(inZ) : 0;
     let top = (carrier === player ? DRIBBLE_SPEED : RUN_SPEED) * analog;
     if (sprintFor(player, pressed(k.sprint || []) && inLen > 0)) top *= SPRINT_MULT;
-    if (player.userData.charging && carrier === player) top *= 0.6;   // set yourself for the shot
+    if (player.userData.charging && carrier === player) top *= 0.4;   // set yourself for the shot (you don't run on into the keeper)
     if (inLen > 0) {
         // remember the direction faced, for dribbling and aiming
         player.userData.aimX = inX / inLen;
@@ -1167,9 +1167,12 @@ function movePlayer(player, k) {
 // One field player at a time carries the ball. It rolls just in front of him,
 // in the direction he faces, and keeps its speed when he passes or shoots.
 let carrier = null;
+let lastCarrierSeen = null;        // to note the moment someone gets the ball
 const CARRY_REACH = PLAYER_SIZE / 2 + BALL_SIZE + 1.1;   // how close you must get to take it
 const CARRY_DIST  = PLAYER_SIZE / 2 + BALL_SIZE + 0.45;  // where it sits in front of you
 const STEAL_REACH = PLAYER_SIZE / 2 + BALL_SIZE + 0.5;   // a challenger this close takes it
+const CONTROL_SHIELD = 24;        // ticks a player who picks up a loose ball can't be robbed
+const INTERCEPT_SPEED = 1.9;      // a ball slower than this a player in its path can cut out
 
 function facingOf(p) {
     const u = p.userData;
@@ -1206,7 +1209,7 @@ function updateCarry() {
         for (const rival of field) {
             if (rival.team === carrier.team || !free(rival) || ballDistTo(rival) >= STEAL_REACH) continue;
             const human = rival === controlledP1 || rival === controlledP2;
-            if (Math.random() < (human ? 0.09 : aiLevel().steal)) {
+            if (Math.random() < (human ? 0.07 : aiLevel().steal)) {
                 carrier.userData.cooldown = 36;
                 carrier = rival;
                 rival.userData.shield = 45;
@@ -1224,20 +1227,32 @@ function updateCarry() {
     if (!carrier && low) {
         const fast = Math.hypot(ball.velocity.x, ball.velocity.z) > 1.2;
         let best = null, bestD = Infinity;
+        const ballSpeed = Math.hypot(ball.velocity.x, ball.velocity.z);
         field.forEach(p => {
             if (!free(p)) return;
             let reach = CARRY_REACH;
             if (fast && lastKick) {
                 if (lastKick.kind === 'shot' && p.team === lastKick.team) return;
-                if (!(lastKick.kind === 'pass' && lastKick.to === p)) reach = CARRY_REACH * 0.6;
+                // someone the ball wasn't meant for has to be close to it; a pass
+                // that runs into him he can still cut out (it doesn't bounce off
+                // him like a wall), a hard shot he can only block
+                if (!(lastKick.kind === 'pass' && lastKick.to === p)) {
+                    reach = ballSpeed < INTERCEPT_SPEED ? Math.max(CARRY_REACH * 0.6, PLAYER_SIZE / 2 + BALL_SIZE + 0.3) : CARRY_REACH * 0.6;
+                }
             }
             const d = ballDistTo(p);
             if (d < reach && d < bestD) { bestD = d; best = p; }
         });
         carrier = best;
-        if (carrier) { passTarget = null; lastKick = null; shotLive = null; }
+        if (carrier) {
+            passTarget = null; lastKick = null; shotLive = null;
+            // a moment to get it under control before anyone can take it off him
+            carrier.userData.shield = Math.max(carrier.userData.shield || 0, CONTROL_SHIELD);
+        }
     }
 
+    if (carrier && carrier !== lastCarrierSeen) carrier.userData.gotAt = performance.now();
+    lastCarrierSeen = carrier;
     updateBallCall();                 // a teammate who was asked for it plays it now
     if (!carrier) return;
     const f = facingOf(carrier);
@@ -1336,8 +1351,15 @@ function fireShot(player, power, charge01, high) {
     const f = facingOf(player);
     const goalX = player.team === 1 ? FIELD_W / 2 : -FIELD_W / 2;
     const reach = GOAL_W * 0.45;                               // just inside the post
+    // the keeper right in front of you and no corner picked: round him, into
+    // the side of the goal he isn't covering (a shot into his chest from two
+    // yards used to be the only option)
+    const keeper = (player.team === 1 ? team2Players : team1Players)[0];
+    const kClose = keeper && Math.hypot(keeper.position.x - ball.position.x, keeper.position.z - ball.position.z) < 9
+        && Math.abs(keeper.position.x - goalX) < Math.abs(ball.position.x - goalX);
     const aimZ = Math.abs(f.z) > 0.3
         ? Math.sign(f.z) * reach
+        : kClose ? (keeper.position.z > 0 ? -reach : reach)
         : Math.max(-reach * 0.5, Math.min(reach * 0.5, ball.position.z * 0.5));
     const dx = goalX - ball.position.x, dz = aimZ - ball.position.z;
     const len = Math.hypot(dx, dz) || 1;
@@ -1360,7 +1382,7 @@ function fireShot(player, power, charge01, high) {
     player.userData.kickT = 0.28;           // swing the leg (animatePlayers)
     if (carrier === player) carrier = null;
     passTarget = null;
-    lastKick = { by: player, team: player.team, kind: 'shot', high: !!high };
+    lastKick = { by: player, team: player.team, kind: 'shot', high: !!high, at: performance.now() };
     shotTaken(player.team);
     // aftertouch: what is held now aimed the shot, a fresh up/down curls it
     curl = { by: player, t: CURL_TICKS, z0: player.userData.inZ || 0, curled: false };
@@ -1575,9 +1597,15 @@ function updateAI() {
 // How quick, far and fast he goes comes from LEVELS (game.core.js): the
 // computer's keeper plays at the chosen level, every other keeper at medium.
 const KEEPER_REACH = PLAYER_SIZE / 2 + BALL_SIZE + 0.2;   // hands, standing
-const KEEPER_HOLD_MIN = 2000;     // ms with the ball in his hands before he plays it
-const KEEPER_HOLD_MAX = 3500;
-const KEEPER_CALL_MIN = 1500;     // asked for it: never sooner than this
+// How long he holds it before he plays it out. While he has it the game
+// waits, so it is short: a saved shot a little longer, a loose ball he picks
+// up or takes off an attacker's foot is played on almost at once.
+const KEEPER_HOLD_MIN = 900;      // ms, after a save
+const KEEPER_HOLD_MAX = 1600;
+const KEEPER_QUICK_MIN = 450;     // ms, a loose ball or a ball taken off an attacker
+const KEEPER_QUICK_MAX = 850;
+const KEEPER_CALL_MIN = 500;      // asked for it: never sooner than this
+const KEEPER_DIVE_TICKS = 26;     // he only goes down for a ball that is this close to arriving
 
 function keeperSkill(k) {
     const cpuSide = STATE.mode === 'cpu' && k.team !== STATE.p1.team;
@@ -1596,13 +1624,15 @@ function updateKeeper(k) {
         // with the ball in his hands he takes a few steps out of his goal
         steer(k, out * 0.07, -k.position.z * 0.004, 0.01);
     } else {
-        // 1 — is a shot coming? where will it cross my line?
+        // 1 — is a shot coming? where will it cross my line, and when?
+        // A ball his own side played (a pass back) is no shot: he just collects it.
         const vx = ball.velocity.x, vz = ball.velocity.z;
-        const incoming = -vx * out > 0.6 && carrier === null;
-        let shotZ = null;
+        const ownBall = !!(lastKick && lastKick.team === k.team);
+        const incoming = -vx * out > 0.6 && carrier === null && !ownBall;
+        let shotZ = null, arrive = Infinity;
         if (incoming) {
             const t = (k.position.x - ball.position.x) / vx;
-            if (t > 0 && t < 70) shotZ = ball.position.z + vz * t;
+            if (t > 0 && t < 70) { shotZ = ball.position.z + vz * t; arrive = t; }
         }
 
         let targetX, targetZ, top;
@@ -1616,11 +1646,14 @@ function updateKeeper(k) {
             targetX = k.position.x;
             // once he has dived he is committed: a ball that curls late beats him
             targetZ = u.diveT > 0 && u.diveAt !== undefined ? u.diveAt : shotZ;
-            top = u.react > u.reactAt ? skill.lunge * (highShot ? 0.85 : 1) : 0;
-            // he goes down for anything that isn't straight at him, as soon as
-            // he has read it; whether he gets there depends on his level
+            const moving = u.react > u.reactAt;
+            // a ball still far off: he gets across into its line, no lunge yet
+            top = !moving ? 0 : arrive > 40 ? skill.shuffle * 1.3 : skill.lunge * (highShot ? 0.85 : 1);
+            // he goes down for anything that isn't straight at him, once he is
+            // moving and the ball is nearly there; whether he gets there depends
+            // on his level
             const gap = shotZ - k.position.z;
-            if (u.react >= 4 && Math.abs(gap) > 1.4 && !(u.diveT > 0)) {
+            if (moving && arrive < KEEPER_DIVE_TICKS && Math.abs(ball.position.x - k.position.x) < 24 && Math.abs(gap) > 1.4 && !(u.diveT > 0)) {
                 u.diveT = 0.6;
                 u.diveAt = shotZ;
                 u.diveX = 0;
@@ -1662,9 +1695,11 @@ function updateKeeper(k) {
     const dz = ball.position.z - k.position.z;
     const d2 = dx*dx + dz*dz;
     // a dive stretches the reach; an attacker dribbling in close is only
-    // robbed when he walks right into the keeper
+    // robbed when he walks right into the keeper, and one winding up a shot
+    // only when the ball all but touches him (he used to take it off the foot
+    // of anyone charging a shot near the goal, before the shot was hit)
     const reach = carrier
-        ? KEEPER_REACH * 0.7
+        ? KEEPER_REACH * (carrier.userData.charging ? 0.35 : 0.5)
         : KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive : 0);
     const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
     // a high ball (a high shot): held when it comes straight at him, tipped away
@@ -1673,12 +1708,33 @@ function updateKeeper(k) {
     const highBall = !carrier && ball.position.y >= GOAL_H * 0.75 && ball.position.y < GOAL_H + 0.6;
     // up there a dive gains him a bit over half as much as low down
     const highReach = KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive * 0.58 : 0);
-    const catchable = ball.position.y < GOAL_H * 0.75
-        || (highBall && d2 < KEEPER_REACH * KEEPER_REACH && speed < 1.6);
+    // a ball already past him and moving away can't be gathered any more
+    const goingAway = !carrier && speed > 0.4 && (ball.velocity.x * dx + ball.velocity.z * dz) > 0;
+    const catchable = !goingAway && (ball.position.y < GOAL_H * 0.75
+        || (highBall && d2 < KEEPER_REACH * KEEPER_REACH && speed < 1.6));
+
+    // a shot struck from right in front of him: it is a block or it is past him,
+    // he has no time to gather it. Straight at him he gets a body to it and it
+    // rebounds; a yard to the side and it is by him (only a dive can reach it)
+    const freshShot = !carrier && !u.holdingBall && lastKick && lastKick.kind === 'shot' && lastKick.team !== k.team
+        && performance.now() - (lastKick.at || 0) < 170 && speed > 0.8;
+    if (freshShot && d2 < reach * reach && ball.position.y < GOAL_H * 0.75) {
+        const lat = Math.abs(-dx * ball.velocity.z / speed + dz * ball.velocity.x / speed);
+        if (lat < 1.3) {
+            knockBall(out * 0.5, (Math.sign(dz) || 1) * 0.85, Math.min(1.0, speed * 0.4), 0.25);
+            ball.position.x = k.position.x + out * 1.8;
+            u.parryT = 20;
+            curl = null;
+            lastKick = null;
+            shotSaved(k.team);
+            return;
+        }
+        if (!(u.diveT > 0 && u.react > u.reactAt)) return;      // past him
+    }
 
     // a hard shot taken at full stretch is pushed away, not held
     const stretchedLow = catchable && !highBall && d2 < reach * reach && d2 > KEEPER_REACH * KEEPER_REACH && speed > 1.7;
-    const stretchedHigh = highBall && !catchable && d2 < highReach * highReach;
+    const stretchedHigh = highBall && !goingAway && !catchable && d2 < highReach * highReach;
     if (!carrier && !u.holdingBall && (stretchedLow || stretchedHigh)) {
         const side = Math.sign(dz) || 1;
         knockBall(out * 0.35, side * 0.9, Math.min(1.2, speed * 0.45), stretchedHigh ? 0.1 : 0.3);
@@ -1693,13 +1749,16 @@ function updateKeeper(k) {
 
     // begin holding the moment the ball touches the keeper
     if (catchable && d2 < reach * reach && !u.holdingBall) {
+        const saved = !carrier && !!(lastKick && lastKick.kind === 'shot' && lastKick.team !== k.team);
         if (carrier) carrier.userData.cooldown = 40;
         carrier = null;
         shotSaved(k.team);
         u.holdingBall = true;
         u.holdStart = performance.now();
-        // like a real keeper he takes his time: two to three and a half seconds
-        u.holdFor = KEEPER_HOLD_MIN + Math.random() * (KEEPER_HOLD_MAX - KEEPER_HOLD_MIN);
+        // a save: a moment to gather himself; anything else he plays on quickly
+        u.holdFor = saved
+            ? KEEPER_HOLD_MIN + Math.random() * (KEEPER_HOLD_MAX - KEEPER_HOLD_MIN)
+            : KEEPER_QUICK_MIN + Math.random() * (KEEPER_QUICK_MAX - KEEPER_QUICK_MIN);
         u.calledBy = null;
     }
 
@@ -1780,12 +1839,31 @@ function updateBotFieldPlayer(p) {
     const enemyHasBall = owner && owner.team !== p.team;
 
     // am I the one who goes for the ball? (a small margin stops two players swapping every tick)
+    // A human teammate who is nearer only counts when he is going for it himself,
+    // otherwise the ball would lie there while he does something else.
     const myD = Math.hypot(perX - p.position.x, perZ - p.position.z);
-    const iAmFirst = mates.every(m => Math.hypot(perX - m.position.x, perZ - m.position.z) > myD - 1.5);
+    const iAmFirst = mates.every(m => {
+        const dm = Math.hypot(perX - m.position.x, perZ - m.position.z);
+        if (dm > myD - 1.5) return true;
+        if (m !== controlledP1 && m !== controlledP2) return false;
+        const toward = ((m.userData.vx || 0) * (perX - m.position.x) + (m.userData.vz || 0) * (perZ - m.position.z)) / (dm || 1);
+        return dm > 7 && toward < 0.12;
+    });
+    // a keeper with the ball in his hands: nobody crowds him
+    const keeperHolds = team1Players[0]?.userData.holdingBall ? 1 : team2Players[0]?.userData.holdingBall ? 2 : 0;
+    const slot = side.indexOf(p) % 2 ? 1 : -1;            // which flank this player takes
 
     let targetX, targetZ, chasing = false;
 
-    if (passTarget && passTarget.to === p) {
+    if (keeperHolds && keeperHolds !== p.team) {
+        // their keeper has it: drop off to the edge of their half, spread out
+        targetX = enemyGoalX - 34 * goalSign;
+        targetZ = slot * 13 + perZ * 0.2;
+    } else if (keeperHolds) {
+        // our keeper has it: get free for his throw, wide and up the pitch
+        targetX = ownGoalX + 32 * goalSign;
+        targetZ = slot * 19;
+    } else if (passTarget && passTarget.to === p) {
         // a pass is on its way to me: meet it
         targetX = ball.position.x + ball.velocity.x * 6;
         targetZ = ball.position.z + ball.velocity.z * 6;
@@ -1810,8 +1888,9 @@ function updateBotFieldPlayer(p) {
                 targetZ = perZ;
                 chasing = true;
             } else if (inOurDefendingThird) {
-                targetX = ownGoalX + 8 * goalSign;
-                targetZ = perZ * 0.12 - Math.sign(perZ || 1) * 5;
+                // between the ball and our goal, moving across with it
+                targetX = ownGoalX + (perX - ownGoalX) * 0.45;
+                targetZ = perZ * 0.6;
             } else {
                 targetX = perX - 8 * goalSign;
                 targetZ = perZ;
@@ -1827,12 +1906,21 @@ function updateBotFieldPlayer(p) {
         const free = enemies.filter(e => e !== owner);
         const mark = free.length ? nearestTo(free, ownGoalX, 0).p : null;
         if (mark) {
-            targetX = mark.position.x + (ownGoalX - mark.position.x) * 0.22;
-            targetZ = mark.position.z * 0.8;
+            // goal side of him, leaning towards the ball
+            targetX = mark.position.x + (ownGoalX - mark.position.x) * 0.22 + (perX - mark.position.x) * 0.15;
+            targetZ = mark.position.z * 0.75 + perZ * 0.2;
         } else {
             targetX = ownGoalX + (perX - ownGoalX) * 0.4;
             targetZ = perZ * 0.4;
         }
+    }
+
+    // nobody stands still on his spot: without the ball, off the ball, he keeps
+    // adjusting a few units around it, like a player watching the game
+    if (!chasing && !haveBall) {
+        u.drift = (u.drift || Math.random() * 6.28) + 0.018;
+        targetX += Math.sin(u.drift) * 3.2;
+        targetZ += Math.cos(u.drift * 0.77) * 3.2;
     }
 
     const tdx = targetX - p.position.x;
@@ -1885,9 +1973,9 @@ function updateBotFieldPlayer(p) {
 
     if (!haveBall) return;
 
-    // shoot when in range
+    // shoot when in range; close in, always, before running into the keeper
     const shootRange = Math.abs(enemyGoalX - p.position.x);
-    if (shootRange < lvl.shootFrom && Math.random() < lvl.shootChance) {
+    if (shootRange < lvl.shootFrom && (Math.random() < lvl.shootChance || shootRange < 15)) {
         const keeper = (p.team === 1 ? team2Players[0] : team1Players[0]);
         // aim for the side the keeper isn't, with a human-sized miss
         const sideZ = keeper ? Math.sign(-keeper.position.z || (Math.random() - 0.5)) : 1;
@@ -1907,12 +1995,14 @@ function updateBotFieldPlayer(p) {
         carrier = null;
         passTarget = null;
         curl = null;
-        lastKick = { by: p, team: p.team, kind: 'shot' };
+        lastKick = { by: p, team: p.team, kind: 'shot', at: performance.now() };
         shotTaken(p.team);                                   // the full-time statistics
         return;
     }
 
-    // pass to a teammate who is free and further forward (more often under pressure)
+    // pass to a teammate who is free and further forward (more often under pressure),
+    // after taking the ball under control first: a quarter of a second at least
+    if (performance.now() - (u.gotAt || 0) < 250) return;
     const pressure = nearestTo(enemies, p.position.x, p.position.z).d;
     const myToGoal = Math.abs(enemyGoalX - p.position.x);
     for (const m of mates) {
@@ -2118,13 +2208,17 @@ function updateBall() {
             return;
         }
 
-        // BLOCK: bounce only when moving toward this player
-        const approaching = (ball.velocity.x * dx + ball.velocity.z * dz) < 0;
-        if (approaching) {
+        // BLOCK: only when moving toward this player. The ball comes off him like
+        // off a body: a glancing ball carries on, one that hits him square drops
+        // near his feet (it used to fly back half as fast as it came, and pinball
+        // around the box)
+        const nx = dx / d, nz = dz / d;
+        const vn = ball.velocity.x * nx + ball.velocity.z * nz;
+        if (vn < 0) {
             curl = null;
-            const bounce = Math.max(0.18, Math.min(0.7, ballSpeed * 0.55));
-            ball.velocity.x = (dx / d) * bounce;
-            ball.velocity.z = (dz / d) * bounce;
+            const RESTITUTION = 0.3, KEEP = 0.75;
+            ball.velocity.x = (ball.velocity.x - (1 + RESTITUTION) * vn * nx) * KEEP;
+            ball.velocity.z = (ball.velocity.z - (1 + RESTITUTION) * vn * nz) * KEEP;
             // only pull DOWN floaty/slow airborne balls — fast shots keep their arc
             if (airborne && ballSpeed < 1.2) {
                 ball.velocity.y = Math.min(ball.velocity.y, -0.15);
