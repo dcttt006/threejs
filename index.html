@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=131">
+    <link rel="stylesheet" href="styles.css?v=132">
 </head>
 <body>
     <!-- shared icons -->
@@ -69,6 +69,10 @@
                 <button id="launch-cta" class="home__btn home__btn--gold" type="button">
                     <span class="home__btn-label">2 spelers</span>
                     <span class="home__btn-meta">Eén toetsenbord</span>
+                </button>
+                <button id="launch-online" class="home__btn" type="button">
+                    <span class="home__btn-label">Online</span>
+                    <span class="home__btn-meta">Tegen een vriend</span>
                 </button>
                 <button id="launch-cpu" class="home__btn" type="button">
                     <span class="home__btn-label">Tegen de computer</span>
@@ -290,6 +294,7 @@
                 <div class="pause-overlay__title">Pauze</div>
                 <div class="pause-overlay__sub">Druk op <kbd>P</kbd> of <kbd>Esc</kbd> om verder te spelen.</div>
                 <button id="pause-resume" class="btn" type="button">Verder spelen</button>
+                <button id="pause-leave" class="btn btn--line" type="button" hidden>Wedstrijd verlaten</button>
             </div>
         </div>
 
@@ -392,6 +397,90 @@
         </main>
     </div>
 
+    <!-- ============ ONLINE: log in, friends, a code, waiting (game.online.js) ============ -->
+    <div id="online-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" id="online-back">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg><span>Terug</span>
+            </button>
+            <div class="o-me" id="online-me" hidden>
+                <span>Ingelogd als</span><strong id="online-me-name"></strong>
+                <button type="button" class="o-me__out" id="online-logout">Uitloggen</button>
+            </div>
+            <span class="topbar__brand" id="online-brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <!-- log in or make an account: a username and a password, no email -->
+            <section class="o-view o-center" id="online-login">
+                <h1 class="title">Online spelen</h1>
+                <div class="seg o-seg" role="tablist" aria-label="Inloggen of account maken">
+                    <button class="seg__btn active" type="button" role="tab" aria-selected="true" data-auth="in">Inloggen</button>
+                    <button class="seg__btn" type="button" role="tab" aria-selected="false" data-auth="up">Account maken</button>
+                </div>
+                <form class="o-form" id="online-auth-form" novalidate>
+                    <label class="field" for="online-user">
+                        <span class="field__label">Gebruikersnaam</span>
+                        <input id="online-user" class="field__input" type="text" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="bijvoorbeeld spits9">
+                    </label>
+                    <label class="field" for="online-pass">
+                        <span class="field__label">Wachtwoord</span>
+                        <input id="online-pass" class="field__input" type="password" autocomplete="current-password" placeholder="minstens 6 tekens">
+                    </label>
+                    <p class="o-msg" id="online-auth-msg" role="alert" hidden></p>
+                    <button class="btn" type="submit" id="online-auth-go">Inloggen</button>
+                    <p class="o-hint">Je hebt alleen een gebruikersnaam en een wachtwoord nodig. Geen e-mail.</p>
+                </form>
+            </section>
+
+            <!-- friends, as a league table with your results against each other -->
+            <section class="o-view o-page" id="online-friends" hidden>
+                <div class="o-head">
+                    <h1 class="title">Vrienden</h1>
+                    <form class="o-add" id="online-add-form">
+                        <input id="online-add" class="field__input" type="text" maxlength="16" placeholder="Gebruikersnaam" aria-label="Gebruikersnaam van je vriend" autocomplete="off" autocapitalize="none" spellcheck="false">
+                        <button class="btn" type="submit">Verzoek sturen</button>
+                    </form>
+                </div>
+                <p class="o-msg" id="online-add-msg" role="status" hidden></p>
+                <div class="o-box o-box--gold" id="online-requests" hidden></div>
+                <div class="o-box" id="online-list"></div>
+                <div class="o-foot">
+                    <button class="btn btn--line" type="button" id="online-to-code">Spelen met een code <span class="btn__meta">zonder vriendschap</span></button>
+                </div>
+            </section>
+
+            <!-- make a code, or type the one you got -->
+            <section class="o-view o-center" id="online-code" hidden>
+                <h1 class="title">Spelen met een code</h1>
+                <p class="lead">Maak een code en stuur hem naar je vriend, of typ de code die je kreeg.</p>
+                <div class="o-form">
+                    <button class="btn" type="button" id="online-make">Code maken</button>
+                    <div class="o-or">of</div>
+                    <label class="field" for="online-code-in">
+                        <span class="field__label">Code van je vriend</span>
+                        <input id="online-code-in" class="field__input o-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000" autocomplete="off">
+                    </label>
+                    <p class="o-msg" id="online-code-msg" role="status" hidden></p>
+                    <button class="btn btn--line" type="button" id="online-join" disabled>Meedoen</button>
+                </div>
+            </section>
+
+            <!-- waiting for the other one -->
+            <section class="o-view o-center" id="online-wait" hidden>
+                <h1 class="title" id="online-wait-title">Wachten op je vriend</h1>
+                <div class="o-vs">
+                    <div class="o-team o-team--red" id="online-wait-red"></div>
+                    <b>tegen</b>
+                    <div class="o-team o-team--blue o-team--wait" id="online-wait-blue">…</div>
+                </div>
+                <p class="lead" id="online-wait-lead" aria-live="polite"></p>
+                <div class="o-code" id="online-wait-code" aria-label="Code"></div>
+                <button class="btn btn--line" type="button" id="online-copy">Code kopiëren</button>
+            </section>
+        </main>
+    </div>
+
     <!-- ============ STADIUM PICKER ============ -->
     <div id="stadium-screen" class="screen menu">
         <header class="topbar">
@@ -463,17 +552,32 @@
         </main>
     </div>
 
+    <!-- a friend challenges you, wherever you are in the menus (game.online.js) -->
+    <div class="o-modal-bg" id="online-invite" role="dialog" aria-modal="true" aria-labelledby="online-invite-title" hidden>
+        <div class="o-modal">
+            <p class="o-h">Uitdaging</p>
+            <p class="o-big" id="online-invite-title"></p>
+            <p class="o-note" id="online-invite-sub"></p>
+            <div class="o-modal__btns">
+                <button class="o-sbtn" type="button" id="online-invite-yes">Accepteren</button>
+                <button class="o-sbtn o-sbtn--slate" type="button" id="online-invite-no">Weigeren</button>
+            </div>
+            <div class="o-modal__time"><i id="online-invite-time"></i></div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=152"></script>
+    <script src="game.core.js?v=153"></script>
     <script src="game.screen.js?v=11"></script>
     <script src="game.stadium.js?v=133"></script>
-    <script src="game.ui.js?v=126"></script>
+    <script src="game.ui.js?v=127"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
-    <script src="game.js?v=133"></script>
+    <script src="game.js?v=134"></script>
     <script src="game.pens.js?v=2"></script>
+    <script src="game.online.js?v=2"></script>
 </body>
 </html>

@@ -43,7 +43,7 @@ function switchToTouch(e) {
     if (IS_TOUCH || e.pointerType !== 'touch') return;
     IS_TOUCH = true;
     touchMode();
-    if (typeof setMode === 'function' && STATE.screen !== 'playing') setMode('cpu');
+    if (typeof setMode === 'function' && STATE.screen !== 'playing' && STATE.mode !== 'online') setMode('cpu');
     if (typeof bindTouch === 'function') bindTouch();
     document.removeEventListener('pointerdown', switchToTouch, true);
 }
@@ -55,6 +55,7 @@ function bindLaunch() {
     $('launch-cta').addEventListener('click', () => { setMode('duo'); goToSetup(); });
     $('launch-cpu').addEventListener('click', () => { setMode('cpu'); goToSetup(); });
     $('launch-stadium-pick').addEventListener('click', openStadiumPicker);
+    // the Online button is wired in game.online.js
     updateLaunchLevelLabel();
 
     // "Terug" in the top bar of the setup and toss screens
@@ -305,6 +306,8 @@ function callCoin(choice) {
 function bindOver() {
     $('play-again').addEventListener('click', (e) => {
         e.currentTarget.blur();
+        // online: ask your opponent for a rematch (game.online.js)
+        if (STATE.mode === 'online') { ONLINE.wantAgain(); return; }
         teardownGame();
         STATE.score1 = 0; STATE.score2 = 0;
         STATE.callerSide = STATE.mode === 'cpu' ? 'p1' : (Math.random() < 0.5 ? 'p1' : 'p2');
@@ -312,6 +315,7 @@ function bindOver() {
     });
     $('back-home').addEventListener('click', (e) => {
         e.currentTarget.blur();
+        if (STATE.mode === 'online') { ONLINE.quitToLobby(); return; }
         teardownGame();
         STATE.score1 = 0; STATE.score2 = 0;
         // collapse the history stack — going back from launch leaves the page
@@ -346,7 +350,8 @@ function startGame() {
         STATE.inputLocked = false;
         if (typeof PR_STATS !== 'undefined') PR_STATS.matchStart();     // statistics (game.stats.js)
         // started with the phone upright: wait until it is turned
-        if (IS_TOUCH && isPortrait()) togglePause(true);
+        // (online the match can't wait: the turn-your-phone notice is enough)
+        if (IS_TOUCH && isPortrait() && STATE.mode !== 'online') togglePause(true);
     });
 }
 
@@ -354,6 +359,8 @@ function startGame() {
 let pauseFreezeStart = 0;
 function togglePause(force) {
     if (STATE.screen !== 'playing') return;
+    // online there is no pause: the panel offers to leave instead (game.online.js)
+    if (STATE.mode === 'online') { ONLINE.togglePanel(force); return; }
     const next = (force === undefined) ? !STATE.paused : !!force;
     if (next === STATE.paused) return;
 
@@ -380,6 +387,7 @@ function bindPause() {
     if (btn) btn.addEventListener('click', (e) => { e.currentTarget.blur(); togglePause(); });
     const resume = $('pause-resume');
     if (resume) resume.addEventListener('click', (e) => { e.currentTarget.blur(); togglePause(false); });
+    // the panel's own leave button is wired in game.online.js
 
     // P or ESC anywhere during play
     document.addEventListener('keydown', (e) => {
@@ -471,7 +479,7 @@ function paintHud() {
     $('hud-p2-name').title = bluePlayer.name;
 
     // Key legends follow the keyboard instead: P1 (WASD) left, P2 (arrows) right.
-    const cpu = STATE.mode === 'cpu';
+    const cpu = STATE.mode === 'cpu' || STATE.mode === 'online';     // one person on this keyboard
     fillHudKeys($('hud-keys-p1'), STATE.p1, [
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
         [['Spatie'], 'schieten / tackle'],
@@ -485,7 +493,7 @@ function paintHud() {
         [['↑', 'Enter'], 'samen: hoog schot'],
         [['Shift'], 'passen / bal vragen'],
         [['Alt'], 'sprinten'],
-    ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
+    ], STATE.mode === 'online' ? 'online' : cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
 }
 
 // ----------- kickoff countdown -----------
@@ -644,7 +652,7 @@ function bindTouch() {
     // turning the phone upright mid-match pauses it
     if (window.matchMedia) {
         matchMedia('(orientation: portrait)').addEventListener?.('change', (e) => {
-            if (e.matches && STATE.screen === 'playing' && !STATE.inputLocked) {
+            if (e.matches && STATE.screen === 'playing' && !STATE.inputLocked && STATE.mode !== 'online') {
                 resetTouch();
                 togglePause(true);
             }

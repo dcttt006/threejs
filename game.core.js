@@ -7,14 +7,17 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v89-mobile-first (2026-11-16)';
+const GAME_BUILD = 'v90-online (2026-11-18)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
 // ----------- state -----------
 const STATE = {
     screen: 'loading',         // loading | launch | setup | coin | playing | over
-    mode: 'duo',               // duo (Hot-Seat) | cpu
+    mode: 'duo',               // duo (Hot-Seat) | cpu | online (game.online.js)
+    onlineRole: null,          // online: 'host' (red, runs the match) or 'guest' (blue, draws it)
+    onlineStadium: null,       // online: the host's stadium id
+    onlineElapsed: 0,          // online guest: the host's match clock, in seconds
     p1: { name: 'Speler 1', team: 1 },   // team: 1 = red, 2 = blue
     p2: { name: 'Speler 2', team: 2 },
     callerSide: 'p1',          // who calls heads/tails
@@ -313,6 +316,10 @@ function getSelectedStadium() {
 // the stadium a match is played in: a WK match goes to the World Cup stadium
 // (the one with World Cup screens, MetLife), otherwise the chosen one
 function matchStadium() {
+    if (typeof STATE !== 'undefined' && STATE.mode === 'online' && STATE.onlineStadium) {
+        const own = STADIUMS.find(s => s.id === STATE.onlineStadium);
+        if (own) return own;
+    }
     if (typeof STATE !== 'undefined' && STATE.wkMatch) {
         const wkStadium = STADIUMS.find(s => s.screen === 'wk' && s.file);
         if (wkStadium) return wkStadium;
@@ -326,7 +333,7 @@ function setSelectedStadium(id) {
 
 // ----------- DOM helpers -----------
 const $ = (id) => document.getElementById(id);
-const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen'];
+const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen','online-screen'];
 const SCREEN_TO_DOM = {
     loading: 'loading-screen',
     launch:  'launch-screen',
@@ -337,6 +344,7 @@ const SCREEN_TO_DOM = {
     stadium: 'stadium-screen',
     wk:      'wk-screen',
     wkhub:   'wk-hub-screen',
+    online:  'online-screen',
 };
 function showScreen(id) {
     screens.forEach(s => {
@@ -350,6 +358,7 @@ function showScreen(id) {
 
 function gotoScreen(target, { replace = false } = {}) {
     if (STATE.screen === 'playing' && target !== 'playing') teardownGame();
+    if (typeof ONLINE !== 'undefined') ONLINE.onScreen(target);
     if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); }
     STATE.screen = target;
     showScreen(SCREEN_TO_DOM[target] || (target + '-screen'));
@@ -361,6 +370,7 @@ function gotoScreen(target, { replace = false } = {}) {
 
 function navigateToFromPopState(target) {
     if (STATE.screen === 'playing' && target !== 'playing') teardownGame();
+    if (typeof ONLINE !== 'undefined') ONLINE.onScreen(target);
     if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); }
     STATE.screen = target;
     showScreen(SCREEN_TO_DOM[target] || (target + '-screen'));

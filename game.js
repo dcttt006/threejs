@@ -964,12 +964,17 @@ function animate(now) {
         return;
     }
 
-    if (!STATE.paused) {
+    // online, the guest doesn't play the match itself: it shows the host's (game.online.js)
+    const guest = typeof ONLINE !== 'undefined' && ONLINE.isGuest();
+    const host = typeof ONLINE !== 'undefined' && ONLINE.isHost();
+    if (guest) {
+        if (!STATE.paused) ONLINE.guestFrame();
+    } else if (!STATE.paused) {
         physicsAccum += frameDt;
         let safety = 5;
         while (physicsAccum >= PHYSICS_STEP && safety-- > 0) {
             physicsAccum -= PHYSICS_STEP;
-            gameTick();
+            if (host) ONLINE.step(); else gameTick();
         }
         if (safety <= 0) physicsAccum = 0;       // dropped frames — don't spiral
     } else {
@@ -1012,7 +1017,22 @@ function gameTick() {
         return;
     }
     if (!STATE.inputLocked && !STATE.scoring) {
-        if (STATE.mode === 'cpu') {
+        if (STATE.mode === 'online') {
+            // you, on this keyboard or phone, and your opponent's keys as they
+            // arrive over the network (game.online.js writes them as R_...)
+            movePlayer(controlledP1, {
+                up:    ['KeyW', 'ArrowUp'],
+                down:  ['KeyS', 'ArrowDown'],
+                left:  ['KeyA', 'ArrowLeft'],
+                right: ['KeyD', 'ArrowRight'],
+                sprint: ['ShiftLeft', 'ShiftRight'],
+            });
+            handleShoot(controlledP1, ['Space', 'Enter'], ['KeyW', 'ArrowUp']);
+            handlePass(controlledP1, ['KeyQ']);
+            movePlayer(controlledP2, { up: ['R_up'], down: ['R_down'], left: ['R_left'], right: ['R_right'], sprint: ['R_sprint'] });
+            handleShoot(controlledP2, ['R_shoot'], ['R_up', 'R_high']);
+            handlePass(controlledP2, ['R_pass']);
+        } else if (STATE.mode === 'cpu') {
             movePlayer(controlledP1, {
                 up:    ['KeyW', 'ArrowUp'],
                 down:  ['KeyS', 'ArrowDown'],
@@ -1145,10 +1165,12 @@ function movePlayer(player, k) {
     if (pressed(k.right)) inX += 1;
 
     // the on-screen stick (phones) is analogue: a small push walks, a full one runs
+    // (online the opponent's stick comes over the network: remoteStick)
     let analog = 1;
-    if (player === controlledP1 && typeof touchMove !== 'undefined' && touchMove.active) {
-        inX = touchMove.x;
-        inZ = touchMove.z;
+    const stick = player === controlledP1 ? (typeof touchMove !== 'undefined' ? touchMove : null) : player.userData.remoteStick;
+    if (stick && stick.active) {
+        inX = stick.x;
+        inZ = stick.z;
         analog = Math.min(1, Math.max(0.4, (Math.hypot(inX, inZ) - 0.18) / 0.55));
     }
 
@@ -2301,9 +2323,6 @@ function scoreGoal(scoringTeam) {
     if (shotLive && shotLive.team === scoringTeam) MATCH.onTarget[scoringTeam - 1]++;
     shotLive = null;
 
-    $('hud-s1').textContent = STATE.score1;
-    $('hud-s2').textContent = STATE.score2;
-
     // the ball comes to rest in the net
     const net = scoringTeam === 1 ? 1 : -1;               // red scores in the right-hand goal
     ball.position.x = net * (FIELD_W / 2 + 2.5);
@@ -2317,7 +2336,25 @@ function scoreGoal(scoringTeam) {
     lastKick = null;
     kickoffHold = null;
 
-    // who scored
+    showGoalFlash(scoringTeam);
+    if (STATE.mode === 'online') ONLINE.hostGoal(scoringTeam);
+
+    // golden goal in WK extra time: the first goal ends the match
+    if (STATE.goldenGoal) {
+        setTimeout(() => { if (STATE.screen === 'playing') endGame(); }, 1900);
+        return;
+    }
+
+    // the side that conceded kicks off, after everybody has jogged back (walkBack)
+    STATE.kickoffTeam = scoringTeam === 1 ? 2 : 1;
+    STATE.restartTicks = RESTART_TICKS;
+}
+
+// The word GOAL in the scorer's colour and the new score. Online the guest
+// shows it when the host says a goal went in.
+function showGoalFlash(scoringTeam) {
+    $('hud-s1').textContent = STATE.score1;
+    $('hud-s2').textContent = STATE.score2;
     const scorer = STATE.p1.team === scoringTeam ? STATE.p1 : STATE.p2;
     $('goal-flash-sub').textContent = scorer.name;
     const codes = hudCodes();
@@ -2334,20 +2371,20 @@ function scoreGoal(scoringTeam) {
     flash.style.animation = '';
 
     setTimeout(() => { flash.hidden = true; }, 1700);
-
-    // golden goal in WK extra time: the first goal ends the match
-    if (STATE.goldenGoal) {
-        setTimeout(() => { if (STATE.screen === 'playing') endGame(); }, 1900);
-        return;
-    }
-
-    // the side that conceded kicks off, after everybody has jogged back (walkBack)
-    STATE.kickoffTeam = scoringTeam === 1 ? 2 : 1;
-    STATE.restartTicks = RESTART_TICKS;
 }
 
 function updateTimer() {
     if (STATE.paused) return;
+    // online guest: the host's clock, and the host decides when it is full time
+    if (typeof ONLINE !== 'undefined' && ONLINE.isGuest()) {
+        const shown = Math.min(STATE.onlineElapsed || 0, STATE.gameDuration);
+        const clock = formatClock(shown);
+        $('hud-timer').textContent = clock;
+        if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.update(clock, STATE.score1, STATE.score2);
+        const left = STATE.gameDuration - shown;
+        $('hud-timer').classList.toggle('warning', left <= 10 && left > 0);
+        return;
+    }
     if (!STATE.gameStartTime) {
         $('hud-timer').textContent = formatClock(0);
         if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.update(formatClock(0), STATE.score1, STATE.score2);
@@ -2398,6 +2435,8 @@ function endGame() {
     // a WK match: record it, and the result screen leads back to the tournament
     if (typeof wkAfterMatch === 'function') wkAfterMatch();
     if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(true);       // statistics (game.stats.js)
+    // online: the host sends the result to the guest and keeps it (game.online.js)
+    if (STATE.mode === 'online') ONLINE.onEnd();
 
     gotoScreen('over');
 }
@@ -2405,6 +2444,7 @@ function endGame() {
 function teardownGame() {
     // left before full time (back button, menu): counted as a match not finished
     if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(false);
+    if (typeof ONLINE !== 'undefined') ONLINE.onTeardown();
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
     STATE.gameStartTime = null;
