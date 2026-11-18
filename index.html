@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=132">
+    <link rel="stylesheet" href="styles.css?v=133">
 </head>
 <body>
     <!-- shared icons -->
@@ -466,6 +466,24 @@
                 </div>
             </section>
 
+            <!-- what do you play: a match or a shoot-out -->
+            <section class="o-view o-center" id="online-pick" hidden>
+                <h1 class="title">Wat spelen jullie?</h1>
+                <p class="lead" id="online-pick-lead"></p>
+                <div class="o-kinds">
+                    <button class="btn btn--line" type="button" data-kind="match">Wedstrijd <span class="btn__meta">90 seconden</span></button>
+                    <button class="btn btn--line" type="button" data-kind="pens">Strafschoppen <span class="btn__meta">Normaal</span></button>
+                    <button class="btn btn--line" type="button" data-kind="wkpens">Strafschoppen WK <span class="btn__meta">MetLife · kies je land</span></button>
+                </div>
+            </section>
+
+            <!-- a World Cup shoot-out: both pick a country -->
+            <section class="o-view o-page" id="online-land" hidden>
+                <h1 class="title">Kies je land</h1>
+                <p class="lead" id="online-land-lead" aria-live="polite"></p>
+                <div class="o-lands" id="online-land-grid" role="group" aria-label="Landen"></div>
+            </section>
+
             <!-- waiting for the other one -->
             <section class="o-view o-center" id="online-wait" hidden>
                 <h1 class="title" id="online-wait-title">Wachten op je vriend</h1>
@@ -572,12 +590,12 @@
     <script src="game.core.js?v=153"></script>
     <script src="game.screen.js?v=11"></script>
     <script src="game.stadium.js?v=133"></script>
-    <script src="game.ui.js?v=127"></script>
+    <script src="game.ui.js?v=128"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
-    <script src="game.js?v=134"></script>
-    <script src="game.pens.js?v=2"></script>
-    <script src="game.online.js?v=2"></script>
+    <script src="game.js?v=135"></script>
+    <script src="game.pens.js?v=3"></script>
+    <script src="game.online.js?v=3"></script>
 </body>
 </html>

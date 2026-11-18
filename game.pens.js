@@ -8,6 +8,10 @@
 //     The bar shows the power: too short is weak, in the green is right,
 //     too long and it goes over the bar.
 //   Their penalty: click (tap) the corner you dive to: left, middle or right.
+// Online (game.online.js) both sides are people: the taker aims and the
+// keeper picks a corner at the same time, without seeing each other's choice.
+// The host's browser decides how the kick ends and sends that to the other,
+// so both see the same shoot-out.
 // Test page: index.html?test=pens goes straight to a shoot-out.
 // =====================================================
 
@@ -18,6 +22,8 @@ const PENS = (() => {
     const POWER_OVER = 1.0;                       // past this the shot rises over the bar
     const POWER_CAP = 1.35;
     const ZONE = GOAL_W / 6;                      // |z| over this: a corner
+    const NET_KEEPER_MS = 8000;                   // online: the keeper has this long to pick a corner
+    const NET_TAKER_MS = 12000;                   // and the taker this long to shoot
     let S = null;                                 // the shoot-out in progress
     let layer = null;                             // the overlay: board, bar, prompts
     const ray = new THREE.Raycaster();
@@ -118,13 +124,48 @@ const PENS = (() => {
             const p = goalPoint(e);
             S.dive = !p ? 0 : (p.z < -ZONE ? -1 : p.z > ZONE ? 1 : 0);
             say('');
-            startRunup();
+            if (S.net) submit({ dive: S.dive });
+            else startRunup();
         }
     }
     function onUp() {
         if (!S || S.phase !== 'charge') return;
         S.power = Math.min(POWER_CAP, (performance.now() - S.chargeStart) / POWER_FULL_MS);
         S.reticle.hidden = true;
+        say('');
+        if (S.net) { S.bar.hidden = true; submit({ shot: { z: S.aim.z, y: S.aim.y, p: S.power } }); }
+        else startRunup();
+    }
+
+    // ---------------------------------------------------------------- online
+    // Your choice for this kick: the host keeps it, the guest sends it over.
+    function submit(c) {
+        c.k = S.k;
+        S.phase = 'wait';
+        const keeperDone = c.dive !== undefined;
+        say(keeperDone ? 'Wachten op de schutter…' : 'Wachten op de keeper…');
+        if (S.net.host) take(c);
+        else S.net.send({ t: 'pkc', ...c });
+    }
+    // host: both choices in, then decide the kick and tell the guest
+    function take(c) {
+        if (!S || !S.net || !S.net.host) return;
+        if (c.k !== S.k) { if (c.k > S.k) (S.inbox[c.k] = S.inbox[c.k] || []).push(c); return; }
+        if (c.shot) S.choice.shot = c.shot;
+        if (c.dive !== undefined) S.choice.dive = c.dive;
+        if (!S.choice.shot || S.choice.dive === null || S.outcome) return;
+        const o = resolve(+S.choice.shot.z || 0, +S.choice.shot.y || 0, Math.max(0, Math.min(POWER_CAP, +S.choice.shot.p || 0)), true, () => S.choice.dive);
+        o.k = S.k;
+        S.net.send({ t: 'pko', ...o });
+        play(o);
+    }
+    // both: play out a kick the host decided
+    function play(o) {
+        if (!S || o.k !== S.k) return;
+        S.outcome = o;
+        S.aim = { z: o.z, y: o.y };
+        S.power = o.p;
+        S.dive = o.dive;
         say('');
         startRunup();
     }
@@ -153,21 +194,27 @@ const PENS = (() => {
         });
         S.dive = 0;
         S.t = 0;
+        S.k = (S.k ?? -1) + 1;
+        S.aim = { z: 0, y: 2 };
+        S.choice = { shot: null, dive: null };
+        S.outcome = null;
         renderBoard();
+        if (S.net && S.net.host) (S.inbox[S.k] || []).forEach(c => take(c));    // came in before we got here
         if (S.human === S.turn) {
             S.phase = 'aim';
+            S.aimUntil = performance.now() + NET_TAKER_MS;
             say(IS_TOUCH ? 'Houd je vinger op het doel en laat los om te schieten' : 'Richt met je muis, houd ingedrukt en laat los om te schieten');
         } else {
             S.phase = 'choose';
             say(IS_TOUCH ? 'Tik waar je duikt: links, midden of rechts' : 'Klik waar je duikt: links, midden of rechts');
-            S.chooseUntil = performance.now() + 4500;           // too slow: you stay in the middle
+            S.chooseUntil = performance.now() + (S.net ? NET_KEEPER_MS : 4500);   // too slow: you stay in the middle
         }
     }
     function startRunup() {
         S.phase = 'runup';
         S.bar.hidden = S.human !== S.turn;
         S.t = 0;
-        if (S.human !== S.turn) {
+        if (S.human !== S.turn && !S.net) {
             // the computer picks its spot; now and then it misses
             const side = Math.random();
             const z = side < 0.4 ? -1 : side < 0.8 ? 1 : 0;
@@ -178,11 +225,12 @@ const PENS = (() => {
             S.power = 0.55 + Math.random() * 0.3;
         }
     }
-    function kick() {
-        // where the ball goes, how fast, and whether the keeper gets there
-        const p = S.power;
-        let { z, y } = S.aim;
-        if (S.human === S.turn) {
+    const zoneOf = (zz) => (zz < -ZONE ? -1 : zz > ZONE ? 1 : 0);
+    // How a kick ends: where it goes (a person's kick spreads a little, more
+    // when hit hard; past the green it rises over the bar), whether it is on
+    // target, and whether the keeper, diving to diveOf(where it goes), saves it.
+    function resolve(z, y, p, human, diveOf) {
+        if (human) {
             const spread = 0.35 + Math.max(0, p - 0.85) * 2.5;
             z += (Math.random() - 0.5) * spread * 2;
             y += (Math.random() - 0.5) * spread;
@@ -190,18 +238,8 @@ const PENS = (() => {
             if (p < 0.3) y = Math.min(y, 2.5);                        // a weak one rolls along the grass
         }
         y = Math.max(BALL_SIZE, y);
-        const speed = 45 + Math.min(1, p) * 60;                       // units a second
-        const dist = Math.hypot(GX - SPOT_X, z);
-        const zoneOf = (zz) => (zz < -ZONE ? -1 : zz > ZONE ? 1 : 0);
         const onTarget = Math.abs(z) < GOAL_W / 2 - 0.4 && y < GOAL_H - 0.4;
-        // the keeper: you chose, or the computer guesses (better on harder levels)
-        let dive = S.dive;
-        if (S.human === S.turn) {
-            const read = { easy: 0.25, medium: 0.33, hard: 0.42 }[STATE.difficulty] ?? 0.33;
-            const right = zoneOf(z);
-            const others = [-1, 0, 1].filter(v => v !== right);
-            dive = Math.random() < read ? right : others[Math.floor(Math.random() * others.length)];
-        }
+        const dive = diveOf(z);
         let saved = false;
         if (onTarget && zoneOf(z) === dive) {
             const topCorner = dive !== 0 && Math.abs(z) > GOAL_W / 2 - 3.2 && y > GOAL_H - 3.2;
@@ -211,6 +249,22 @@ const PENS = (() => {
             if (p < 0.35) chance += 0.2;
             saved = Math.random() < chance;
         }
+        const r2 = (v) => Math.round(v * 100) / 100;
+        return { z: r2(z), y: r2(y), p: r2(p), dive, onTarget, saved };
+    }
+    function kick() {
+        // online the host already decided; against the computer it is decided now:
+        // you chose your dive, or the computer guesses (better on harder levels)
+        const o = S.outcome || resolve(S.aim.z, S.aim.y, S.power, S.human === S.turn, (z) => {
+            if (S.human !== S.turn) return S.dive;
+            const read = { easy: 0.25, medium: 0.33, hard: 0.42 }[STATE.difficulty] ?? 0.33;
+            const right = zoneOf(z);
+            const others = [-1, 0, 1].filter(v => v !== right);
+            return Math.random() < read ? right : others[Math.floor(Math.random() * others.length)];
+        });
+        const { z, y, p, dive, onTarget, saved } = o;
+        const speed = 45 + Math.min(1, p) * 60;                       // units a second
+        const dist = Math.hypot(GX - SPOT_X, z);
         S.flight = { from: ball.position.clone(), to: new THREE.Vector3(GX + 0.2, y, z), t: 0, T: dist / speed, onTarget, saved, z, y };
         S.keeper.userData.diveT = dive ? 0.9 : 0;
         S.keeper.userData.diveX = 0;
@@ -246,8 +300,8 @@ const PENS = (() => {
         S.phase = 'done';
         const winner = ga > gb ? S.teams[1].code : S.teams[2].code;
         say(`${winner} wint de strafschoppen (${Math.max(ga, gb)}-${Math.min(ga, gb)})`);
-        const cb = S.onDone;
-        setTimeout(() => { stop(); cb && cb([ga, gb]); }, 2600);
+        const cb = S.onDone, mine = S;
+        setTimeout(() => { if (S !== mine) return; stop(); cb && cb([ga, gb]); }, 2600);
     }
 
     // ---------------------------------------------------------------- every frame
@@ -266,7 +320,16 @@ const PENS = (() => {
             S.barFill.style.width = (p / POWER_CAP * 100).toFixed(1) + '%';
             S.bar.classList.toggle('is-over', p > POWER_OVER);
         }
-        if (S.phase === 'choose' && performance.now() > S.chooseUntil) { S.dive = 0; say(''); startRunup(); }
+        if (S.phase === 'choose' && performance.now() > S.chooseUntil) {
+            S.dive = 0; say('');
+            if (S.net) submit({ dive: 0 }); else startRunup();
+        }
+        // online, a taker who waits too long: a soft one down the middle
+        if (S.net && S.phase === 'aim' && performance.now() > S.aimUntil) {
+            S.reticle.hidden = true; say('');
+            S.power = 0.5;
+            submit({ shot: { z: 0, y: 2, p: 0.5 } });
+        }
         if (S.phase === 'runup') {
             // a few steps to the ball, then the kick
             const T = 0.75, k = Math.min(1, S.t / T);
@@ -327,10 +390,12 @@ const PENS = (() => {
         const flag = m && typeof wkFlagSrc === 'function' ? wkFlagSrc(code) : null;
         return { code, color, flag };
     }
-    function start(onDone) {
+    // opts (online): { me: your team, turn: who kicks first, net: { host, send } }
+    function start(onDone, opts = {}) {
         if (S) stop();
-        S = { teams: { 1: teamInfo(1), 2: teamInfo(2) }, kicks: { 1: [], 2: [] }, human: 1, onDone, phase: 'idle', t: 0 };
-        S.turn = Math.random() < 0.5 ? 1 : 2;                  // the toss
+        S = { teams: { 1: teamInfo(1), 2: teamInfo(2) }, kicks: { 1: [], 2: [] }, human: opts.me || 1, onDone, phase: 'idle', t: 0,
+              net: opts.net || null, inbox: {} };
+        S.turn = opts.turn || (Math.random() < 0.5 ? 1 : 2);   // the toss
         STATE.pens = true;
         STATE.inputLocked = true;
         document.getElementById('game-screen')?.classList.add('is-pens');
@@ -383,5 +448,12 @@ const PENS = (() => {
         window.addEventListener('load', () => setTimeout(testShootout, 400));
     }
 
-    return { start, stop, frame, active: () => !!S, phase: () => S && S.phase };
+    return {
+        start, stop, frame,
+        active: () => !!S,
+        phase: () => S && S.phase,
+        // online messages (game.online.js)
+        netChoice: (c) => take(c),
+        netOutcome: (o) => play(o),
+    };
 })();

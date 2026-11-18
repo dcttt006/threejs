@@ -355,6 +355,21 @@ function startGame() {
     });
 }
 
+// Straight to a penalty shoot-out, no match first (online, game.online.js).
+// A WK one: set STATE.wkMatch and STATE.wkStarting before calling.
+function startShootout(opts) {
+    if (typeof wkApply === 'function') wkApply();
+    STATE.paused = false;
+    STATE.scoring = false;
+    resetTouch();
+    gotoScreen('playing');
+    paintHud();
+    if (STATE.wkMatch && typeof wkDecorateHud === 'function') wkDecorateHud();
+    initThree();
+    STATE.inputLocked = true;
+    PENS.start(opts.onDone, opts);
+}
+
 // ----------- pause -----------
 let pauseFreezeStart = 0;
 function togglePause(force) {

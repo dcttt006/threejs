@@ -51,6 +51,18 @@ e-mailadres mag ze lezen (`stats.sql`), ook als anderen een account hebben.
   netwerken, dan loopt alles via Supabase. Dat is iets trager, maar het werkt
   wel. Bij een rechtstreekse verbinding zien de twee browsers elkaars
   IP-adres. De game slaat dat nergens op.
+- Bij **Uitdagen** of **Code maken** kies je eerst wat jullie spelen:
+  - **Wedstrijd**: 90 seconden.
+  - **Strafschoppen, normaal**: meteen naar de stip, rood tegen blauw, in het
+    stadion van wie uitdaagt.
+  - **Strafschoppen WK**: in MetLife Stadium met WK-shirts en vlaggen. Jullie
+    kiezen allebei een land en het land van de ander is dan niet meer te
+    kiezen.
+
+  Bij strafschoppen kiezen de schutter en de keeper tegelijk. De keeper ziet
+  niet waar de schutter op richt. Na 12 seconden zonder schot volgt een zacht
+  schot door het midden. Na 8 seconden zonder keuze blijft de keeper in het
+  midden staan.
 - Online is er geen pauze. Met de pauzeknop kun je de wedstrijd verlaten.
 - Na de wedstrijd kun je om **Revanche** vragen. Als jullie allebei klikken,
   begint een nieuwe wedstrijd.

@@ -2445,6 +2445,7 @@ function teardownGame() {
     // left before full time (back button, menu): counted as a match not finished
     if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(false);
     if (typeof ONLINE !== 'undefined') ONLINE.onTeardown();
+    if (typeof PENS !== 'undefined' && PENS.active()) PENS.stop();       // left during a shoot-out
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
     STATE.gameStartTime = null;

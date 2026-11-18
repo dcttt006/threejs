@@ -45,6 +45,16 @@ const ONLINE = (() => {
     let signUp = false;
     let saved = null;               // the local players and mode, put back after online play
     let invite = null;              // the challenge on screen
+    let pending = null;             // what Uitdagen / Code maken was for, while you pick what to play
+    let overTitle = null;           // the full-time screen's own title, put back after a shoot-out
+
+    // what you can play online
+    const KINDS = {
+        match:  { label: 'Wedstrijd', meta: '90 seconden' },
+        pens:   { label: 'Strafschoppen', meta: 'Normaal' },
+        wkpens: { label: 'Strafschoppen WK', meta: 'MetLife Stadium · jullie kiezen een land' },
+    };
+    const isPens = (kind) => kind === 'pens' || kind === 'wkpens';
 
     const clean = (s) => String(s || '').trim().toLowerCase();
     const el = (tag, cls, text) => {
@@ -327,12 +337,12 @@ const ONLINE = (() => {
     }
     function show(v) {
         view = v;
-        ['login', 'friends', 'code', 'wait'].forEach(id => { const s = $('online-' + id); if (s) s.hidden = id !== v; });
+        ['login', 'friends', 'code', 'pick', 'land', 'wait'].forEach(id => { const s = $('online-' + id); if (s) s.hidden = id !== v; });
         const meBox = $('online-me');
         if (meBox) meBox.hidden = !me;
         if ($('online-me-name') && me) $('online-me-name').textContent = me.username;
         if ($('online-brand')) $('online-brand').hidden = !!me;
-        $('online-back').querySelector('span').textContent = v === 'wait' ? 'Annuleren' : 'Terug';
+        $('online-back').querySelector('span').textContent = v === 'wait' || v === 'land' ? 'Annuleren' : 'Terug';
         if (v === 'friends') { say('online-add-msg', ''); renderFriends(); loadFriends(); }
         if (v === 'code') { say('online-code-msg', ''); $('online-code-in').value = ''; $('online-join').disabled = true; }
         if (v === 'login') {
@@ -357,7 +367,8 @@ const ONLINE = (() => {
         show(me ? 'friends' : 'login');
     }
     async function back() {
-        if (view === 'wait') { await leaveRoom(); show(me ? 'friends' : 'login'); return; }
+        if (view === 'wait' || view === 'land') { await leaveRoom(); show(me ? 'friends' : 'login'); return; }
+        if (view === 'pick') { show(pending && pending.invite ? 'friends' : 'code'); pending = null; return; }
         if (view === 'code') { show('friends'); return; }
         gotoScreen('launch', { replace: true });
     }
@@ -371,7 +382,12 @@ const ONLINE = (() => {
         $('online-auth-form').addEventListener('submit', submitAuth);
         $('online-add-form').addEventListener('submit', addFriend);
         $('online-to-code').addEventListener('click', () => show('code'));
-        $('online-make').addEventListener('click', () => hostRoom());
+        $('online-make').addEventListener('click', () => pickKind({}));
+        document.querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => {
+            const target = pending || {};
+            pending = null;
+            hostRoom({ ...target, kind: b.dataset.kind });
+        }));
         const codeIn = $('online-code-in');
         codeIn.addEventListener('input', () => {
             codeIn.value = codeIn.value.replace(/\D/g, '').slice(0, 4);
@@ -516,7 +532,8 @@ const ONLINE = (() => {
                 const code = String(1000 + Math.floor(Math.random() * 9000));
                 const ch = await enter(code, 'host');
                 if (!ch) continue;
-                room = { code, role: 'host', ch, opp: null, started: false, over: false, wantAgain: { me: false, opp: false }, invite: opts.invite || null };
+                room = { code, role: 'host', ch, opp: null, started: false, over: false, wantAgain: { me: false, opp: false },
+                         invite: opts.invite || null, kind: opts.kind || 'match', lands: {} };
                 wireRoom(ch);
                 showWait();
                 if (room.invite) sendInvite(room.invite);
@@ -549,7 +566,8 @@ const ONLINE = (() => {
                 say('online-code-msg', host.id === me.id ? 'Dat is je eigen code.' : 'Deze wedstrijd is al vol.');
                 return;
             }
-            room = { code, role: 'guest', ch, opp: { id: host.id, name: host.username }, started: false, over: false, wantAgain: { me: false, opp: false } };
+            room = { code, role: 'guest', ch, opp: { id: host.id, name: host.username }, started: false, over: false,
+                     wantAgain: { me: false, opp: false }, kind: 'match', lands: {} };
             wireRoom(ch);
             send({ t: 'hello', id: me.id, name: me.username });
             say('online-code-msg', `Verbonden met ${host.username}. De wedstrijd begint…`, true);
@@ -579,9 +597,10 @@ const ONLINE = (() => {
         $('online-wait-blue').textContent = inv ? inv.username : '…';
         $('online-wait-blue').classList.add('o-team--wait');
         $('online-wait-title').textContent = inv ? `Wachten op ${inv.username}` : 'Wachten op je vriend';
-        $('online-wait-lead').textContent = inv
+        const what = `${KINDS[room.kind].label}${room.kind === 'match' ? '' : ' · ' + KINDS[room.kind].meta}. `;
+        $('online-wait-lead').textContent = what + (inv
             ? `${inv.username} krijgt je uitdaging nu te zien.`
-            : 'Stuur deze code naar je vriend. Die typt hem in bij Online › Spelen met een code.';
+            : 'Stuur deze code naar je vriend. Die typt hem in bij Online › Spelen met een code.');
         const box = $('online-wait-code');
         box.replaceChildren(...room.code.split('').map(d => el('span', '', d)));
         box.hidden = !!inv;
@@ -599,10 +618,16 @@ const ONLINE = (() => {
     // ------------------------------------------------- challenges
     function challenge(f) {
         if (statusOf(f.id) !== 'on' || room) return;
-        hostRoom({ invite: f });
+        pickKind({ invite: f });
+    }
+    // what do you play: a match, a shoot-out, or a World Cup shoot-out
+    function pickKind(target) {
+        pending = target;
+        $('online-pick-lead').textContent = target.invite ? `Tegen ${target.invite.username}` : 'Met een code';
+        show('pick');
     }
     function sendInvite(f) {
-        shout('invite', { to: f.id, from: me.id, name: me.username, code: room.code, stadium: getSelectedStadium().name });
+        shout('invite', { to: f.id, from: me.id, name: me.username, code: room.code, stadium: getSelectedStadium().name, kind: room.kind });
     }
     function onInvite(p) {
         if (!me || !p || p.to !== me.id) return;
@@ -612,7 +637,10 @@ const ONLINE = (() => {
         if (room || STATE.screen === 'playing') { shout('answer', { to: p.from, code: p.code, ok: false, busy: true }); return; }
         invite = p;
         $('online-invite-title').textContent = `${p.name} daagt je uit`;
-        $('online-invite-sub').textContent = `90 seconden in ${p.stadium}. ${p.name} is rood, jij bent blauw.`;
+        $('online-invite-sub').textContent =
+            p.kind === 'wkpens' ? 'Strafschoppen WK in MetLife Stadium. Jullie kiezen allebei een land.'
+            : p.kind === 'pens' ? `Strafschoppen in ${p.stadium}. ${p.name} is rood, jij bent blauw.`
+            : `90 seconden in ${p.stadium}. ${p.name} is rood, jij bent blauw.`;
         const bar = $('online-invite-time');
         bar.style.transition = 'none';
         bar.style.width = '100%';
@@ -664,6 +692,14 @@ const ONLINE = (() => {
                 if (room.role !== 'guest') return;
                 beginMatch(m);
                 break;
+            case 'lands':                                  // guest: a World Cup shoot-out, pick a country
+                if (room.role !== 'guest') return;
+                room.kind = 'wkpens';
+                showLands();
+                break;
+            case 'land': takeLand(m); break;
+            case 'pkc': if (room.role === 'host' && typeof PENS !== 'undefined') PENS.netChoice(m); break;
+            case 'pko': if (room.role === 'guest' && typeof PENS !== 'undefined') PENS.netOutcome(m); break;
             case 'sdp':
             case 'ice': onSignal(m); break;
             case 'in':  if (room.role === 'host') takeInput(m); break;
@@ -681,15 +717,76 @@ const ONLINE = (() => {
 
     // host: pick who kicks off and the stadium, start both sides
     function kickOff() {
+        const kind = room.kind || 'match';
+        // a World Cup shoot-out: first both pick a country
+        if (kind === 'wkpens' && !(room.lands.host && room.lands.guest)) {
+            send({ t: 'lands' });
+            if (room.lands.host) send({ t: 'land', role: 'host', code: room.lands.host });
+            showLands();
+            return;
+        }
         const start = {
             t: 'start',
-            stadium: getSelectedStadium().id,
+            kind,
+            stadium: kind === 'wkpens' ? 'metlife' : getSelectedStadium().id,
             kick: Math.random() < 0.5 ? 1 : 2,
+            turn: Math.random() < 0.5 ? 1 : 2,
             host: { id: me.id, name: me.username },
+            red: room.lands.host || null,
+            blue: room.lands.guest || null,
         };
         send(start);
         beginMatch(start);
         offerPeer();
+    }
+
+    // ------------------------------------------------- World Cup: pick your country
+    function landName(code) { return WK_TEAMS[code] ? WK_TEAMS[code].name : code; }
+    function showLands() {
+        const mine = room.lands[room.role];
+        const theirs = room.lands[room.role === 'host' ? 'guest' : 'host'];
+        const opp = room.opp ? room.opp.name : 'je vriend';
+        $('online-land-lead').textContent = mine && theirs ? 'De strafschoppen beginnen…'
+            : mine ? `Je speelt met ${landName(mine)}. Wachten tot ${opp} een land kiest…`
+            : theirs ? `${opp} speelt met ${landName(theirs)}. Kies jouw land.`
+            : `Strafschoppen in MetLife Stadium. ${opp} kiest ook een land.`;
+        const grid = $('online-land-grid');
+        const codes = Object.keys(WK_TEAMS).sort((a, b) => landName(a).localeCompare(landName(b), 'nl'));
+        grid.replaceChildren(...codes.map(code => {
+            const b = el('button', 'o-land');
+            b.type = 'button';
+            const img = el('img', 'o-land__flag');
+            img.src = wkFlagSrc(code);
+            img.alt = '';
+            img.width = 36; img.height = 24;
+            b.append(img, el('span', 'o-land__name', landName(code)));
+            if (code === theirs) { b.disabled = true; b.append(el('span', 'o-land__who', opp)); }
+            if (code === mine) b.classList.add('is-mine');
+            b.addEventListener('click', () => pickLand(code));
+            return b;
+        }));
+        if (view !== 'land') show('land');
+    }
+    function pickLand(code) {
+        if (!room || room.started) return;
+        const other = room.lands[room.role === 'host' ? 'guest' : 'host'];
+        if (code === other) return;
+        room.lands[room.role] = code;
+        send({ t: 'land', role: room.role, code });
+        showLands();
+        if (room.role === 'host' && room.lands.guest) kickOff();
+    }
+    function takeLand(m) {
+        if (!WK_TEAMS[m.code] || m.role === room.role) return;
+        // both picked the same one at once: the host keeps it
+        if (room.role === 'host' && m.code === room.lands.host) {
+            send({ t: 'land', role: 'host', code: room.lands.host });
+            return;
+        }
+        if (room.role === 'guest' && m.code === room.lands.guest) room.lands.guest = null;
+        room.lands[m.role] = m.code;
+        showLands();
+        if (room.role === 'host' && room.lands.host && room.lands.guest) kickOff();
     }
 
     function beginMatch(start) {
@@ -714,9 +811,56 @@ const ONLINE = (() => {
         STATE.onlineElapsed = 0;
         resetNet();
         setStatus('playing');
+        if (overTitle !== null) $('over-screen').querySelector('.title').textContent = overTitle;
+        if (isPens(start.kind)) { beginPens(start); return; }
         if (host) startWorker();
         startGame();
         $('game-screen').classList.add('is-online');
+    }
+
+    // straight to the penalty spot
+    function beginPens(start) {
+        const host = room.role === 'host';
+        room.kind = start.kind;
+        if (start.kind === 'wkpens') {
+            room.lands = { host: start.red, guest: start.blue };
+            STATE.wkMatch = { me: start.red, opp: start.blue, online: true };
+            STATE.wkStarting = true;
+        } else {
+            STATE.wkMatch = null;
+            STATE.wkStarting = false;
+        }
+        startShootout({ me: host ? 1 : 2, turn: start.turn, net: { host, send }, onDone: pensDone });
+        STATE.wkStarting = false;
+        $('game-screen').classList.add('is-online');
+    }
+    // the shoot-out is over, on both sides: the result screen, and the host keeps it
+    function pensDone(score) {
+        if (!room) return;
+        room.over = true;
+        setStatus('menu');
+        const m = STATE.wkMatch;
+        const nameOf = (team) => m ? landName(team === 1 ? m.me : m.opp) : (STATE.p1.team === team ? STATE.p1 : STATE.p2).name;
+        STATE.score1 = score[0];
+        STATE.score2 = score[1];
+        const title = $('over-screen').querySelector('.title');
+        if (overTitle === null) overTitle = title.textContent;
+        title.textContent = 'Strafschoppen';
+        $('over-p1-name').textContent = nameOf(1);
+        $('over-p2-name').textContent = nameOf(2);
+        $('over-s1').textContent = score[0];
+        $('over-s2').textContent = score[1];
+        $('over-winner').textContent = `${nameOf(score[0] > score[1] ? 1 : 2)} wint de strafschoppen`;
+        $('over-stats').replaceChildren();
+        $('play-again').hidden = false;
+        $('back-home').hidden = false;
+        $('wk-continue').hidden = true;
+        if (room.role === 'host' && room.opp) {
+            sb.from('matches').insert({ red: me.id, blue: room.opp.id, score_red: score[0], score_blue: score[1] })
+                .then(() => loadFriends(), () => {});
+        } else setTimeout(loadFriends, 1500);
+        gotoScreen('over');
+        paintAgain();
     }
 
     // puts the local game back the way it was before online play
@@ -728,6 +872,11 @@ const ONLINE = (() => {
         saved = null;
         STATE.onlineRole = null;
         STATE.onlineStadium = null;
+        // a World Cup shoot-out left its kits and colours: back to red and blue
+        STATE.wkMatch = null;
+        STATE.wkStarting = false;
+        if (typeof wkApply === 'function') wkApply();
+        if (overTitle !== null) { $('over-screen').querySelector('.title').textContent = overTitle; overTitle = null; }
         $('game-screen')?.classList.remove('is-online');
         const again = $('play-again');
         if (again) { again.disabled = false; again.textContent = 'Revanche'; }
@@ -748,6 +897,12 @@ const ONLINE = (() => {
         if (!room || room.oppGone) return;
         const name = room.opp ? room.opp.name : 'Je tegenstander';
         if (!room.started) {
+            if (view === 'land') {
+                // gone while picking a country
+                $('online-land-lead').textContent = `${name} is weg.`;
+                setTimeout(() => { if (room && !room.started && view === 'land') back(); }, 2000);
+                return;
+            }
             // the guest left before kick-off: wait for the next one
             room.opp = null;
             return;
