@@ -17,6 +17,11 @@
 // screen: 'campin' (El Campín) is the big screen of Bogotá: the two teams'
 // colours running into each other, a plain shield for each with its short
 // name, the score '0 : 0' in the middle and the clock under it.
+// screen: 'arena' (Johan Cruijff ArenA) is the ArenA's screen: dark navy with
+// a red glow across the middle, the clock at the top, the big score with a
+// small red and white mark between the figures, a round badge for each team.
+// The home logo is the file the catalog names (screenLogo), with three gold
+// stars over it as on the screen; without it a white disc with the short name.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -223,6 +228,7 @@ const STADIUM_SCREEN = (() => {
         wCtx.setTransform(1024 / WKW, 0, 0, 512 / WKH, 0, 0);
         [kCanvas, kCtx, kTexture] = make(1024, 256, 256 / KH);
         [eCanvas, eCtx, eTexture] = make(CW2, CH2, 1);
+        [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -373,6 +379,71 @@ const STADIUM_SCREEN = (() => {
         eTexture.needsUpdate = true;
     }
 
+    // ---- the Johan Cruijff ArenA: the big screen (14 x 7.4 m, drawn 1024 x 541) ----
+    const AW = 1024, AH = 541;
+    let aCanvas = null, aCtx = null, aTexture = null;
+    let arenaLogo = null, arenaLogoSrc = null;
+    function loadArenaLogo(src) {
+        if (!src || src === arenaLogoSrc) return;
+        arenaLogoSrc = src;
+        const im = new Image();
+        im.onload = () => { arenaLogo = im; last = ''; redraw(); };
+        im.src = src;                              // missing file: the white disc stays
+    }
+    function star(c, cx, cy, r) {
+        c.beginPath();
+        for (let i = 0; i < 10; i++) {
+            const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.42 : r;
+            c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+        }
+        c.closePath();
+        c.fill();
+    }
+    function drawArena(clock, s1, s2) {
+        const c = aCtx;
+        // in a match the two sides; on the test page Ajax red against the CPU
+        const playing = typeof STATE !== 'undefined' && STATE.screen === 'playing';
+        const [ta, tb] = playing ? campinTeams() : [{ code: 'AJA', color: '#d2122e' }, { code: 'CPU', color: '#1c2c5c' }];
+        // dark navy, a little lighter at the top, a red glow across the middle
+        const bg = c.createLinearGradient(0, 0, 0, AH);
+        bg.addColorStop(0, '#2a3046'); bg.addColorStop(1, '#1b2032');
+        c.fillStyle = bg; c.fillRect(0, 0, AW, AH);
+        const glow = c.createLinearGradient(0, AH * 0.38, 0, AH * 0.86);
+        glow.addColorStop(0, 'rgba(150,36,48,0)'); glow.addColorStop(0.5, 'rgba(150,36,48,0.42)'); glow.addColorStop(1, 'rgba(150,36,48,0)');
+        c.fillStyle = glow; c.fillRect(0, AH * 0.38, AW, AH * 0.48);
+        c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#f4f4f6';
+        // the clock at the top
+        c.font = `700 92px ${CF}`;
+        c.fillText(clock, AW / 2, 96);
+        // a round badge each side: the home logo with three gold stars, or a disc with the short name
+        const badge = (cx, cy, team, logoImg) => {
+            if (logoImg) {
+                const box = 190, k = Math.min(box / logoImg.width, box / logoImg.height);
+                c.drawImage(logoImg, cx - logoImg.width * k / 2, cy - logoImg.height * k / 2, logoImg.width * k, logoImg.height * k);
+                c.fillStyle = '#e4b12f';
+                [-46, 0, 46].forEach((dx) => star(c, cx + dx, cy - 128 + (dx ? 6 : 0), 15));
+                return;
+            }
+            c.fillStyle = '#f4f4f6';
+            c.beginPath(); c.arc(cx, cy, 92, 0, Math.PI * 2); c.fill();
+            c.fillStyle = team.color;
+            c.beginPath(); c.arc(cx, cy, 80, 0, Math.PI * 2); c.fill();
+            c.fillStyle = lightness(team.color) > 0.62 ? '#1b2032' : '#f4f4f6';
+            c.font = `700 52px ${CF}`;
+            c.fillText(team.code, cx, cy + 3);
+        };
+        badge(186, 318, ta, arenaLogo);
+        badge(AW - 186, 318, tb, null);
+        // the score, and the small red and white mark between the figures
+        c.fillStyle = '#f4f4f6';
+        c.font = `700 210px ${CF}`;
+        c.fillText(String(s1), AW / 2 - 165, 326);
+        c.fillText(String(s2), AW / 2 + 165, 326);
+        c.fillStyle = '#f4f4f6'; c.fillRect(AW / 2 - 13, 314, 26, 26);
+        c.fillStyle = '#d2122e'; c.fillRect(AW / 2 - 13, 314, 26, 13);
+        aTexture.needsUpdate = true;
+    }
+
     function drawKuip(clock, s1, s2) {
         const c = kCtx, mid = KTOP + (KH - KTOP) / 2;
         c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, KW, KH);
@@ -437,7 +508,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -445,6 +516,7 @@ const STADIUM_SCREEN = (() => {
         drawWk(current.clock, current.s1, current.s2);
         drawKuip(current.clock, current.s1, current.s2);
         drawCampin(current.clock, current.s1, current.s2);
+        drawArena(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -459,7 +531,8 @@ const STADIUM_SCREEN = (() => {
             mats.forEach((m) => { m.map = tex; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
         });
         if (style === 'kuip') loadKuipLogo(logo);
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : texture);
+        if (style === 'arena') loadArenaLogo(logo);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();

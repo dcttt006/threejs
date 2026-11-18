@@ -304,6 +304,23 @@ const STADIUMS = [
         screen: 'campin',
         view: { lookZ: -12 },
     },
+    {
+        id: 'johan-cruijff-arena',
+        name: 'Johan Cruijff ArenA',
+        club: 'AFC Ajax',
+        city: 'Amsterdam',
+        // built from nothing by tools/arena_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/johan_cruijff_arena.glb?v=1',
+        capacity: '56.120',
+        pitch: { x: 0, z: 0.41, w: 72.60, l: 46.20, angle: Math.PI, y: 5.81 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // the two screens hanging from the roof over both ends: the clock, a
+        // round badge per team and the score; the home logo shows when this
+        // file exists (put the official logo there yourself)
+        screen: 'arena',
+        screenLogo: 'img/ajax.png',
+        view: { lookZ: -12 },
+    },
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
