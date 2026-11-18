@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Pitch Royale: a ball on the night blue of the menus, a gold stripe like the start screen -->
+  <defs><clipPath id="ball"><circle cx="34" cy="34" r="21"/></clipPath></defs>
+  <rect width="64" height="64" rx="12" fill="#07101f"/>
+  <path d="M-4 18 18 -4h7L-4 25z" fill="#ffc21a"/>
+  <circle cx="34" cy="34" r="21" fill="#ffffff"/>
+  <g clip-path="url(#ball)" fill="#0b1220">
+    <path d="M34.0 26.4L26.8 31.7L29.5 40.1L38.5 40.1L41.2 31.7z"/>
+    <path d="M34.0 20.7L40.8 15.7L38.2 7.7L29.8 7.7L27.2 15.7zM21.4 29.9L18.7 21.8L10.3 21.8L7.7 29.9L14.5 34.9zM26.2 44.8L17.7 44.8L15.1 52.8L22.0 57.8L28.8 52.8zM41.8 44.8L39.2 52.8L46.0 57.8L52.9 52.8L50.3 44.8zM46.6 29.9L53.5 34.9L60.3 29.9L57.7 21.8L49.3 21.8z"/>
+    <path d="M34.0 26.4L34.0 20.4M26.8 31.7L21.1 29.8M29.5 40.1L26.0 45.0M38.5 40.1L42.0 45.0M41.2 31.7L46.9 29.8" stroke="#0b1220" stroke-width="2.2" fill="none"/>
+  </g>
+</svg>
