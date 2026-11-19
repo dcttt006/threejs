@@ -928,6 +928,8 @@ const ONLINE = (() => {
         const resume = $('pause-resume');
         const leave = $('pause-leave');
         if (!pauseText) pauseText = { title: title.innerHTML, sub: sub.innerHTML };
+        const quit = $('pause-quit');
+        if (quit) quit.hidden = !!kind;      // online the leave button takes its place
         if (!kind) {
             title.innerHTML = pauseText.title;
             sub.innerHTML = pauseText.sub;

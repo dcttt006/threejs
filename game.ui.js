@@ -376,6 +376,8 @@ function togglePause(force) {
     if (STATE.screen !== 'playing') return;
     // online there is no pause: the panel offers to leave instead (game.online.js)
     if (STATE.mode === 'online') { ONLINE.togglePanel(force); return; }
+    const quitBtn = $('pause-quit');
+    if (quitBtn) quitBtn.hidden = false;
     const next = (force === undefined) ? !STATE.paused : !!force;
     if (next === STATE.paused) return;
 
@@ -403,6 +405,17 @@ function bindPause() {
     const resume = $('pause-resume');
     if (resume) resume.addEventListener('click', (e) => { e.currentTarget.blur(); togglePause(false); });
     // the panel's own leave button is wired in game.online.js
+
+    // offline: stop the match and go back (a WK match to the tournament, not counted)
+    const quit = $('pause-quit');
+    if (quit) quit.addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        if (STATE.mode === 'online' || STATE.screen !== 'playing') return;
+        if (STATE.wkMatch && typeof wkContinue === 'function') { wkContinue(); return; }
+        teardownGame();
+        STATE.score1 = 0; STATE.score2 = 0;
+        gotoScreen('launch', { replace: true });
+    });
 
     // P or ESC anywhere during play
     document.addEventListener('keydown', (e) => {
