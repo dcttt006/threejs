@@ -1176,6 +1176,9 @@ kbd {
     background: var(--home-gold);
     transform: skewX(-18deg);
 }
+/* Stadion kiezen and Instellingen side by side under the menu */
+.home__links { display: flex; flex-wrap: wrap; gap: 0 22px; }
+
 /* what the statistics measure: under the menu, or in the corner over the pitch */
 .home__note {
     position: relative;
@@ -2891,3 +2894,96 @@ html .splash__name { color: #fff; font-weight: 900; }
    and no empty statistics box under a shoot-out's result */
 #game-screen.is-online.is-pens .scorebug { display: none; }
 .match-stats:empty { display: none; }
+
+
+/* =====================================================
+   INSTELLINGEN: the match camera, per device
+   The views as a list of rows (the chosen one an amber
+   block), next to it a side view of where the camera
+   stands, and the height and zoom.
+   ===================================================== */
+.set { display: grid; gap: 18px; }
+.set__head {
+    margin: 0 0 8px;
+    color: var(--dim);
+    font: 400 13px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.set__list { display: grid; gap: 8px; }
+.set__view {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 14px;
+    flex-wrap: wrap;
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 4px solid var(--edge);
+    background: none;
+    color: var(--text);
+    text-align: left;
+}
+.set__view-name { font: 400 clamp(16px, 4.6vw, 20px)/1.1 var(--font-led); }
+.set__view-meta { color: var(--dim); font: 400 14px/1.2 var(--font-text); }
+.set__view.active { border-color: var(--amber); background: var(--amber); color: var(--pit); }
+.set__view.active .set__view-meta { color: var(--pit); }
+
+.set__tune { display: grid; gap: 14px; align-content: start; }
+.set__preview { position: relative; border: 4px solid var(--edge); background: #0b1220; }
+.set__preview canvas { display: block; width: 100%; height: auto; }
+.set__preview-wait {
+    position: absolute;
+    left: 12px;
+    bottom: 10px;
+    color: var(--dim);
+    font: 400 13px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.set__preview-wait[hidden] { display: none; }
+
+.set__slider { display: grid; gap: 6px; }
+.set__slider-top {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text);
+    font: 400 14px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.set__slider-top output { color: var(--amber); }
+.set__slider input[type=range] {
+    width: 100%;
+    height: 32px;
+    margin: 0;
+    background: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.set__slider input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--edge); }
+.set__slider input[type=range]::-moz-range-track { height: 4px; background: var(--edge); }
+.set__slider input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    border: 0;
+    border-radius: 0;
+    background: var(--amber);
+}
+.set__slider input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 0; background: var(--amber); }
+.set__slider input[type=range]:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.set__note { margin: 0; color: var(--dim); font: 400 14px/1.4 var(--font-text); }
+.set .btn { justify-self: start; }
+
+@media (hover: hover) {
+    .set__view:not(.active):hover { border-color: var(--amber); }
+    .set__view:not(.active):hover .set__view-name { color: var(--amber); }
+}
+/* on its side and on a desktop: the views on the left, the camera on the right */
+@media (orientation: landscape) and (min-width: 560px) {
+    .set { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+}
+@media (orientation: landscape) and (max-height: 519px) {
+    .set__view { min-height: 40px; padding: 6px 12px; }
+    .set__list { gap: 6px; }
+    .set__tune { gap: 8px; }
+}

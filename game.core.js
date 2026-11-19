@@ -310,7 +310,7 @@ const STADIUMS = [
         club: 'AFC Ajax',
         city: 'Amsterdam',
         // built from nothing by tools/arena_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/johan_cruijff_arena.glb?v=3',
+        file: 'media/models/stadiums/johan_cruijff_arena.glb?v=4',
         capacity: '56.120',
         pitch: { x: 0, z: 0.41, w: 72.60, l: 46.20, angle: Math.PI, y: 5.81 },
         look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
@@ -319,6 +319,7 @@ const STADIUMS = [
         // home side with the Ajax logo (img/logo3.png)
         screen: 'arena',
         screenLogo: 'img/logo3.png',
+        hangOverPitch: true,          // the screens and banners hang over the pitch: not cut away (dressStadium)
         view: { lookZ: -12 },
     },
 ];
@@ -348,9 +349,53 @@ function setSelectedStadium(id) {
     try { localStorage.setItem(STADIUM_STORAGE_KEY, id); } catch (_) {}
 }
 
+// ----------- camera views (Instellingen) -----------
+// The match camera, as the camera options in FIFA: always on the long side
+// (the game cuts the near stand away towards it), each with its own height,
+// distance, lens and how far it follows the ball. A laptop and a phone each
+// keep their own choice, plus a height and a zoom from 0 to 10 (5 = as set).
+const CAMERA_VIEWS = [
+    // shift: how much of a stadium's own aim (catalog view.lookZ) it takes; the
+    // low and steep views would lose the near touchline with it
+    { id: 'uitzending', name: 'Uitzending', meta: 'Zoals op tv',               height: 30, back: 78,  fov: 38, follow: 0.55, maxX: 24, shift: 1 },
+    { id: 'stadion',    name: 'Stadion',    meta: 'Met de schermen in beeld',  height: 28, back: 96,  fov: 44, follow: 0.5,  maxX: 20, shift: 0, lookZ: -30 },
+    { id: 'tele',       name: 'Tele',       meta: 'Van ver weg, vlak beeld',   height: 44, back: 124, fov: 25, follow: 0.6,  maxX: 22, shift: 1 },
+    { id: 'dichtbij',   name: 'Dichtbij',   meta: 'Laag en dicht op het veld', height: 19, back: 56,  fov: 46, follow: 0.8,  maxX: 30, shift: 0 },
+    { id: 'hoog',       name: 'Hoog',       meta: 'Het hele veld van boven',   height: 60, back: 70,  fov: 42, follow: 0.4,  maxX: 16, shift: 0 },
+    { id: 'dynamisch',  name: 'Dynamisch',  meta: 'Gaat mee met de bal',       height: 24, back: 54,  fov: 42, follow: 0.85, maxX: 30, shift: 0, followZ: 0.45 },
+];
+const CAMERA_STORAGE_KEY = 'pitchRoyale.camera';
+const CAMERA_DEFAULT = { view: 'uitzending', height: 5, zoom: 5 };
+function getCameraSettings() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(CAMERA_STORAGE_KEY) || 'null'); } catch (_) {}
+    const one = (o) => {
+        const v = Object.assign({}, CAMERA_DEFAULT, o || {});
+        if (!CAMERA_VIEWS.some(c => c.id === v.view)) v.view = CAMERA_DEFAULT.view;
+        v.height = Math.max(0, Math.min(10, Math.round(+v.height || 0)));
+        v.zoom = Math.max(0, Math.min(10, Math.round(+v.zoom || 0)));
+        return v;
+    };
+    return { laptop: one(saved && saved.laptop), phone: one(saved && saved.phone) };
+}
+function setCameraSettings(device, values) {
+    const all = getCameraSettings();
+    all[device] = Object.assign({}, all[device], values);
+    try { localStorage.setItem(CAMERA_STORAGE_KEY, JSON.stringify(all)); } catch (_) {}
+}
+// the camera for a device: the view with its height and lens adjusted
+function cameraFor(device) {
+    const set = getCameraSettings()[device];
+    const view = CAMERA_VIEWS.find(c => c.id === set.view);
+    return Object.assign({ lookZ: 0, followZ: 0 }, view, {
+        height: view.height * (0.7 + 0.06 * set.height),       // 0: 70%, 10: 130%
+        fov: view.fov * (1.25 - 0.05 * set.zoom),              // 0: wider, 10: 25% closer
+    });
+}
+
 // ----------- DOM helpers -----------
 const $ = (id) => document.getElementById(id);
-const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen','online-screen'];
+const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen','online-screen','settings-screen'];
 const SCREEN_TO_DOM = {
     loading: 'loading-screen',
     launch:  'launch-screen',
@@ -362,6 +407,7 @@ const SCREEN_TO_DOM = {
     wk:      'wk-screen',
     wkhub:   'wk-hub-screen',
     online:  'online-screen',
+    settings: 'settings-screen',
 };
 function showScreen(id) {
     screens.forEach(s => {

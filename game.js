@@ -82,31 +82,39 @@ function initThree() {
 }
 
 // ----------- camera -----------
-// One broadcast camera for every stadium: on the long side, low enough to
-// keep the far stand in frame, tracking the ball sideways like a TV main camera.
-const CAM = { height: 30, back: 78, lookZ: 0, fov: 38, follow: 0.55, maxX: 24 };
-let camX = 0;
+// The camera chosen in Instellingen (game.core.js: CAMERA_VIEWS), one for a
+// laptop and one for a phone: on the long side, tracking the ball sideways
+// like a TV main camera; 'Dynamisch' also moves in and out with it.
+let CAM = cameraFor(typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 'phone' : 'laptop');
+let camX = 0, camZ = 0;
 let camLookShift = 0;      // per stadium (catalog view.lookZ): aim a little further out, e.g. to keep a big screen in frame
 
 function cameraTargetX() {
     if (!ball) return 0;
     return Math.max(-CAM.maxX, Math.min(CAM.maxX, ball.position.x * CAM.follow));
 }
+function cameraTargetZ() {
+    return ball && CAM.followZ ? ball.position.z * CAM.followZ : 0;
+}
 function placeCamera() {
-    camera.position.set(camX, CAM.height, CAM.back);
-    camera.lookAt(camX, 0, CAM.lookZ + camLookShift);
+    camera.position.set(camX, CAM.height, CAM.back + camZ);
+    camera.lookAt(camX, 0, CAM.lookZ + camLookShift * CAM.shift + camZ);
 }
 function applyGameplayCamera() {
+    CAM = cameraFor(typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 'phone' : 'laptop');
     const aspect = window.innerWidth / window.innerHeight;
     camera.aspect = aspect;
     // widen the lens on narrow windows so both touchlines stay in frame
     camera.fov = aspect >= 1.6 ? CAM.fov : Math.min(62, CAM.fov * 1.6 / aspect);
+    camera.far = Math.max(2000, CAM.back * 12);
     camera.updateProjectionMatrix();
     camX = cameraTargetX();
+    camZ = cameraTargetZ();
     placeCamera();
 }
 function updateCamera(dt) {
     camX += (cameraTargetX() - camX) * Math.min(1, dt * 3);
+    camZ += (cameraTargetZ() - camZ) * Math.min(1, dt * 2);
     placeCamera();
 }
 

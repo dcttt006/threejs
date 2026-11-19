@@ -1454,9 +1454,13 @@ for o in [o for o in D.objects if o.type == 'FONT']:
     D.objects.remove(o, do_unlink=True)
 bpy.context.view_layer.update()
 
-skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals', 'ScreenFace_')
+skip = ('Pitch_Grass', 'Pitch_Lines', 'Pitch_Surround', 'StadiumGoals', 'ScreenFace_', 'Scoreboard_', 'Banners')
 export = [o for o in sc.objects if o.type == 'MESH' and not o.name.startswith(skip)]
-for o in export + [goals]:
+# what hangs over the pitch (the screens' boxes and the banners) is its own
+# object, 'StadiumHang': the game cuts everything over the pitch away except
+# this and the screens (game.stadium.js: dressStadium)
+HANG = [o for o in sc.objects if o.type == 'MESH' and o.name.startswith(('Scoreboard_', 'Banners'))]
+for o in export + HANG + [goals]:
     if not o.data.uv_layers:
         o.data.uv_layers.new(name='UVMap')
     else:
@@ -1473,36 +1477,50 @@ screens.data.uv_layers[0].name = 'UVMap'
 select_only(export, target)
 bpy.ops.object.join()
 target.name = 'JohanCruijffArena'
+select_only(HANG, HANG[0])
+bpy.ops.object.join()
+hang = HANG[0]
+hang.name = 'StadiumHang'
 bpy.context.view_layer.update()
 
-me = target.data
-me.color_attributes.active_color = me.color_attributes.new('Light', 'FLOAT_COLOR', 'POINT')
-bk.target = 'VERTEX_COLORS'
-sc.cycles.samples = 128
-select_only([target], target)
-t0 = time.time()
-bpy.ops.object.bake(type='DIFFUSE')
-print('MODEL BAKE %.0fs' % (time.time() - t0))
-fc = me.color_attributes['Light']
-c = np.empty(len(fc.data) * 4, 'f'); fc.data.foreach_get('color', c); c = c.reshape(-1, 4)
-c[:, :3] = np.clip(c[:, :3] * EXPOSE, 0, 1)
 SELF_LIT = {'M_Pitch', 'M_LEDRed', 'M_Lettering', 'M_FloodLight', 'M_GlassLit', 'M_Escalator', 'M_TowerGlass'}
-mi = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('material_index', mi)
-ls = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_start', ls)
-lt = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_total', lt)
-own = np.array([m is not None and m.name.split('.')[0] in SELF_LIT for m in me.materials])
-order = np.argsort(ls)
-loop_own = np.repeat(own[mi][order], lt[order])
-lv = np.empty(len(me.loops), 'i'); me.loops.foreach_get('vertex_index', lv)
-vert_own = np.zeros(len(me.vertices), bool); vert_own[lv[loop_own]] = True
-print('LIGHT p10/p50/p90', [round(float(v), 3) for v in np.percentile(c[~vert_own, :3].mean(1), (10, 50, 90))])
-c[vert_own, :3] = 1.0 / GAIN
-c[:, 3] = 1
-me.color_attributes.new('Col', 'BYTE_COLOR', 'POINT').data.foreach_set('color', c.ravel())
-me.color_attributes.remove(me.color_attributes['Light'])
-ci = me.color_attributes.find('Col')
-me.color_attributes.active_color_index = ci
-me.color_attributes.render_color_index = ci
+
+
+def bake_light(obj):
+    # the night light into the vertex colours, at the pitch's exposure; what
+    # lights itself (LEDs, lettering, lamps) stays at full strength
+    me = obj.data
+    me.color_attributes.active_color = me.color_attributes.new('Light', 'FLOAT_COLOR', 'POINT')
+    bk.target = 'VERTEX_COLORS'
+    sc.cycles.samples = 128
+    select_only([obj], obj)
+    t0 = time.time()
+    bpy.ops.object.bake(type='DIFFUSE')
+    print('BAKE %s %.0fs' % (obj.name, time.time() - t0))
+    fc = me.color_attributes['Light']
+    c = np.empty(len(fc.data) * 4, 'f'); fc.data.foreach_get('color', c); c = c.reshape(-1, 4)
+    c[:, :3] = np.clip(c[:, :3] * EXPOSE, 0, 1)
+    mi = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('material_index', mi)
+    ls = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_start', ls)
+    lt = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_total', lt)
+    own = np.array([m is not None and m.name.split('.')[0] in SELF_LIT for m in me.materials])
+    order = np.argsort(ls)
+    loop_own = np.repeat(own[mi][order], lt[order])
+    lv = np.empty(len(me.loops), 'i'); me.loops.foreach_get('vertex_index', lv)
+    vert_own = np.zeros(len(me.vertices), bool); vert_own[lv[loop_own]] = True
+    if (~vert_own).any():
+        print('LIGHT p10/p50/p90', [round(float(v), 3) for v in np.percentile(c[~vert_own, :3].mean(1), (10, 50, 90))])
+    c[vert_own, :3] = 1.0 / GAIN
+    c[:, 3] = 1
+    me.color_attributes.new('Col', 'BYTE_COLOR', 'POINT').data.foreach_set('color', c.ravel())
+    me.color_attributes.remove(me.color_attributes['Light'])
+    ci = me.color_attributes.find('Col')
+    me.color_attributes.active_color_index = ci
+    me.color_attributes.render_color_index = ci
+
+
+bake_light(target)
+bake_light(hang)
 gc = goals.data.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
 gc.data.foreach_set('color', [0.45, 0.45, 0.45, 1.0] * len(gc.data))
 goals.data.color_attributes.active_color = gc
@@ -1520,7 +1538,7 @@ cx, cy = (mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2
 print('BOUNDS', mn, mx)
 print('PITCH x=%.2f z=%.2f w=%.2f l=%.2f y=%.2f' % (-cx * s, cy * s, PW * s, PL * s, -mn[2] * s))
 print('TRIS', sum(len(p.vertices) - 2 for p in target.data.polygons), 'MATS', len(target.data.materials))
-select_only([target, goals, screens], target)
+select_only([target, hang, goals, screens], target)
 props = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
 extra = {}
 if 'export_vertex_color' in props: extra['export_vertex_color'] = 'ACTIVE'

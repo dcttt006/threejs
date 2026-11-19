@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=133">
+    <link rel="stylesheet" href="styles.css?v=135">
 </head>
 <body>
     <!-- shared icons -->
@@ -86,10 +86,16 @@
                 </button>
             </div>
 
-            <button id="launch-stadium-pick" class="home__stadium" type="button">
-                <span class="home__stadium-label">Stadion kiezen</span>
-                <span class="home__stadium-name" id="launch-stadium-name">Lotto Park</span>
-            </button>
+            <div class="home__links">
+                <button id="launch-stadium-pick" class="home__stadium" type="button">
+                    <span class="home__stadium-label">Stadion kiezen</span>
+                    <span class="home__stadium-name" id="launch-stadium-name">Lotto Park</span>
+                </button>
+                <button id="launch-settings" class="home__stadium" type="button">
+                    <span class="home__stadium-label">Instellingen</span>
+                    <span class="home__stadium-name" id="launch-settings-name">Camera: Uitzending</span>
+                </button>
+            </div>
         </main>
 
         <!-- shown only while statistics are on (game.stats.js) -->
@@ -502,6 +508,51 @@
         </main>
     </div>
 
+    <!-- ============ SETTINGS ============ -->
+    <!-- the match camera, one for a laptop and one for a phone (game.ui.js: bindSettings) -->
+    <div id="settings-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <div class="page__head">
+                <h1 class="title">Instellingen</h1>
+                <div class="seg" role="tablist" aria-label="Apparaat">
+                    <button class="seg__btn set-device" type="button" data-device="laptop" role="tab">Laptop</button>
+                    <button class="seg__btn set-device" type="button" data-device="phone" role="tab">Telefoon</button>
+                </div>
+            </div>
+
+            <div class="set">
+                <section class="set__views">
+                    <h2 class="set__head">Camera</h2>
+                    <div class="set__list" id="set-views" role="radiogroup" aria-label="Camera"></div>
+                </section>
+
+                <section class="set__tune">
+                    <!-- the chosen stadium as the match camera sees it (game.ui.js: SETTINGS_PREVIEW) -->
+                    <div class="set__preview" id="set-preview">
+                        <span class="set__preview-wait" id="set-preview-wait">Stadion laden…</span>
+                    </div>
+                    <label class="set__slider" for="set-height">
+                        <span class="set__slider-top"><span>Hoogte</span><output id="set-height-out">5</output></span>
+                        <input id="set-height" type="range" min="0" max="10" step="1" value="5">
+                    </label>
+                    <label class="set__slider" for="set-zoom">
+                        <span class="set__slider-top"><span>Zoom</span><output id="set-zoom-out">5</output></span>
+                        <input id="set-zoom" type="range" min="0" max="10" step="1" value="5">
+                    </label>
+                    <p class="set__note" id="set-note">Geldt voor deze laptop. De telefoon heeft zijn eigen camera.</p>
+                    <button class="btn btn--line" id="set-reset" type="button">Standaard</button>
+                </section>
+            </div>
+        </main>
+    </div>
+
     <!-- ============ STADIUM PICKER ============ -->
     <div id="stadium-screen" class="screen menu">
         <header class="topbar">
@@ -590,14 +641,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=153"></script>
+    <script src="game.core.js?v=155"></script>
     <script src="game.screen.js?v=11"></script>
-    <script src="game.stadium.js?v=133"></script>
-    <script src="game.ui.js?v=128"></script>
+    <script src="game.stadium.js?v=134"></script>
+    <script src="game.ui.js?v=130"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
-    <script src="game.js?v=135"></script>
+    <script src="game.js?v=136"></script>
     <script src="game.pens.js?v=3"></script>
     <script src="game.online.js?v=3"></script>
 </body>

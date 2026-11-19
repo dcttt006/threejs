@@ -655,19 +655,32 @@ function dressStadium(arena, stadium) {
     if (!stadium.pitch.own) block.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), 0.3));
     const seen = new Set();
     const photo = new Map();          // lit material -> its unlit replacement (photo scans)
+    const photoKept = new Map();      // the same, not cut away
+    const keptMat = new Map();        // a lit material, uncut, for what hangs over the pitch
+    // what a model hangs over the pitch on purpose (its live screens, their
+    // boxes and the banners: 'StadiumScreens', 'StadiumHang') stays, high
+    // above the play; everything else over the grass is cut away
+    // (only where the catalog says so: hangOverPitch)
+    const kept = (o) => { if (!stadium.hangOverPitch) return false; for (; o; o = o.parent) if (o.name === 'StadiumScreens' || o.name === 'StadiumHang') return true; return false; };
     const aniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
 
     arena.traverse((c) => {
         if (!c.isMesh || !c.material) return;
         c.castShadow = false;
         c.receiveShadow = false;
+        const keep = kept(c);
         if (stadium.look && stadium.look.photo) {
+            const cache = keep ? photoKept : photo;
             const swap = (m) => {
-                if (!photo.has(m)) photo.set(m, photoMaterial(m, stadium.look, block));
-                return photo.get(m);
+                if (!cache.has(m)) cache.set(m, photoMaterial(m, stadium.look, keep ? null : block));
+                return cache.get(m);
             };
             c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
             return;
+        }
+        if (keep) {
+            const own = (m) => { if (!keptMat.has(m)) keptMat.set(m, m.clone()); return keptMat.get(m); };
+            c.material = Array.isArray(c.material) ? c.material.map(own) : own(c.material);
         }
         const mats = Array.isArray(c.material) ? c.material : [c.material];
         mats.forEach((m) => {
@@ -679,7 +692,7 @@ function dressStadium(arena, stadium) {
             if (m.emissive && m.emissiveIntensity > 1) m.emissiveIntensity = 0.4;
             if (m.metalness !== undefined) m.metalness = tameMetalness(m, 0.4);
             if (colorScale !== 1 && m.color) m.color.multiplyScalar(colorScale);
-            m.clippingPlanes = block;
+            m.clippingPlanes = keep ? null : block;
             m.clipIntersection = true;
             m.needsUpdate = true;
         });

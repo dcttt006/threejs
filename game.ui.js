@@ -55,6 +55,9 @@ function bindLaunch() {
     $('launch-cta').addEventListener('click', () => { setMode('duo'); goToSetup(); });
     $('launch-cpu').addEventListener('click', () => { setMode('cpu'); goToSetup(); });
     $('launch-stadium-pick').addEventListener('click', openStadiumPicker);
+    $('launch-settings').addEventListener('click', openSettings);
+    updateLaunchSettingsLabel();
+    bindSettings();
     // the Online button is wired in game.online.js
     updateLaunchLevelLabel();
 
@@ -63,6 +66,167 @@ function bindLaunch() {
         btn.addEventListener('click', () => history.back());
     });
 }
+// ----------- SETTINGS: the match camera -----------
+// A camera per device (game.core.js: CAMERA_VIEWS): the tabs pick which one
+// you are setting, this device first. Every change is kept at once.
+let settingsDevice = 'laptop';
+function thisDevice() { return IS_TOUCH ? 'phone' : 'laptop'; }
+function updateLaunchSettingsLabel() {
+    const lbl = $('launch-settings-name');
+    const set = getCameraSettings()[thisDevice()];
+    if (lbl) lbl.textContent = 'Camera: ' + CAMERA_VIEWS.find(c => c.id === set.view).name;
+}
+function openSettings() {
+    settingsDevice = thisDevice();
+    gotoScreen('settings');
+    renderSettings();
+}
+addEventListener('resize', () => { if (STATE.screen === 'settings') renderSettings(); });
+function bindSettings() {
+    const list = $('set-views');
+    if (!list) return;
+    CAMERA_VIEWS.forEach((v) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'set__view';
+        b.dataset.view = v.id;
+        b.setAttribute('role', 'radio');
+        b.innerHTML = `<span class="set__view-name">${v.name}</span><span class="set__view-meta">${v.meta}</span>`;
+        b.addEventListener('click', () => { setCameraSettings(settingsDevice, { view: v.id }); renderSettings(); });
+        list.appendChild(b);
+    });
+    document.querySelectorAll('.set-device').forEach(b => b.addEventListener('click', () => {
+        settingsDevice = b.dataset.device;
+        renderSettings();
+    }));
+    ['height', 'zoom'].forEach((k) => {
+        $('set-' + k).addEventListener('input', (e) => {
+            setCameraSettings(settingsDevice, { [k]: +e.target.value });
+            renderSettings();
+        });
+    });
+    $('set-reset').addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        setCameraSettings(settingsDevice, CAMERA_DEFAULT);
+        renderSettings();
+    });
+}
+function renderSettings() {
+    const set = getCameraSettings()[settingsDevice];
+    document.querySelectorAll('.set-device').forEach((b) => {
+        const on = b.dataset.device === settingsDevice;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on);
+    });
+    document.querySelectorAll('.set__view').forEach((b) => {
+        const on = b.dataset.view === set.view;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-checked', on);
+    });
+    ['height', 'zoom'].forEach((k) => { $('set-' + k).value = set[k]; $('set-' + k + '-out').textContent = set[k]; });
+    const mine = settingsDevice === thisDevice();
+    $('set-note').textContent = settingsDevice === 'phone'
+        ? (mine ? 'Geldt voor deze telefoon.' : 'Geldt als je op een telefoon speelt.') + ' De laptop heeft zijn eigen camera.'
+        : (mine ? 'Geldt voor deze laptop.' : 'Geldt als je op een laptop speelt.') + ' De telefoon heeft zijn eigen camera.';
+    SETTINGS_PREVIEW.show(settingsDevice);
+    updateLaunchSettingsLabel();
+}
+// The chosen stadium as the match camera sees it: the model placed on the
+// pitch and cut open exactly as in a match (game.stadium.js), our pitch and
+// goals where the model has none, the camera where the setting puts it.
+// The box has the device's shape: 16:9 for a laptop, a phone on its side.
+const SETTINGS_PREVIEW = (() => {
+    let r = null, sc = null, cam = null, rig = null, rigId = null, raf = 0, token = 0;
+    function ensure() {
+        if (r) return;
+        r = new THREE.WebGLRenderer({ antialias: true });
+        r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.localClippingEnabled = true;                   // dressStadium cuts the near stand away
+        r.setClearColor(0x0b1220);
+        sc = new THREE.Scene();
+        sc.add(new THREE.HemisphereLight(0xffffff, 0x4c7a4c, 0.52));
+        sc.add(new THREE.AmbientLight(0xffffff, 0.12));
+        const key = new THREE.DirectionalLight(0xfff6e6, 0.42);
+        key.position.set(-40, 120, 60);
+        sc.add(key);
+        // our pitch and goals, under the model's own grass where it has some
+        const grass = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_W + 16, FIELD_L + 12), new THREE.MeshLambertMaterial({ color: new THREE.Color(0x2f7d32).convertSRGBToLinear() }));
+        grass.rotation.x = -Math.PI / 2; grass.name = 'set-grass';
+        sc.add(grass);
+        const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const line = (w, l, x, z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), white); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.05, z); m.name = 'set-line'; sc.add(m); };
+        line(FIELD_W, 0.4, 0, -FIELD_L / 2); line(FIELD_W, 0.4, 0, FIELD_L / 2);
+        line(0.4, FIELD_L, -FIELD_W / 2, 0); line(0.4, FIELD_L, FIELD_W / 2, 0); line(0.4, FIELD_L, 0, 0);
+        const post = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        [-1, 1].forEach((sx) => {
+            [-1, 1].forEach((sz) => {
+                const p = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, GOAL_H, 8), post);
+                p.position.set(sx * FIELD_W / 2, GOAL_H / 2, sz * GOAL_W / 2);
+                sc.add(p);
+            });
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, GOAL_W, 8), post);
+            bar.rotation.x = Math.PI / 2; bar.position.set(sx * FIELD_W / 2, GOAL_H, 0);
+            sc.add(bar);
+        });
+        cam = new THREE.PerspectiveCamera(38, 16 / 9, 1, 4000);
+    }
+    function loop() {
+        raf = 0;
+        if (!r || STATE.screen !== 'settings') return;
+        r.render(sc, cam);
+        raf = requestAnimationFrame(loop);
+    }
+    function loadStadium() {
+        const stadium = getSelectedStadium();
+        if (rigId === stadium.id) return;
+        const mine = ++token;
+        if (rig) { sc.remove(rig); rig = null; }
+        rigId = stadium.id;
+        const wait = $('set-preview-wait');
+        const ownGrass = (show) => sc.children.forEach(c => { if (c.name === 'set-grass' || c.name === 'set-line') c.visible = show; });
+        ownGrass(true);
+        if (!stadium.file || !stadium.pitch || typeof THREE.GLTFLoader !== 'function') { if (wait) wait.hidden = true; return; }
+        if (wait) wait.hidden = false;
+        loadStadiumModel(stadium).then((gltf) => {
+            if (mine !== token) return;
+            const goals = gltf.scene.getObjectByName('StadiumGoals');
+            if (goals) goals.parent.remove(goals);
+            if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(gltf.scene, stadium.screen, stadium.screenLogo)) STADIUM_SCREEN.update('00:00', 0, 0);
+            rig = fitStadiumToPitch(gltf.scene, stadium);
+            if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
+            dressStadium(rig, stadium);
+            sc.add(rig);
+            ownGrass(!usesStadiumPitch(stadium));
+            if (wait) wait.hidden = true;
+        }).catch(() => { if (wait) wait.hidden = true; });
+    }
+    function show(device) {
+        const host = $('set-preview');
+        if (!host) return;
+        ensure();
+        if (r.domElement.parentNode !== host) host.prepend(r.domElement);
+        host.dataset.device = device;
+        loadStadium();
+        // the shape of the screen it is for, the width the box gets
+        const aspect = device === 'phone' ? 19.5 / 9 : 16 / 9;
+        const w = Math.max(1, Math.floor(host.clientWidth)), h = Math.max(1, Math.round(w / aspect));
+        r.setSize(w, h, false);
+        // the camera as applyGameplayCamera (game.js) puts it, the ball on the centre spot
+        const c = cameraFor(device), view = getSelectedStadium().view || {};
+        cam.aspect = aspect;
+        cam.fov = c.fov;
+        cam.far = Math.max(2000, c.back * 12);
+        cam.updateProjectionMatrix();
+        cam.position.set(0, c.height, c.back);
+        cam.lookAt(0, 0, (c.lookZ || 0) + (view.lookZ || 0) * c.shift);
+        if (!raf) raf = requestAnimationFrame(loop);
+    }
+    return { show };
+})();
+
 function updateLaunchStadiumLabel() {
     const lbl = $('launch-stadium-name');
     if (lbl) lbl.textContent = getSelectedStadium().name;
