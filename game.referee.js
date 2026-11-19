@@ -610,7 +610,7 @@ const REF = (() => {
         const slot = p === controlledP1 ? 1 : p === controlledP2 ? 2 : 0;
         if (slot) {
             const mate = side.find(m => m !== p && !m.userData.isKeeper);
-            if (mate) setControlled(slot, mate);
+            if (mate) setControlled(slot, mate, true);     // even a locked slot: your star is off
         }
         const i = side.indexOf(p);
         if (i >= 0) side.splice(i, 1);

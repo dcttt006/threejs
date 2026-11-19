@@ -677,7 +677,7 @@ function paintHud() {
         [['Spatie'], 'schieten / tackle'],
         [['W', 'Spatie'], 'samen: hoog schot'],
         [['Spatie'], 'lang: powershot'],
-        [['Q'], 'passen / wisselen'],
+        [['Q'], STATE.mode === 'online' ? 'passen / wisselen' : 'passen / bal vragen'],
         [['W', 'Q'], 'samen: hoge pass'],
         [['Shift'], 'sprinten'],
     ]);

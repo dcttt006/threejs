@@ -173,7 +173,8 @@ function makeHuman(sim, device, rand) {
         const sp = sim.setPiece;
         if (sp) {
             if (st.shooting) { release('Space'); st.shooting = false; }
-            if (sp.phase === 'ready' && sp.taker === me) {
+            // you play only your star: for your side you say where it goes, whoever takes it
+            if (sp.phase === 'ready' && (sp.taker === me || sp.team === me.team)) {
                 move(0, 0, false);
                 if (st.spWait === undefined) st.spWait = 20 + Math.floor(rand() * 70);
                 if (--st.spWait <= 0) {
@@ -301,6 +302,10 @@ function runMatch(scn, seed) {
             + `${lk ? ' na ' + lk.kind + ' van ' + lk.team : ''} | ${allPlayers().map(f).join(' ')}`;
     };
     const mate = sim.p1 ? (sim.p1.team === 1 ? sim.team1 : sim.team2).find(p => p !== sim.p1 && !p.userData.isKeeper) : null;
+    // against the computer you play your star (the striker) and nobody else, all match
+    const star = sim.p1;
+    if (scn.mode === 'cpu' && (!star || star.userData.role !== 'att')) once('SPELER_IS_NIET_DE_STER', 0, star ? `rol ${star.userData.role}` : 'geen speler');
+    let switched = false;
 
     for (let t = 0; t < ticks; t++) {
         sb.__advance(1000 / 60);
@@ -376,6 +381,11 @@ function runMatch(scn, seed) {
                     + ': ' + describe());
                 pendingPass = null;
             }
+        }
+        // still on the pitch (not sent off) but no longer yours: a switch that shouldn't happen
+        if (scn.mode === 'cpu' && !switched && sim.p1 !== star && allPlayers().includes(star)) {
+            switched = true;
+            once('SPELER_WISSELT', t, `van de ster naar ${sim.p1 ? sim.p1.userData.role : 'niemand'}: ` + describe());
         }
         prevP1 = sim.p1;
         // a slide that never ends (someone left lying in the slide after a switch)

@@ -443,6 +443,9 @@ function buildPlayers() {
 
     controlledP1 = null;
     controlledP2 = null;
+    // with a star of your own you play him, and only him, the whole match
+    lockedSlot[1] = !!stars[STATE.p1.team];
+    lockedSlot[2] = false;
     setControlled(1, mains[STATE.p1.team]);
     if (!isCpu) setControlled(2, mains[STATE.p2.team]);
     // the referee and his assistants (game.referee.js)
@@ -456,9 +459,14 @@ function buildPlayers() {
 // the one nearest it when you press Pass without the ball.
 const SWITCH_GAP = 700;            // ms between two automatic switches
 const switchAt = { 1: 0, 2: 0 };
-function setControlled(slot, p) {
+// A locked slot plays one man all match (your star, against the computer and
+// as player 1 in Hot-Seat): no switching, his teammates are all the computer.
+// Only a red card (force) moves it to someone else.
+const lockedSlot = { 1: false, 2: false };
+function setControlled(slot, p, force) {
     const old = slot === 1 ? controlledP1 : controlledP2;
     if (!p || old === p || p.userData.isKeeper) return;
+    if (old && lockedSlot[slot] && !force) return;
     if (old) {
         const ou = old.userData;
         if (ou.arrow) { old.remove(ou.arrow); p.add(ou.arrow); p.userData.arrow = ou.arrow; ou.arrow = null; }
@@ -492,7 +500,7 @@ function nearestMateToBall(team, but) {
 }
 function autoSwitch(slot) {
     const me = slot === 1 ? controlledP1 : controlledP2;
-    if (!me) return;
+    if (!me || lockedSlot[slot]) return;
     // a teammate has the ball: play him
     if (carrier && carrier.team === me.team && carrier !== me) { setControlled(slot, carrier); return; }
     if (me.userData.tackleT > 0) return;                                 // not in the middle of your slide
@@ -608,7 +616,7 @@ function updateStaminaBars() {
             : shoot && shoot.classList.contains('is-high') ? 'Hoog'
             : shoot && shoot.classList.contains('is-power') ? 'Power' : 'Schiet';
         const passText = aimingHere() ? 'Kort' : own ? (pass && pass.classList.contains('is-high') ? 'Hoog' : 'Pass')
-            : (myKeeper && myKeeper.userData.holdingBall ? 'Vraag' : 'Wissel');
+            : (lockedSlot[1] || (myKeeper && myKeeper.userData.holdingBall) ? 'Vraag' : 'Wissel');
         if (shoot && shoot.textContent !== shootText) shoot.textContent = shootText;
         if (pass && pass.textContent !== passText) pass.textContent = passText;
         shoot?.classList.toggle('is-tackle', !own && !coming);
@@ -1081,6 +1089,10 @@ function gameTick() {
                     // a free kick or a penalty: Schiet goes at goal (up or down: that corner)
                     else if (sp.phase === 'ready' && (sp.kind === 'free' || sp.kind === 'penalty') && pressedOnce(c.shoot)) shootSetPiece(aimZFor(c));
                 } else {
+                    // your star doesn't take it, a teammate does: you still say where it goes
+                    // (a click, or Pass for short) while you find a spot
+                    const lockedHere = (c.p === controlledP1 && lockedSlot[1]) || (c.p === controlledP2 && lockedSlot[2]);
+                    if (lockedHere && sp.phase === 'ready' && sp.team === c.p.team && pressedOnce(c.pass)) takeSetPiece(null);
                     movePlayer(c.p, c.move);
                     keepAway(c.p, sp);
                 }
@@ -1832,6 +1844,7 @@ function handlePass(player, keyArr, upKeys) {
         const keeper = side[0];
         if ((keeper && keeper.userData.holdingBall) || (carrier && carrier.team === player.team)) { callForBall(player); return; }
         const slot = player === controlledP1 ? 1 : player === controlledP2 ? 2 : 0;
+        if (lockedSlot[slot]) return;                   // you play your star, nobody else
         const best = nearestMateToBall(player.team, player);
         if (slot && best.p) setControlled(slot, best.p);
         return;
@@ -2785,8 +2798,12 @@ function placeSetPiece(sp) {
     sp.phase = 'ready';
     sp.t = 0;
     const side = (sp.team === 1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper);
-    // a penalty is for the striker (the star), anything else for the nearest man
-    const taker = (sp.kind === 'penalty' && side.find(p => p.userData.role === 'att')) || nearestTo(side, sp.spot.x, sp.spot.z).p;
+    // a penalty is for the striker (the star), anything else for the nearest man;
+    // a side whose human plays only his star: he takes their free kicks and penalties
+    const slot0 = slotOf(sp.team);
+    const own = slot0 && lockedSlot[slot0] ? (slot0 === 1 ? controlledP1 : controlledP2) : null;
+    const star = own && side.includes(own) && (sp.kind === 'free' || sp.kind === 'penalty') ? own : null;
+    const taker = star || (sp.kind === 'penalty' && side.find(p => p.userData.role === 'att')) || nearestTo(side, sp.spot.x, sp.spot.z).p;
     if (!taker) { STATE.setPiece = null; return; }
     sp.taker = taker;
     const u = taker.userData;
