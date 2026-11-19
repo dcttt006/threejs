@@ -868,6 +868,8 @@ function keepOutForKickoff() {
 function walkBack() {
     STATE.restartTicks--;
     [...team1Players, ...team2Players].forEach(p => {
+        // a slide when the goal went in: finished (and up again) before he walks back
+        if (!p.userData.isKeeper && (p.userData.tackleT > 0 || p.userData.getUpT > 0) && slideTackle(p)) return;
         const at = kickoffSpot(p);
         const dx = at.x - p.position.x, dz = at.z - p.position.z;
         const d = Math.hypot(dx, dz);
@@ -1688,6 +1690,27 @@ function startTackle(p) {
     u.tackleCd = TACKLE_COOLDOWN;
 }
 
+// The computer slides in too (teammates and opponents alike): the one pressing
+// the man on the ball, a few steps from it, from the front or the side (from
+// behind is a foul: game.referee.js), now and then, more often at a higher
+// level (LEVELS.slide), and seldom in his own box, where a foul is a penalty.
+const BOT_SLIDE_MIN = 2.2, BOT_SLIDE_MAX = 7;
+function botWantsSlide(p, owner, lvl, ownGoalX) {
+    const u = p.userData;
+    if (!owner || owner.team === p.team || !lvl.slide || u.tackleCd > 0 || u.cooldown > 0) return false;
+    if (owner.userData.shield > 0) return false;                 // he has only just won it
+    const bx = ball.position.x - p.position.x, bz = ball.position.z - p.position.z, bd = Math.hypot(bx, bz);
+    if (bd < BOT_SLIDE_MIN || bd > BOT_SLIDE_MAX) return false;
+    // not from behind him: where he goes, the slider must be ahead of or beside him
+    const ov = Math.hypot(owner.userData.vx || 0, owner.userData.vz || 0);
+    if (ov > 0.05) {
+        const dot = ((owner.userData.vx || 0) * -bx + (owner.userData.vz || 0) * -bz) / (ov * bd);
+        if (dot < -0.35) return false;
+    }
+    const inOwnBox = Math.abs(owner.position.x - ownGoalX) < PEN_DEPTH && Math.abs(owner.position.z) < PEN_WIDTH / 2;
+    return Math.random() < lvl.slide * (inOwnBox ? 0.25 : 1);
+}
+
 // Moves a sliding (or getting up) player; true while that takes over from the
 // stick. Runs for every outfield player each tick, the one you play and the
 // computer's alike: a slide carries on to the end (and he gets up again) even
@@ -2474,6 +2497,7 @@ function updateBotFieldPlayer(p) {
                     targetX = perX - 1.5 * goalSign;
                     targetZ = perZ;
                     chasing = true;
+                    if (botWantsSlide(p, owner, lvl, ownGoalX)) { startTackle(p); return; }
                 } else if (inOurDefendingThird) {
                     // between the ball and our goal, moving across with it
                     targetX = ownGoalX + (perX - ownGoalX) * 0.45;

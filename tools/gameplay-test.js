@@ -268,7 +268,7 @@ function runMatch(scn, seed) {
     const stat = { looseTicks: 0, liveTicks: 0, gains: 0, teamSwaps: 0, keeperHolds: 0, parries: 0, goals: [0, 0], shots: [0, 0],
         longestLoose: 0, humanTouches: 0, botStill: 0, botTicks: 0, mateStill: 0, mateTicks: 0,
         dives: 0, divesOnShot: 0, divesOnOwnPass: 0, divesFar: 0, divesBeforeMoving: 0, possTicks: [], curPoss: 0,
-        shotLog: [], setPieces: [0, 0], humanPasses: [[], [], [], []], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 },
+        shotLog: [], setPieces: [0, 0], botSlides: [0, 0], humanPasses: [[], [], [], []], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 },
         ref: { off_mens: 0, off_pc: 0, offside: 0, foul: 0, hands: 0, goalcheck: 0, var: 0, geel: 0, rood: 0 } };
     let refSeen = null, refStart = 0;
     let spSeen = false, spStart = 0, prevLkObj = null, pendingPass = null, prevP1 = sim.p1;
@@ -391,6 +391,9 @@ function runMatch(scn, seed) {
         // a slide that never ends (someone left lying in the slide after a switch)
         allPlayers().forEach((p) => {
             const u = p.userData;
+            // a slide by the computer that starts now: a teammate of yours or an opponent
+            if (u.tackleT > 0 && !u.__wasSliding && p !== sim.p1 && p !== sim.p2) stat.botSlides[human && p.team === sim.p1.team ? 0 : 1]++;
+            u.__wasSliding = u.tackleT > 0;
             u.__slideFor = (u.tackleT > 0 || u.getUpT > 0) ? (u.__slideFor || 0) + 1 : 0;
             if (u.__slideFor === 80) once('TACKLE_BLIJFT_HANGEN', t, describe());
         });
@@ -602,6 +605,7 @@ for (const r of results) {
     {
         const hp = s.humanPasses, rate = (l) => l.length ? Math.round(100 * l.filter(Boolean).length / l.length) + '% (' + l.length + ')' : '-';
         console.log(`        hoekschoppen ${s.setPieces[0]}, inworpen ${s.setPieces[1]}`
+            + `   computer tackelt: ${r.scn.device !== 'idle' ? `teamgenoten ${s.botSlides[0]}, tegenstanders ${s.botSlides[1]}` : s.botSlides[1]}`
             + (r.scn.device !== 'idle' ? `   jouw passes komen aan: ${rate(hp[0])} (vrije lijn ${rate(hp[2])}, dichte lijn ${rate(hp[3])}), hoge passes: ${rate(hp[1])}` : ''));
     }
     if (r.scn.device !== 'idle') {

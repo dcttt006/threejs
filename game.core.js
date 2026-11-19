@@ -39,7 +39,7 @@ const STATE = {
 //   run         its speed, relative to the medium bot
 //   press       how close the ball must be before it goes in for a tackle
 //   steal       chance per tick (60 a second) of winning the ball in a duel
-//   read        how quickly it follows the ball (0.1 ≈ a 150 ms lag)
+//   read        how quickly it follows the ball (0.1 â‰ˆ a 150 ms lag)
 //   shootFrom   distance to goal from which it shoots
 //   shootChance chance per tick of shooting once in range
 //   aim / miss  how far towards a post it aims, and its spread (units)
@@ -56,21 +56,21 @@ const LEVELS = {
     easy: {
         label: 'Makkelijk',
         desc: 'Speelt rustig, wint de bal zelden terug en de keeper laat er wat door.',
-        run: 0.82, press: 10, steal: 0.012, read: 0.06, pass: 0.006, sprint: 0, lane: 0.06,
+        run: 0.82, press: 10, steal: 0.012, read: 0.06, pass: 0.006, sprint: 0, lane: 0.06, slide: 0.04,
         shootFrom: 24, shootChance: 0.014, aim: 0.12, miss: 12, power: [0.05, 0.4],
         keeper: { react: 10, lunge: 0.62, dive: 1.5, shuffle: 0.28 },
     },
     medium: {
         label: 'Gemiddeld',
         desc: 'Een eerlijke wedstrijd: zet druk en schiet als hij de kans krijgt.',
-        run: 1, press: 16, steal: 0.025, read: 0.10, pass: 0.014, sprint: 0.6, lane: 0.12,
+        run: 1, press: 16, steal: 0.025, read: 0.10, pass: 0.014, sprint: 0.6, lane: 0.12, slide: 0.08,
         shootFrom: 30, shootChance: 0.025, aim: 0.24, miss: 9, power: [0.15, 0.65],
         keeper: { react: 5, lunge: 0.75, dive: 2.1, shuffle: 0.34 },
     },
     hard: {
         label: 'Moeilijk',
         desc: 'Snel, jaagt op de bal, schiet in de hoeken en de keeper houdt veel.',
-        run: 1.07, press: 24, steal: 0.045, read: 0.17, pass: 0.024, sprint: 1, lane: 0.18,
+        run: 1.07, press: 24, steal: 0.045, read: 0.17, pass: 0.024, sprint: 1, lane: 0.18, slide: 0.12,
         shootFrom: 34, shootChance: 0.04, aim: 0.36, miss: 5, power: [0.4, 0.95],
         keeper: { react: 4, lunge: 0.85, dive: 2.6, shuffle: 0.38 },
     },
@@ -181,7 +181,7 @@ const STADIUMS = [
     {
         id: 'wanda-metropolitano',
         name: 'Wanda Metropolitano',
-        club: 'Atlético Madrid',
+        club: 'AtlÃ©tico Madrid',
         city: 'Madrid',
         file: 'media/models/stadiums/wanda_metropolitano_stadium.glb',
         capacity: '70.460',
@@ -306,9 +306,9 @@ const STADIUMS = [
     },
     {
         id: 'el-campin',
-        name: 'El Campín',
-        club: 'Millonarios · Santa Fe',
-        city: 'Bogotá',
+        name: 'El CampÃ­n',
+        club: 'Millonarios Â· Santa Fe',
+        city: 'BogotÃ¡',
         // built from nothing by tools/campin_build.py; ?v=: raise it with every new export
         file: 'media/models/stadiums/el_campin.glb?v=1',
         capacity: '36.343',
@@ -373,13 +373,13 @@ function setSelectedStadium(id) {
 const STARS = [
     { id: 'yamal', name: 'Lamine Yamal', back: 'YAMAL', number: 10, country: 'Spanje', flag: 'es',
       skin: 0xa36c45, hair: 0x14100d, style: 'curls', beard: false, boots: 0xff4f9a, stats: [4, 4, 5, 4], extra: 'Krult zijn schoten het mooist' },
-    { id: 'messi', name: 'Lionel Messi', back: 'MESSI', number: 10, country: 'Argentinië', flag: 'ar',
+    { id: 'messi', name: 'Lionel Messi', back: 'MESSI', number: 10, country: 'ArgentiniÃ«', flag: 'ar',
       skin: 0xe2bc96, hair: 0x4a3120, style: 'short', beard: true, boots: 0x35a8ff, stats: [3, 5, 5, 5], extra: 'De koning van de dribbel' },
     { id: 'ronaldo', name: 'Cristiano Ronaldo', back: 'RONALDO', number: 7, country: 'Portugal', flag: 'pt',
       skin: 0xd9aa80, hair: 0x15100c, style: 'quiff', beard: false, boots: 0xf4f4f0, stats: [4, 5, 3, 3], extra: 'Hard schot, sterk in de lucht' },
-    { id: 'vinicius', name: 'Vinícius Jr', back: 'VINI JR', number: 7, country: 'Brazilië', flag: 'br',
+    { id: 'vinicius', name: 'VinÃ­cius Jr', back: 'VINI JR', number: 7, country: 'BraziliÃ«', flag: 'br',
       skin: 0x6a4330, hair: 0x0d0a08, style: 'twists', beard: false, boots: 0xffd60a, stats: [5, 4, 5, 3], extra: 'Snel met de bal aan zijn voet' },
-    { id: 'mbappe', name: 'Kylian Mbappé', back: 'MBAPPÉ', number: 10, country: 'Frankrijk', flag: 'fr',
+    { id: 'mbappe', name: 'Kylian MbappÃ©', back: 'MBAPPÃ‰', number: 10, country: 'Frankrijk', flag: 'fr',
       skin: 0x7a4b31, hair: 0x0d0a08, style: 'buzz', beard: false, boots: 0xff7a1a, stats: [5, 5, 4, 3], extra: 'De snelste van allemaal' },
     { id: 'bellingham', name: 'Jude Bellingham', back: 'BELLINGHAM', number: 5, country: 'Engeland', flag: 'gb-eng',
       skin: 0x8e5d3d, hair: 0x110d0a, style: 'crop', beard: false, boots: 0x101010, stats: [4, 4, 4, 4], extra: 'Overal op het veld te vinden' },
@@ -413,13 +413,16 @@ const CAMERA_VIEWS = [
     { id: 'dynamisch',  name: 'Dynamisch',  meta: 'Gaat mee met de bal',       height: 34, back: 84,  fov: 38, follow: 1,    maxX: 100, shift: 0, followZ: 0.75 },
 ];
 const CAMERA_STORAGE_KEY = 'pitchRoyale.camera';
-const CAMERA_DEFAULT = { view: 'uitzending', height: 5, zoom: 5 };
+const CAMERA_DEFAULT = { view: 'stadion', height: 5, zoom: 5 };
 function getCameraSettings() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(CAMERA_STORAGE_KEY) || 'null'); } catch (_) {}
     const one = (o) => {
         const v = Object.assign({}, CAMERA_DEFAULT, o || {});
         if (!CAMERA_VIEWS.some(c => c.id === v.view)) v.view = CAMERA_DEFAULT.view;
+        // Stadion became the default: a choice saved before that starts on it once
+        // (height and zoom kept); anything picked after that stays
+        if (!v.stadionDefault) { v.view = 'stadion'; v.stadionDefault = true; }
         v.height = Math.max(0, Math.min(10, Math.round(+v.height || 0)));
         v.zoom = Math.max(0, Math.min(10, Math.round(+v.zoom || 0)));
         return v;
