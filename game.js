@@ -389,106 +389,11 @@ const KIT = {
     1: { shirt: COLORS.team1, shorts: 0xffffff, socks: COLORS.team1, keeper: 0xf2c230 },
     2: { shirt: COLORS.team2, shorts: 0x10214f, socks: COLORS.team2, keeper: 0x2fb463 },
 };
-const SKIN_TONES = [0xe2c39a, 0xc68e5e, 0x8a5a3b, 0xf0d2b0];
-const HAIR_TONES = [0x1c1612, 0x4a2f1b, 0x111111, 0xb08a4a];
-
-// A small footballer built from primitives: boots, socks, legs, shorts,
-// shirt with sleeves, arms, head and hair. Legs and arms hang from pivots
-// so animatePlayers() can swing them. The figure faces local +z.
-function makePlayer(team, isKeeper, controlled, look) {
-    const kit = KIT[team];
-    const shirtHex = isKeeper ? kit.keeper : kit.shirt;
-    const shirt  = litMat(shirtHex);
-    const shorts = litMat(isKeeper ? 0x161616 : kit.shorts);
-    const socks  = litMat(isKeeper ? shirtHex : kit.socks);
-    const skin   = litMat(SKIN_TONES[look % SKIN_TONES.length]);
-    const hair   = litMat(HAIR_TONES[look % HAIR_TONES.length]);
-    const boot   = litMat(0x141414);
-
-    const group = new THREE.Group();
-    const body = new THREE.Group();
-    group.add(body);
-
-    const cyl = (rTop, rBot, len, mat) => new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, len, 12), mat);
-
-    const HIP = 2.75;
-    const makeLeg = (x) => {
-        const pivot = new THREE.Group();
-        pivot.position.set(x, HIP, 0);
-        const thigh = cyl(0.36, 0.28, 1.5, skin);  thigh.position.y = -0.75;
-        const sock  = cyl(0.3, 0.26, 1.1, socks);  sock.position.y = -1.95;
-        const shoe  = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 1.05), boot);
-        shoe.position.set(0, -2.57, 0.22);
-        pivot.add(thigh, sock, shoe);
-        body.add(pivot);
-        return pivot;
-    };
-    const legL = makeLeg(-0.42);
-    const legR = makeLeg(0.42);
-
-    const pants = cyl(0.8, 0.86, 1.0, shorts);
-    pants.position.y = HIP + 0.05;
-    pants.scale.z = 0.7;
-    body.add(pants);
-
-    const torso = cyl(0.98, 0.78, 2.0, shirt);
-    torso.position.y = HIP + 1.5;
-    torso.scale.z = 0.62;
-    body.add(torso);
-
-    const SHOULDER = HIP + 2.3;
-    const makeArm = (x) => {
-        const pivot = new THREE.Group();
-        pivot.position.set(x, SHOULDER, 0);
-        const sleeve  = cyl(0.3, 0.27, 0.9, shirt);  sleeve.position.y = -0.4;
-        const forearm = cyl(0.22, 0.19, 1.25, skin); forearm.position.y = -1.4;
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(isKeeper ? 0.34 : 0.22, 10, 8), isKeeper ? litMat(0xffffff) : skin);
-        hand.position.y = -2.1;
-        pivot.add(sleeve, forearm, hand);
-        pivot.rotation.z = x < 0 ? -0.12 : 0.12;
-        body.add(pivot);
-        return pivot;
-    };
-    const armL = makeArm(-1.12);
-    const armR = makeArm(1.12);
-
-    const neck = cyl(0.26, 0.3, 0.4, skin);
-    neck.position.y = SHOULDER + 0.35;
-    body.add(neck);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12), skin);
-    head.position.y = SHOULDER + 1.0;
-    body.add(head);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.66, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
-    cap.position.set(0, SHOULDER + 1.04, -0.06);
-    body.add(cap);
-
-    // soft contact shadow; real shadow maps are off (see initThree)
-    const shadowBlob = new THREE.Mesh(
-        new THREE.CircleGeometry(2.0, 24),
-        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false })
-    );
-    shadowBlob.rotation.x = -Math.PI / 2;
-    shadowBlob.position.y = 0.05;
-    group.add(shadowBlob);
-
-    // ring under the player you control; it grows while a shot is charging
-    if (controlled) {
-        const ring = new THREE.Mesh(
-            new THREE.RingGeometry(2.4, 2.9, 40),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
-        );
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.y = 0.07;
-        group.userData.ring = ring;
-        group.add(ring);
-    }
-
-    body.scale.setScalar(1.25);      // a little larger than life so they read from the stand
-    group.userData.isKeeper = isKeeper;
-    group.userData.rig = { body, legL, legR, armL, armR };
-    group.userData.stride = 0;
-    body.rotation.y = team === 1 ? Math.PI / 2 : -Math.PI / 2;   // face the opponent's goal
-    return group;
+// A footballer for this side (game.players.js builds him): `look` a number
+// for an ordinary look, or a look from playerLook()
+function makePlayer(team, isKeeper, controlled, look, role, star) {
+    const lk = typeof look === 'object' && look ? look : playerLook(team, isKeeper, role, look || 0, star);
+    return makeFootballer(team, isKeeper, lk);
 }
 
 function buildPlayers() {
@@ -502,8 +407,10 @@ function buildPlayers() {
     // Hot-Seat (duo) and online: a human on each side; against the computer
     // only P1's side has one.
     const isCpu = STATE.mode === 'cpu';
+    // the stars play up front (game.players.js: matchStars)
+    const stars = matchStars();
     const add = (team, isKeeper, role, x, z, look) => {
-        const p = makePlayer(team, isKeeper, false, look);
+        const p = makePlayer(team, isKeeper, false, look, role, role === 'att' ? stars[team] : null);
         p.position.set(x, 0, z);
         p.team = team;
         p.isKeeper = isKeeper;

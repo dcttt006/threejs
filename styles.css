@@ -1211,7 +1211,9 @@ kbd {
     transform: skewX(-18deg);
 }
 /* Stadion kiezen and Instellingen side by side under the menu */
-.home__links { display: flex; flex-wrap: wrap; gap: 0 22px; }
+.home__links { display: flex; flex-wrap: nowrap; gap: 0 22px; width: max-content; }
+.home__links > * { white-space: nowrap; }
+@media (max-width: 620px) { .home__links { flex-wrap: wrap; width: auto; } }
 
 /* what the statistics measure: under the menu, or in the corner over the pitch */
 .home__note {
@@ -1794,6 +1796,35 @@ kbd {
 
 @media (hover: hover) {
     .stadium-row:not(.is-active):hover { color: var(--amber); }
+}
+
+/* ---------- Speler kiezen (game.players.js): laid out as Stadion kiezen ---------- */
+.star .viewer canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.star__num {
+    position: absolute;
+    right: 18px;
+    top: 34px;
+    color: rgba(255, 255, 255, .07);
+    font: italic 900 clamp(90px, 22vh, 170px)/1 var(--font-cond);
+    pointer-events: none;
+}
+.star__land { display: inline-flex; align-items: center; gap: 7px; }
+.star .flag { display: inline-block; width: 22px; height: 15px; object-fit: cover; }
+.star .stadium-row .flag { justify-self: end; }
+.star__stats { flex: none; display: grid; gap: 8px; padding: 12px 14px; border-top: 4px solid var(--edge); }
+.star__stat { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 10px; color: var(--dim); font: 400 12px/1 var(--font-led); text-transform: uppercase; }
+.star__bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.star__bar i { height: 9px; background: var(--edge); }
+.star__bar i.on { background: var(--amber); }
+.star__extra { margin-top: 2px; color: #fff; font: 500 14px/1.3 var(--font-text); }
+.star__extra b { margin-right: 6px; color: var(--amber); font: 400 12px/1 var(--font-led); text-transform: uppercase; }
+/* the bars beside him on the pitch view, where there is no room under the list */
+.star__stats--over { display: none; position: absolute; right: 12px; top: 34px; width: 50%; padding: 0; border: 0; gap: 7px; }
+@media (max-height: 520px) and (orientation: landscape) {
+    .star__stats--over { display: grid; }
+    .star__stats--over .star__stat { grid-template-columns: 64px 1fr; font-size: 11px; }
+    .star__stats--over .star__extra { font-size: 12px; }
+    .star .stadium__side .star__stats, .star__num { display: none; }
 }
 /* a tablet held upright: the same column, roomier */
 @media (orientation: portrait) and (min-width: 700px) and (min-height: 560px) {

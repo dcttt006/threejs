@@ -82,7 +82,7 @@ function makeContext(seed) {
     // anything else: an object whose every method does nothing and returns itself
     const inert = () => { const o = {}; const px = new Proxy(o, { get: (t, k) => (k in t ? t[k] : (k === Symbol.toPrimitive || k === 'then' ? undefined : () => px)), set: (t, k, v) => { t[k] = v; return true; } }); return px; };
     function Inert() { return inert(); }
-    const special = { Object3D: Obj3D, Group: Obj3D, Scene: Obj3D, Mesh, Vector3: V3, Color };
+    const special = { Object3D: Obj3D, Group: Obj3D, Scene: Obj3D, Mesh, Sprite: Mesh, Vector3: V3, Color };
     const THREE = new Proxy({}, {
         get: (t, k) => special[k] || (/Material$/.test(k) ? Material : (typeof k === 'string' && /^[A-Z][a-z]/.test(k) ? Inert : 0)),
     });
@@ -132,7 +132,7 @@ const BRIDGE = `
     get setPiece() { return STATE.setPiece; }, aim(x, z) { return setPieceAim(x, z); },
     C: { FIELD_W, FIELD_L, GOAL_W, GOAL_H, PLAYER_SIZE, BALL_SIZE, CARRY_REACH },
 };`;
-const SOURCE = ['game.core.js', 'game.ui.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n') + BRIDGE;
+const SOURCE = ['game.core.js', 'game.ui.js', 'game.players.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n') + BRIDGE;
 
 // ---------------------------------------------------------------- the scripted human
 // Decides like a reasonable player each tick; `device` turns that into keys

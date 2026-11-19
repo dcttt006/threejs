@@ -365,6 +365,38 @@ function setSelectedStadium(id) {
     try { sessionStorage.setItem(STADIUM_STORAGE_KEY, id); } catch (_) {}
 }
 
+// ----------- star players (Speler kiezen) -----------
+// The star you play as: your striker gets his looks (skin, cut, beard, boots),
+// his name and number, and his name under his feet in a match (game.players.js).
+// Against the computer its striker is another of them. The pick is kept.
+//   stats  speed, shot, dribble, passing, 1 to 5, as shown in the picker
+const STARS = [
+    { id: 'yamal', name: 'Lamine Yamal', back: 'YAMAL', number: 10, country: 'Spanje', flag: 'es',
+      skin: 0xa36c45, hair: 0x14100d, style: 'curls', beard: false, boots: 0xff4f9a, stats: [4, 4, 5, 4], extra: 'Krult zijn schoten het mooist' },
+    { id: 'messi', name: 'Lionel Messi', back: 'MESSI', number: 10, country: 'Argentinië', flag: 'ar',
+      skin: 0xe2bc96, hair: 0x4a3120, style: 'short', beard: true, boots: 0x35a8ff, stats: [3, 5, 5, 5], extra: 'De koning van de dribbel' },
+    { id: 'ronaldo', name: 'Cristiano Ronaldo', back: 'RONALDO', number: 7, country: 'Portugal', flag: 'pt',
+      skin: 0xd9aa80, hair: 0x15100c, style: 'quiff', beard: false, boots: 0xf4f4f0, stats: [4, 5, 3, 3], extra: 'Hard schot, sterk in de lucht' },
+    { id: 'vinicius', name: 'Vinícius Jr', back: 'VINI JR', number: 7, country: 'Brazilië', flag: 'br',
+      skin: 0x6a4330, hair: 0x0d0a08, style: 'twists', beard: false, boots: 0xffd60a, stats: [5, 4, 5, 3], extra: 'Snel met de bal aan zijn voet' },
+    { id: 'mbappe', name: 'Kylian Mbappé', back: 'MBAPPÉ', number: 10, country: 'Frankrijk', flag: 'fr',
+      skin: 0x7a4b31, hair: 0x0d0a08, style: 'buzz', beard: false, boots: 0xff7a1a, stats: [5, 5, 4, 3], extra: 'De snelste van allemaal' },
+    { id: 'bellingham', name: 'Jude Bellingham', back: 'BELLINGHAM', number: 5, country: 'Engeland', flag: 'gb-eng',
+      skin: 0x8e5d3d, hair: 0x110d0a, style: 'crop', beard: false, boots: 0x101010, stats: [4, 4, 4, 4], extra: 'Overal op het veld te vinden' },
+    { id: 'pedri', name: 'Pedri', back: 'PEDRI', number: 8, country: 'Spanje', flag: 'es',
+      skin: 0xe9c6a2, hair: 0x2b1d13, style: 'fringe', beard: false, boots: 0x2fd17a, stats: [3, 3, 4, 5], extra: 'Ziet elke pass' },
+];
+const STAR_STORAGE_KEY = 'pitchRoyale.star';
+function getSelectedStar() {
+    let id = null;
+    try { id = localStorage.getItem(STAR_STORAGE_KEY); } catch (_) {}
+    return STARS.find(s => s.id === id) || STARS[1];
+}
+function setSelectedStar(id) {
+    if (!STARS.find(s => s.id === id)) return;
+    try { localStorage.setItem(STAR_STORAGE_KEY, id); } catch (_) {}
+}
+
 // ----------- camera views (Instellingen) -----------
 // The match camera, as the camera options in FIFA: always on the long side
 // (the game cuts the near stand away towards it), each with its own height,
@@ -411,7 +443,7 @@ function cameraFor(device) {
 
 // ----------- DOM helpers -----------
 const $ = (id) => document.getElementById(id);
-const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen','online-screen','settings-screen'];
+const screens = ['loading-screen','launch-screen','setup-screen','coin-screen','game-screen','over-screen','stadium-screen','wk-screen','wk-hub-screen','online-screen','settings-screen','star-screen'];
 const SCREEN_TO_DOM = {
     loading: 'loading-screen',
     launch:  'launch-screen',
@@ -424,6 +456,7 @@ const SCREEN_TO_DOM = {
     wkhub:   'wk-hub-screen',
     online:  'online-screen',
     settings: 'settings-screen',
+    star:    'star-screen',
 };
 function showScreen(id) {
     screens.forEach(s => {
