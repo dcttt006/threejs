@@ -676,14 +676,14 @@ function paintHud() {
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
         [['Spatie'], 'schieten / tackle'],
         [['W', 'Spatie'], 'samen: hoog schot'],
-        [['Q'], 'passen / bal vragen'],
+        [['Q'], 'passen / wisselen'],
         [['Shift'], 'sprinten'],
     ]);
     fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
         [['↑', '←', '↓', '→'], 'bewegen'],
         [['Enter'], 'schieten / tackle'],
         [['↑', 'Enter'], 'samen: hoog schot'],
-        [['Shift'], 'passen / bal vragen'],
+        [['Shift'], 'passen / wisselen'],
         [['Alt'], 'sprinten'],
     ], STATE.mode === 'online' ? 'online' : cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
 }

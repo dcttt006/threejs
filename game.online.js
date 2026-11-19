@@ -1033,6 +1033,8 @@ const ONLINE = (() => {
             }),
             b: [r2(ball.position.x), r2(ball.position.y), r2(ball.position.z)],
             c: carrier ? all.indexOf(carrier) : -1,
+            // who each side's human plays now (game.js: setControlled), team 1 then team 2
+            cp: [1, 2].map(t => { const h = [controlledP1, controlledP2].find(p => p && p.team === t); return h ? all.indexOf(h) : -1; }),
             s: [STATE.score1, STATE.score2],
             e: STATE.gameStartTime ? Math.floor((Date.now() - STATE.gameStartTime) / 1000) : 0,
             k: STATE.inputLocked ? 1 : 0,
@@ -1192,6 +1194,13 @@ const ONLINE = (() => {
         lastBallX = ball.position.x;
         lastBallZ = ball.position.z;
         carrier = b.m.c >= 0 ? all[b.m.c] || null : null;
+        // the arrows follow whoever each human plays on the host
+        (b.m.cp || []).forEach((idx, t) => {
+            const p = idx >= 0 ? all[idx] : null;
+            if (!p) return;
+            const slot = controlledP1 && controlledP1.team === t + 1 ? 1 : controlledP2 && controlledP2.team === t + 1 ? 2 : 0;
+            if (slot && typeof setControlled === 'function') setControlled(slot, p);
+        });
         STATE.inputLocked = !!b.m.k;
     }
 
