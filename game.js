@@ -147,9 +147,9 @@ function buildLights() {
 // without a usable pitch of their own; otherwise the match is played on the
 // model's grass and this one is hidden (see buildStadium).
 const PITCH_MARGIN = 10;          // grass apron outside the lines
-const PEN_DEPTH = 18, PEN_WIDTH = 46;
-const BOX_DEPTH = 7,  BOX_WIDTH = 30;
-const PEN_SPOT = 13,  CIRCLE_R = 10;
+const PEN_DEPTH = 18 * PITCH_SCALE, PEN_WIDTH = 46 * PITCH_SCALE;
+const BOX_DEPTH = 7 * PITCH_SCALE,  BOX_WIDTH = 30 * PITCH_SCALE;
+const PEN_SPOT = 13 * PITCH_SCALE,  CIRCLE_R = 10 * PITCH_SCALE;
 
 function makePitchTexture() {
     const PX = 16;                                  // pixels per world unit
@@ -881,10 +881,10 @@ let kickoffHold = null;            // { team, ticks } until the kick-off is take
 // where each role lines up, in its own half: a = towards the other goal
 // (negative: own half), b = across. The side kicking off has its striker at the ball.
 const ROLE_KICKOFF = {
-    att: (kicking) => ({ a: kicking ? -3 : -18, b: 0 }),
-    lw:  (kicking) => ({ a: kicking ? -10 : -16, b: -20 }),
-    rw:  (kicking) => ({ a: kicking ? -10 : -16, b: 20 }),
-    def: () => ({ a: -32, b: 0 }),
+    att: (kicking) => ({ a: kicking ? -3 : -18 * PITCH_SCALE, b: 0 }),
+    lw:  (kicking) => ({ a: (kicking ? -10 : -16) * PITCH_SCALE, b: -20 * PITCH_SCALE }),
+    rw:  (kicking) => ({ a: (kicking ? -10 : -16) * PITCH_SCALE, b: 20 * PITCH_SCALE }),
+    def: () => ({ a: -32 * PITCH_SCALE, b: 0 }),
 };
 function kickoffSpot(p) {
     const side = p.team === 1 ? 1 : -1;                 // the way this side attacks
@@ -1698,7 +1698,7 @@ function passValue(from, m) {
     const open = Math.min(14, nearestTo(enemies, m.position.x, m.position.z).d);
     const lane = Math.min(8, laneRoom(from.team, from.position.x, from.position.z, m.position.x, m.position.z));
     const adv = (m.position.x - from.position.x) * goalSign;
-    return adv * 0.05 + open * 0.07 + lane * 0.13 - Math.max(0, d - 42) * 0.05 - (d < 10 ? (10 - d) * 0.12 : 0) - (lane < 3 ? 1 : 0);
+    return adv * 0.05 + open * 0.07 + lane * 0.13 - Math.max(0, d - 42 * PITCH_SCALE) * 0.05 - (d < 10 ? (10 - d) * 0.12 : 0) - (lane < 3 ? 1 : 0);
 }
 
 function handlePass(player, keyArr) {
@@ -1745,7 +1745,7 @@ function passBall(from, to) {
         tx += (Math.random() - 0.5) * 2 * err;
         tz += (Math.random() - 0.5) * 2 * err;
     }
-    const power = Math.min(1.9, 0.85 + d0 * 0.022);
+    const power = Math.min(2.3, 0.85 + d0 * 0.022);
     // into his stride: where he will be when it gets there
     const lead = (d0 / power) * 0.8;
     tx += (to.userData.vx || 0) * lead;
@@ -2031,7 +2031,8 @@ const clampZ = (z) => Math.max(-FIELD_L / 2 + 3, Math.min(FIELD_L / 2 - 3, z));
 // across (the left flank negative), then turned the right way round.
 function roleSpot(p, attacking) {
     const g = p.team === 1 ? 1 : -1;
-    const ba = ball.position.x * g, bz = ball.position.z * g;
+    // in units of the 110 x 70 pitch, scaled back at the end
+    const ba = ball.position.x * g / PITCH_SCALE, bz = ball.position.z * g / PITCH_SCALE;
     const anchor = Math.max(-34, Math.min(34, ba));
     const lean = bz * 0.3;
     let a, b;
@@ -2041,7 +2042,8 @@ function roleSpot(p, attacking) {
         case 'rw':  a = attacking ? anchor + 6 : anchor - 10; b = attacking ? 24 : 15 + lean; break;
         default:    a = attacking ? Math.max(anchor - 22, -42) : Math.max(anchor - 20, -46); b = lean;
     }
-    a = Math.max(-48, Math.min(46, a));
+    a = Math.max(-48, Math.min(46, a)) * PITCH_SCALE;
+    b *= PITCH_SCALE;
     return { x: clampX(a * g), z: clampZ(b * g) };
 }
 // the best spot near `spot` to be passed to: away from opponents, the line
@@ -2051,7 +2053,7 @@ function freeSpot(p, spot, owner) {
     let best = spot, bestV = -Infinity;
     for (let i = -1; i <= 1; i++) {
         for (let j = -1; j <= 1; j++) {
-            const x = clampX(spot.x + i * 7), z = clampZ(spot.z + j * 7);
+            const x = clampX(spot.x + i * 7 * PITCH_SCALE), z = clampZ(spot.z + j * 7 * PITCH_SCALE);
             const open = Math.min(12, nearestTo(enemies, x, z).d);
             const lane = owner ? Math.min(8, laneRoom(p.team, owner.position.x, owner.position.z, x, z)) : 8;
             const v = open * 0.1 + lane * 0.15 - Math.hypot(i, j) * 0.12;
@@ -2077,7 +2079,7 @@ function planFor(team) {
     }
     const ownGoalX = team === 1 ? -FIELD_W / 2 : FIELD_W / 2;
     const markers = side.filter(m => m !== presser && !human(m));
-    const danger = enemies.filter(e => e !== carrier && Math.abs(e.position.x - ownGoalX) < 70)
+    const danger = enemies.filter(e => e !== carrier && Math.abs(e.position.x - ownGoalX) < 70 * PITCH_SCALE)
         .sort((a, b) => Math.abs(a.position.x - ownGoalX) - Math.abs(b.position.x - ownGoalX));
     const marks = new Map();
     danger.forEach((e) => {
@@ -2094,7 +2096,7 @@ function startRun(p) {
     const g = p.team === 1 ? 1 : -1;
     const u = p.userData;
     const enemies = (p.team === 1 ? team2Players : team1Players).filter(e => !e.userData.isKeeper);
-    const x = clampX(Math.min(FIELD_W / 2 - 12, Math.max(-FIELD_W / 2 + 12, p.position.x + g * 18)));
+    const x = clampX(Math.min(FIELD_W / 2 - 12, Math.max(-FIELD_W / 2 + 12, p.position.x + g * 18 * PITCH_SCALE)));
     const near = nearestTo(enemies, x, p.position.z).p;
     const z = clampZ(p.position.z * 0.6 + (near ? Math.sign(p.position.z - near.position.z || 1) * 5 : 0));
     u.runTo = { x, z };

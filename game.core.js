@@ -107,8 +107,13 @@ const COLORS = {
 };
 
 // ----------- field constants -----------
-const FIELD_W = 110;
-const FIELD_L = 70;
+// The pitch is PITCH_SCALE times the 110 x 70 the game was first tuned on, so
+// a player is small next to it, as on a real pitch: it feels big, as in FC
+// Mobile, and the camera shows a part of it and goes with the play. The shape
+// of the sides, runs and markings are written for 110 x 70 and scaled by it.
+const PITCH_SCALE = 1.8;
+const FIELD_W = 110 * PITCH_SCALE;
+const FIELD_L = 70 * PITCH_SCALE;
 const GOAL_W = 22;
 const GOAL_H = 10;
 const PLAYER_SIZE = 3.4;
@@ -359,12 +364,12 @@ function setSelectedStadium(id) {
 const CAMERA_VIEWS = [
     // shift: how much of a stadium's own aim (catalog view.lookZ) it takes; the
     // low and steep views would lose the near touchline with it
-    { id: 'uitzending', name: 'Uitzending', meta: 'Zoals op tv',               height: 30, back: 78,  fov: 38, follow: 0.55, maxX: 24, shift: 1 },
-    { id: 'stadion',    name: 'Stadion',    meta: 'Met de schermen in beeld',  height: 28, back: 96,  fov: 44, follow: 0.5,  maxX: 20, shift: 0, lookZ: -30 },
-    { id: 'tele',       name: 'Tele',       meta: 'Van ver weg, vlak beeld',   height: 44, back: 124, fov: 25, follow: 0.6,  maxX: 22, shift: 1 },
-    { id: 'dichtbij',   name: 'Dichtbij',   meta: 'Laag en dicht op het veld', height: 19, back: 56,  fov: 46, follow: 0.8,  maxX: 30, shift: 0 },
-    { id: 'hoog',       name: 'Hoog',       meta: 'Het hele veld van boven',   height: 60, back: 70,  fov: 42, follow: 0.4,  maxX: 16, shift: 0 },
-    { id: 'dynamisch',  name: 'Dynamisch',  meta: 'Gaat mee met de bal',       height: 24, back: 54,  fov: 42, follow: 0.85, maxX: 30, shift: 0, followZ: 0.45 },
+    { id: 'uitzending', name: 'Uitzending', meta: 'Zoals op tv',               height: 46, back: 118, fov: 30, follow: 0.95, maxX: 92, shift: 1, followZ: 0.55 },
+    { id: 'stadion',    name: 'Stadion',    meta: 'Met de schermen in beeld',  height: 40, back: 132, fov: 36, follow: 0.9,  maxX: 86, shift: 0, lookZ: -30, followZ: 0.5 },
+    { id: 'tele',       name: 'Tele',       meta: 'Van ver weg, vlak beeld',   height: 66, back: 170, fov: 21, follow: 0.95, maxX: 92, shift: 1, followZ: 0.6 },
+    { id: 'dichtbij',   name: 'Dichtbij',   meta: 'Laag en dicht op het veld', height: 28, back: 82,  fov: 40, follow: 1,    maxX: 98, shift: 0, followZ: 0.7 },
+    { id: 'hoog',       name: 'Hoog',       meta: 'Het hele veld van boven',   height: 110, back: 110, fov: 46, follow: 0.6,  maxX: 50, shift: 0, followZ: 0.3 },
+    { id: 'dynamisch',  name: 'Dynamisch',  meta: 'Gaat mee met de bal',       height: 34, back: 84,  fov: 38, follow: 1,    maxX: 100, shift: 0, followZ: 0.75 },
 ];
 const CAMERA_STORAGE_KEY = 'pitchRoyale.camera';
 const CAMERA_DEFAULT = { view: 'uitzending', height: 5, zoom: 5 };
