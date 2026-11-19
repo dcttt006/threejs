@@ -989,6 +989,8 @@ const REF = (() => {
         onPass, onReceive, onChallenge, onBlock, onGoal, onKickoff, onSetPiece,
         isOffside, lineFor, snap, applySnap,
         force(o) { forced = o; },                    // var-test.html only
+        whistle,                                     // the VAR minigame blows it in its scenes (game.var.js)
+        get officials() { return officials; },       // and moves the officials itself
         get active() { return inc; },
         get removed() { return removed; },
     };

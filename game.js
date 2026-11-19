@@ -999,6 +999,12 @@ function animate(now) {
         renderer.render(scene, camera);
         return;
     }
+    // Jij bent de VAR plays its own scripted scenes, no match (game.var.js)
+    if (STATE.varGame && typeof VARGAME !== 'undefined' && VARGAME.active()) {
+        if (!STATE.paused) VARGAME.frame(frameDt);
+        renderer.render(scene, camera);
+        return;
+    }
 
     // online, the guest doesn't play the match itself: it shows the host's (game.online.js)
     const guest = typeof ONLINE !== 'undefined' && ONLINE.isGuest();
@@ -3491,6 +3497,7 @@ function teardownGame() {
     if (typeof PR_STATS !== 'undefined') PR_STATS.matchEnd(false);
     if (typeof ONLINE !== 'undefined') ONLINE.onTeardown();
     if (typeof PENS !== 'undefined' && PENS.active()) PENS.stop();       // left during a shoot-out
+    if (typeof VARGAME !== 'undefined' && VARGAME.active()) VARGAME.stop();   // left the VAR minigame
     if (animationId) cancelAnimationFrame(animationId);
     animationId = null;
     STATE.gameStartTime = null;

@@ -39,7 +39,7 @@ const STATE = {
 //   run         its speed, relative to the medium bot
 //   press       how close the ball must be before it goes in for a tackle
 //   steal       chance per tick (60 a second) of winning the ball in a duel
-//   read        how quickly it follows the ball (0.1 â‰ˆ a 150 ms lag)
+//   read        how quickly it follows the ball (0.1 ≈ a 150 ms lag)
 //   shootFrom   distance to goal from which it shoots
 //   shootChance chance per tick of shooting once in range
 //   aim / miss  how far towards a post it aims, and its spread (units)
@@ -181,7 +181,7 @@ const STADIUMS = [
     {
         id: 'wanda-metropolitano',
         name: 'Wanda Metropolitano',
-        club: 'AtlÃ©tico Madrid',
+        club: 'Atlético Madrid',
         city: 'Madrid',
         file: 'media/models/stadiums/wanda_metropolitano_stadium.glb',
         capacity: '70.460',
@@ -306,9 +306,9 @@ const STADIUMS = [
     },
     {
         id: 'el-campin',
-        name: 'El CampÃ­n',
-        club: 'Millonarios Â· Santa Fe',
-        city: 'BogotÃ¡',
+        name: 'El Campín',
+        club: 'Millonarios · Santa Fe',
+        city: 'Bogotá',
         // built from nothing by tools/campin_build.py; ?v=: raise it with every new export
         file: 'media/models/stadiums/el_campin.glb?v=1',
         capacity: '36.343',
@@ -373,13 +373,13 @@ function setSelectedStadium(id) {
 const STARS = [
     { id: 'yamal', name: 'Lamine Yamal', back: 'YAMAL', number: 10, country: 'Spanje', flag: 'es',
       skin: 0xa36c45, hair: 0x14100d, style: 'curls', beard: false, boots: 0xff4f9a, stats: [4, 4, 5, 4], extra: 'Krult zijn schoten het mooist' },
-    { id: 'messi', name: 'Lionel Messi', back: 'MESSI', number: 10, country: 'ArgentiniÃ«', flag: 'ar',
+    { id: 'messi', name: 'Lionel Messi', back: 'MESSI', number: 10, country: 'Argentinië', flag: 'ar',
       skin: 0xe2bc96, hair: 0x4a3120, style: 'short', beard: true, boots: 0x35a8ff, stats: [3, 5, 5, 5], extra: 'De koning van de dribbel' },
     { id: 'ronaldo', name: 'Cristiano Ronaldo', back: 'RONALDO', number: 7, country: 'Portugal', flag: 'pt',
       skin: 0xd9aa80, hair: 0x15100c, style: 'quiff', beard: false, boots: 0xf4f4f0, stats: [4, 5, 3, 3], extra: 'Hard schot, sterk in de lucht' },
-    { id: 'vinicius', name: 'VinÃ­cius Jr', back: 'VINI JR', number: 7, country: 'BraziliÃ«', flag: 'br',
+    { id: 'vinicius', name: 'Vinícius Jr', back: 'VINI JR', number: 7, country: 'Brazilië', flag: 'br',
       skin: 0x6a4330, hair: 0x0d0a08, style: 'twists', beard: false, boots: 0xffd60a, stats: [5, 4, 5, 3], extra: 'Snel met de bal aan zijn voet' },
-    { id: 'mbappe', name: 'Kylian MbappÃ©', back: 'MBAPPÃ‰', number: 10, country: 'Frankrijk', flag: 'fr',
+    { id: 'mbappe', name: 'Kylian Mbappé', back: 'MBAPPÉ', number: 10, country: 'Frankrijk', flag: 'fr',
       skin: 0x7a4b31, hair: 0x0d0a08, style: 'buzz', beard: false, boots: 0xff7a1a, stats: [5, 5, 4, 3], extra: 'De snelste van allemaal' },
     { id: 'bellingham', name: 'Jude Bellingham', back: 'BELLINGHAM', number: 5, country: 'Engeland', flag: 'gb-eng',
       skin: 0x8e5d3d, hair: 0x110d0a, style: 'crop', beard: false, boots: 0x101010, stats: [4, 4, 4, 4], extra: 'Overal op het veld te vinden' },
