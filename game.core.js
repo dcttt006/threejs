@@ -325,10 +325,12 @@ const STADIUMS = [
 ];
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
+// Lotto Park is the stadium every time the game is opened; a stadium you pick
+// counts for as long as the game stays open (sessionStorage), not for good.
+try { localStorage.removeItem(STADIUM_STORAGE_KEY); } catch (_) {}     // the old, lasting choice
 function getSelectedStadium() {
     let id = null;
-    try { id = localStorage.getItem(STADIUM_STORAGE_KEY); } catch (_) {}
-    // no choice made yet: Lotto Park is the default
+    try { id = sessionStorage.getItem(STADIUM_STORAGE_KEY); } catch (_) {}
     return STADIUMS.find(s => s.id === id) || STADIUMS.find(s => s.id === 'lotto-park');
 }
 // the stadium a match is played in: a WK match goes to the World Cup stadium
@@ -346,7 +348,7 @@ function matchStadium() {
 }
 function setSelectedStadium(id) {
     if (!STADIUMS.find(s => s.id === id)) return;
-    try { localStorage.setItem(STADIUM_STORAGE_KEY, id); } catch (_) {}
+    try { sessionStorage.setItem(STADIUM_STORAGE_KEY, id); } catch (_) {}
 }
 
 // ----------- camera views (Instellingen) -----------
