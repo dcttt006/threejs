@@ -1022,6 +1022,7 @@ const ONLINE = (() => {
         if (tickNo % (direct() ? SNAP_EVERY_P2P : SNAP_EVERY) === 0) send(snapshot());
     }
     const r2 = (v) => Math.round(v * 100) / 100;
+    const SP_KINDS = ['', 'corner', 'throw', 'free', 'penalty'];
     function snapshot() {
         const all = [...team1Players, ...team2Players];
         const now = performance.now();
@@ -1037,6 +1038,7 @@ const ONLINE = (() => {
                 if (u.diveT > 0.3) fx |= 8;
                 if (u.tired) fx |= 16;
                 if (u.throwPose) fx |= 32;
+                if (u.fallT > 0) fx |= 64;
                 return [r2(p.position.x), r2(p.position.z), fx, Math.round((u.stamina ?? 1) * 100),
                     u.charging ? Math.round(now - (u.chargeStart || now)) : -1, r2(u.diveX || 0), r2(u.diveZ || 0)];
             }),
@@ -1048,8 +1050,10 @@ const ONLINE = (() => {
             e: STATE.gameStartTime ? Math.floor((Date.now() - STATE.gameStartTime) / 1000) : 0,
             k: STATE.inputLocked ? 1 : 0,
             // a corner (1) or throw-in (2): for whom, ready to take (1) or still rolling out, how long, where
-            sp: STATE.setPiece ? [STATE.setPiece.kind === 'corner' ? 1 : 2, STATE.setPiece.team, STATE.setPiece.phase === 'ready' ? 1 : 0,
+            sp: STATE.setPiece ? [SP_KINDS.indexOf(STATE.setPiece.kind), STATE.setPiece.team, STATE.setPiece.phase === 'ready' ? 1 : 0,
                 STATE.setPiece.t, r2(STATE.setPiece.spot.x), r2(STATE.setPiece.spot.z)] : 0,
+            // the referee, his assistants and what they decide (game.referee.js)
+            rf: typeof REF !== 'undefined' ? REF.snap() : 0,
         };
     }
     function hostGoal(team) {
@@ -1157,7 +1161,7 @@ const ONLINE = (() => {
     function guestEnd(m) {
         STATE.score1 = m.s[0];
         STATE.score2 = m.s[1];
-        if (m.match) ['poss', 'shots', 'onTarget', 'passes'].forEach(k => { if (Array.isArray(m.match[k])) MATCH[k] = m.match[k].slice(0, 2); });
+        if (m.match) MATCH_KEYS.forEach(k => { if (Array.isArray(m.match[k])) MATCH[k] = m.match[k].slice(0, 2); });
         if (STATE.screen === 'playing') endGame();
     }
 
@@ -1176,10 +1180,13 @@ const ONLINE = (() => {
         const k = b === a ? 0 : Math.max(0, Math.min(1, (t - a.at) / (b.at - a.at)));
         if (i > 2) snaps.splice(0, i - 1);
 
+        // the officials, and a player sent off taken off here too before the positions are read
+        if (typeof REF !== 'undefined') REF.applySnap(b.m.rf);
         const all = [...team1Players, ...team2Players];
         const now2 = performance.now();
+        const sameSide = a.m.p.length === b.m.p.length;
         all.forEach((p, j) => {
-            const pa = a.m.p[j], pb = b.m.p[j];
+            const pa = sameSide ? a.m.p[j] : b.m.p[j], pb = b.m.p[j];
             if (!pa || !pb) return;
             const jump = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) > 12;
             p.position.x = jump ? pb[0] : lerp(pa[0], pb[0], k);
@@ -1194,6 +1201,7 @@ const ONLINE = (() => {
             u.stamina = pb[3] / 100;
             u.tired = !!(fx & 16);
             u.throwPose = !!(fx & 32);
+            if (fx & 64) u.fallT = Math.max(u.fallT || 0, 0.2);
             u.charging = pb[4] >= 0;
             if (u.charging) u.chargeStart = now2 - pb[4];
         });
@@ -1218,8 +1226,10 @@ const ONLINE = (() => {
         // a corner or a throw-in, as the host has it: the strip, and the click if it is ours
         const sp = b.m.sp;
         if (sp) {
-            STATE.setPiece = { kind: sp[0] === 1 ? 'corner' : 'throw', team: sp[1], phase: sp[2] ? 'ready' : 'out', t: sp[3],
-                spot: { x: sp[4], z: sp[5] }, sx: Math.sign(sp[4]) || 1, sz: Math.sign(sp[5]) || 1, mirror: true };
+            const kind = SP_KINDS[sp[0]] || 'throw';
+            const own = kind === 'free' || kind === 'penalty';
+            STATE.setPiece = { kind, team: sp[1], phase: sp[2] ? 'ready' : 'out', t: sp[3],
+                spot: { x: sp[4], z: sp[5] }, sx: own ? (sp[1] === 1 ? 1 : -1) : Math.sign(sp[4]) || 1, sz: Math.sign(sp[5]) || 1, mirror: true };
             if (!sp[2] && sp[3] >= SP_OUT_TICKS - SP_CUT_LEAD && !cutShown) { cutShown = true; flashCut(); }
         } else STATE.setPiece = null;
         if (!sp || sp[2]) cutShown = false;

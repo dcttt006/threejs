@@ -411,6 +411,155 @@ kbd {
 #game-screen.is-aiming .touch__zone,
 #game-screen.is-aiming .touch__btn--shoot,
 #game-screen.is-aiming .touch__btn--sprint { display: none; }
+/* the referee's call: offside, a foul, a card. The strip in the offending side's colour */
+.ref-call {
+    position: absolute;
+    z-index: 3;
+    top: calc(46px + var(--safe-t));
+    left: 50%;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 5px;
+    padding: 8px 14px 9px;
+    border-left: 6px solid var(--red);
+    background: rgba(18, 21, 18, .92);
+    color: #fff;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+}
+.ref-call[data-team="blue"] { border-left-color: var(--blue); }
+.ref-call__card {
+    grid-row: 1 / 3;
+    width: 22px;
+    height: 30px;
+    border-radius: 2px;
+    background: var(--yellow);
+    transform: rotate(-8deg);
+}
+.ref-call__card[data-card="red"] { background: #e3001b; }
+.ref-call__kind { font: 800 22px/1 var(--font-cond); letter-spacing: .04em; text-transform: uppercase; }
+.ref-call__team { font: 700 17px/1 var(--font-cond); letter-spacing: .04em; color: rgba(255, 255, 255, .7); }
+.ref-call__sub { grid-column: 2 / -1; font: 600 14px/1.2 var(--font-text); color: var(--yellow); }
+.ref-call__card[hidden] + .ref-call__kind { grid-column: 1; }
+.ref-call:has(.ref-call__card[hidden]) .ref-call__sub { grid-column: 1 / -1; }
+
+/* the VAR at work: the broadcaster's box under the scoreboard */
+.var-box {
+    position: absolute;
+    z-index: 3;
+    top: calc(46px + var(--safe-t));
+    left: 50%;
+    display: flex;
+    align-items: stretch;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+}
+.var-box__mark {
+    display: grid;
+    place-items: center;
+    padding: 6px 10px 5px;
+    background: #fff;
+    color: #0d1a6e;
+    font: 800 22px/1 var(--font-cond);
+    letter-spacing: .06em;
+}
+.var-box__state {
+    display: grid;
+    place-items: center;
+    padding: 6px 10px 5px;
+    background: var(--yellow);
+    color: var(--ink);
+    font: 800 17px/1 var(--font-cond);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.var-box__subject {
+    display: grid;
+    place-items: center;
+    padding: 6px 12px 5px;
+    background: #0d1a6e;
+    color: #fff;
+    font: 600 16px/1 var(--font-text);
+    letter-spacing: .02em;
+}
+/* the replay: black bars top and bottom, the tag bottom left */
+.replay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.replay::before,
+.replay::after { content: ''; position: absolute; left: 0; right: 0; height: calc(var(--vh) * 7); background: #000; }
+.replay::before { top: 0; }
+.replay::after { bottom: 0; }
+.replay__tag {
+    position: absolute;
+    z-index: 1;
+    left: calc(var(--gutter) + var(--safe-l));
+    bottom: calc(var(--vh) * 7 + 12px);
+    padding: 5px 10px 4px;
+    background: #fff;
+    color: var(--ink);
+    font: 800 16px/1 var(--font-cond);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+/* in the replay the scoreboard and the VAR box sit below the top bar */
+#game-screen.is-replay .scorebug,
+#game-screen.is-replay .var-box { translate: 0 calc(var(--vh) * 7); }
+#game-screen.is-replay .hud-keys,
+#game-screen.is-replay .touch__zone,
+#game-screen.is-replay .touch__btn { visibility: hidden; }
+/* the decision: a band across the middle in the colour of the side it goes for */
+.var-decision {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 0;
+    right: 0;
+    translate: 0 -50%;
+    display: grid;
+    justify-items: center;
+    pointer-events: none;
+    animation: goal-band 2.4s cubic-bezier(.2, .8, .2, 1) both;
+}
+.var-decision__bar {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    justify-content: center;
+    background: var(--red);
+    color: #fff;
+}
+.var-decision[data-team="blue"] .var-decision__bar { background: var(--blue); }
+.var-decision__tag {
+    display: grid;
+    place-items: center;
+    padding: 0 clamp(10px, 2vw, 18px);
+    background: #fff;
+    color: #0d1a6e;
+    font: 800 clamp(22px, calc(var(--vh) * 6), 40px)/1 var(--font-cond);
+    letter-spacing: .06em;
+}
+.var-decision__text {
+    padding: 6px 18px 4px;
+    font: 800 clamp(40px, min(9vw, calc(var(--vh) * 16)), 120px)/.95 var(--font-cond);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.var-decision__sub {
+    margin-top: 6px;
+    padding: 4px 10px 5px;
+    background: rgba(18, 21, 18, .9);
+    color: #fff;
+    font: 500 clamp(13px, calc(var(--vh) * 3), 17px)/1 var(--font-text);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.var-decision__sub:empty { display: none; }
+/* a free kick or a penalty can be struck: Schiet stays on a phone */
+#game-screen.is-aiming.can-shoot .touch__btn--shoot { display: grid; }
+
 /* the dip to black while the players are put in place */
 .cut { position: absolute; inset: 0; z-index: 2; background: #000; opacity: 0; pointer-events: none; }
 .cut.is-on { animation: cut .6s linear; }

@@ -130,9 +130,10 @@ const BRIDGE = `
     setTouchHigh(v) { touchShotHigh = v; }, setTouchPassHigh(v) { touchPassHigh = v; }, get kickoffHold() { return kickoffHold; }, get lastKick() { return lastKick; },
     get MATCH() { return MATCH; }, get passTarget() { return passTarget; },
     get setPiece() { return STATE.setPiece; }, aim(x, z) { return setPieceAim(x, z); },
+    get refInc() { return REF.active; }, get refRemoved() { return REF.removed; },
     C: { FIELD_W, FIELD_L, GOAL_W, GOAL_H, PLAYER_SIZE, BALL_SIZE, CARRY_REACH },
 };`;
-const SOURCE = ['game.core.js', 'game.ui.js', 'game.players.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n') + BRIDGE;
+const SOURCE = ['game.core.js', 'game.ui.js', 'game.players.js', 'game.js', 'game.referee.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n') + BRIDGE;
 
 // ---------------------------------------------------------------- the scripted human
 // Decides like a reasonable player each tick; `device` turns that into keys
@@ -266,7 +267,9 @@ function runMatch(scn, seed) {
     const stat = { looseTicks: 0, liveTicks: 0, gains: 0, teamSwaps: 0, keeperHolds: 0, parries: 0, goals: [0, 0], shots: [0, 0],
         longestLoose: 0, humanTouches: 0, botStill: 0, botTicks: 0, mateStill: 0, mateTicks: 0,
         dives: 0, divesOnShot: 0, divesOnOwnPass: 0, divesFar: 0, divesBeforeMoving: 0, possTicks: [], curPoss: 0,
-        shotLog: [], setPieces: [0, 0], humanPasses: [[], [], [], []], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 } };
+        shotLog: [], setPieces: [0, 0], humanPasses: [[], [], [], []], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 },
+        ref: { off_mens: 0, off_pc: 0, offside: 0, foul: 0, hands: 0, goalcheck: 0, var: 0, geel: 0, rood: 0 } };
+    let refSeen = null, refStart = 0;
     let spSeen = false, spStart = 0, prevLkObj = null, pendingPass = null, prevP1 = sim.p1;
     let prevCarrier = null, prevLastKick = null, shotCount = 0, liveShot = null, humanSince = -1, humanFromX = 0, humanLostAt = -1;
     let lastCarrier = null, lastTeam = 0, carrierSwaps = [], lastHold = [false, false], lastDive = [0, 0], lastParry = [0, 0];
@@ -381,7 +384,18 @@ function runMatch(scn, seed) {
             u.__slideFor = (u.tackleT > 0 || u.getUpT > 0) ? (u.__slideFor || 0) + 1 : 0;
             if (u.__slideFor === 80) once('TACKLE_BLIJFT_HANGEN', t, describe());
         });
-        const live = !S.scoring && !S.paused && !sim.kickoffHold && !spNow;
+        // the referee: offside, fouls, cards and the VAR, and none that hangs
+        const inc = sim.refInc;
+        if (inc && inc !== refSeen) {
+            refSeen = inc; refStart = t;
+            stat.ref[inc.kind] = (stat.ref[inc.kind] || 0) + 1;
+            if (inc.varCheck) stat.ref.var++;
+            if (inc.kind === 'offside') { stat.ref[inc.byHuman ? 'off_mens' : 'off_pc']++; if (VERBOSE) once('BUITENSPEL_' + t, t, `${inc.byHuman ? 'mens' : 'pc'} marge ${inc.margin.toFixed(1)} ontvanger ${inc.offender === sim.p1 ? 'speler' : 'computer'} rol ${inc.offender.userData.role}`); }
+        }
+        if (inc && inc.phase === 'card' && inc.showAt && !inc.__counted) { inc.__counted = true; stat.ref[inc.cardColor === 'red' ? 'rood' : 'geel']++; }
+        if (inc && t - refStart === 25 * 60) once('SCHEIDSRECHTER_HANGT', t, `${inc.kind} ${inc.phase}: ` + describe());
+        if (!inc) refSeen = null;
+        const live = !S.scoring && !S.paused && !sim.kickoffHold && !spNow && !inc;
         if (!live) { Object.keys(open).forEach(k => episode(k, false, t)); continue; }
         stat.liveTicks++;
         const holds = [keeperOf(1).userData.holdingBall, keeperOf(2).userData.holdingBall];
@@ -538,7 +552,7 @@ for (const scn of SCENARIOS) {
             else if (k === 'shotLog') agg.stat[k].push(...r.stat[k]);
             else if (k === 'humanCarry' || k === 'humanGain') agg.stat[k].push(...r.stat[k]);
             else if (k === 'humanLost') for (const c in r.stat[k]) agg.stat[k][c] += r.stat[k][c];
-            else if (k === 'catchFrom') for (const c in r.stat[k]) agg.stat[k][c] += r.stat[k][c];
+            else if (k === 'catchFrom' || k === 'ref') for (const c in r.stat[k]) agg.stat[k][c] += r.stat[k][c];
             else agg.stat[k] += r.stat[k];
         }
     }
@@ -585,6 +599,7 @@ for (const r of results) {
         console.log(`        speler met de bal: gemiddeld ${(avg(x => x.ticks) / 60).toFixed(1)} s, ${avg(x => x.gained).toFixed(0)} units richting doel`
             + `   kwijt door: ${Object.entries(s.humanLost).map(([k, v]) => k + ' ' + v).join(', ')}`);
     }
+    console.log(`        scheidsrechter: ${Object.entries(s.ref).map(([k, v]) => k + ' ' + v).join(', ')}`);
     console.log(`        bal in keepershanden ${(100 * s.holdTicks / Math.max(1, s.liveTicks)).toFixed(0)}% van de speeltijd`
         + `   gevangen na: ${Object.entries(s.catchFrom).map(([k, v]) => k.replace(/_/g, ' ') + ' ' + v).join(', ')}`);
     for (const k of kinds) {

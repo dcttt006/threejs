@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=137">
+    <link rel="stylesheet" href="styles.css?v=138">
 </head>
 <body>
     <!-- shared icons -->
@@ -283,6 +283,30 @@
             <span class="setpiece__hint" id="setpiece-hint" hidden></span>
         </div>
         <div class="aim-layer" id="aim-layer" hidden></div>
+
+        <!-- the referee's call (game.referee.js): offside, a foul, a card -->
+        <div class="ref-call" id="ref-call" role="status" hidden>
+            <span class="ref-call__card" id="ref-call-card" hidden></span>
+            <span class="ref-call__kind" id="ref-call-kind">Buitenspel</span>
+            <span class="ref-call__team" id="ref-call-team">SP1</span>
+            <span class="ref-call__sub" id="ref-call-sub"></span>
+        </div>
+        <!-- the VAR at work, the replay's bars, and its decision -->
+        <div class="replay" id="replay" aria-hidden="true" hidden>
+            <span class="replay__tag">Herhaling</span>
+        </div>
+        <div class="var-box" id="var-box" role="status" hidden>
+            <span class="var-box__mark">VAR</span>
+            <span class="var-box__state" id="var-state">Check</span>
+            <span class="var-box__subject" id="var-subject">Mogelijke strafschop</span>
+        </div>
+        <div class="var-decision" id="var-decision" role="status" hidden>
+            <div class="var-decision__bar">
+                <span class="var-decision__tag">VAR</span>
+                <span class="var-decision__text" id="var-decision-text">Strafschop</span>
+            </div>
+            <div class="var-decision__sub" id="var-decision-sub"></div>
+        </div>
         <!-- the screen dips for a moment while the players are put in place for it -->
         <div class="cut" id="cut" hidden></div>
 
@@ -697,7 +721,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=158"></script>
+    <script src="game.core.js?v=159"></script>
     <script src="game.screen.js?v=11"></script>
     <script src="game.stadium.js?v=134"></script>
     <script src="game.ui.js?v=132"></script>
@@ -705,8 +729,9 @@
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
     <script src="game.players.js?v=1"></script>
-    <script src="game.js?v=139"></script>
+    <script src="game.js?v=140"></script>
+    <script src="game.referee.js?v=5"></script>
     <script src="game.pens.js?v=3"></script>
-    <script src="game.online.js?v=5"></script>
+    <script src="game.online.js?v=6"></script>
 </body>
 </html>
