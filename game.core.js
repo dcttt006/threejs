@@ -46,30 +46,31 @@ const STATE = {
 //   power       its shot strength, as a part of the charge range [min, max]
 //   pass        chance per tick of passing to a teammate who is free and further forward
 //   sprint      0 = never sprints, 1 = sprints whenever chasing (35% faster, costs stamina)
+//   lane        how far a defender stands in the way of a pass to his man (part of the way to the ball)
 //   keeper      react: ticks before moving on a shot; lunge: dive speed;
 //               dive: extra reach at full stretch; shuffle: positioning speed
-// Every computer outfield player plays at the chosen level: the opponents
-// and your own computer teammate alike.
+// The opponents' outfield players play at the chosen level; your own computer
+// teammates play smart (MATE_LEVEL, below).
 const LEVEL_STORAGE_KEY = 'pitchRoyale.level';
 const LEVELS = {
     easy: {
         label: 'Makkelijk',
         desc: 'Speelt rustig, wint de bal zelden terug en de keeper laat er wat door.',
-        run: 0.82, press: 10, steal: 0.012, read: 0.06, pass: 0.006, sprint: 0,
+        run: 0.82, press: 10, steal: 0.012, read: 0.06, pass: 0.006, sprint: 0, lane: 0.06,
         shootFrom: 24, shootChance: 0.014, aim: 0.12, miss: 12, power: [0.05, 0.4],
         keeper: { react: 10, lunge: 0.62, dive: 1.5, shuffle: 0.28 },
     },
     medium: {
         label: 'Gemiddeld',
         desc: 'Een eerlijke wedstrijd: zet druk en schiet als hij de kans krijgt.',
-        run: 1, press: 16, steal: 0.025, read: 0.10, pass: 0.014, sprint: 0.6,
+        run: 1, press: 16, steal: 0.025, read: 0.10, pass: 0.014, sprint: 0.6, lane: 0.12,
         shootFrom: 30, shootChance: 0.025, aim: 0.24, miss: 9, power: [0.15, 0.65],
         keeper: { react: 5, lunge: 0.75, dive: 2.1, shuffle: 0.34 },
     },
     hard: {
         label: 'Moeilijk',
         desc: 'Snel, jaagt op de bal, schiet in de hoeken en de keeper houdt veel.',
-        run: 1.07, press: 24, steal: 0.045, read: 0.17, pass: 0.024, sprint: 1,
+        run: 1.07, press: 24, steal: 0.045, read: 0.17, pass: 0.024, sprint: 1, lane: 0.18,
         shootFrom: 34, shootChance: 0.04, aim: 0.36, miss: 5, power: [0.4, 0.95],
         keeper: { react: 4, lunge: 0.85, dive: 2.6, shuffle: 0.38 },
     },
@@ -82,6 +83,14 @@ function getLevel() { return LEVELS[STATE.difficulty] || LEVELS.medium; }
 // the level the computer's outfield players play at: the chosen one against
 // the computer, medium for the computer teammates in a two-player match
 function aiLevel() { return STATE.mode === 'cpu' ? getLevel() : LEVELS.medium; }
+// Against the computer you play one player and the computer plays the rest
+// of your side: those teammates always play smart, whatever the level of the
+// opponents. They read the game quickly, run, press and win the ball like the
+// hard level (they hardly ever have the ball long: you take it over).
+const MATE_LEVEL = Object.assign({}, LEVELS.hard, { label: 'Teamgenoot', read: 0.25, lane: 0.25 });
+function levelFor(p) {
+    return STATE.mode === 'cpu' && p && p.team === STATE.p1.team ? MATE_LEVEL : aiLevel();
+}
 function setLevel(id) {
     if (!LEVELS[id]) return;
     STATE.difficulty = id;

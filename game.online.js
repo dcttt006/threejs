@@ -703,6 +703,7 @@ const ONLINE = (() => {
             case 'sdp':
             case 'ice': onSignal(m); break;
             case 'in':  if (room.role === 'host') takeInput(m); break;
+            case 'aim': if (room.role === 'host') takeAim(m); break;
             case 's':   if (room.role === 'guest') takeSnap(m); break;
             case 'goal': if (room.role === 'guest') guestGoal(m); break;
             case 'end': if (room.role === 'guest') guestEnd(m); break;
@@ -999,6 +1000,13 @@ const ONLINE = (() => {
             controlledP2.userData.remoteStick = m.s ? { active: true, x: +m.x || 0, z: +m.z || 0 } : null;
         }
     }
+    // the guest clicked where its corner or throw-in should go
+    function takeAim(m) {
+        const sp = STATE.setPiece;
+        if (!sp || sp.phase !== 'ready' || !controlledP2 || sp.team !== controlledP2.team) return;
+        if (!Number.isFinite(+m.x) || !Number.isFinite(+m.z)) return;
+        takeSetPiece({ x: +m.x, z: +m.z });
+    }
     // one game tick on the host, in place of gameTick()
     function step() {
         R_BITS.forEach(([c]) => {
@@ -1028,6 +1036,7 @@ const ONLINE = (() => {
                 if (u.tackleT > 0 || u.getUpT > 0) fx |= 4;
                 if (u.diveT > 0.3) fx |= 8;
                 if (u.tired) fx |= 16;
+                if (u.throwPose) fx |= 32;
                 return [r2(p.position.x), r2(p.position.z), fx, Math.round((u.stamina ?? 1) * 100),
                     u.charging ? Math.round(now - (u.chargeStart || now)) : -1, r2(u.diveX || 0), r2(u.diveZ || 0)];
             }),
@@ -1038,6 +1047,9 @@ const ONLINE = (() => {
             s: [STATE.score1, STATE.score2],
             e: STATE.gameStartTime ? Math.floor((Date.now() - STATE.gameStartTime) / 1000) : 0,
             k: STATE.inputLocked ? 1 : 0,
+            // a corner (1) or throw-in (2): for whom, ready to take (1) or still rolling out, how long, where
+            sp: STATE.setPiece ? [STATE.setPiece.kind === 'corner' ? 1 : 2, STATE.setPiece.team, STATE.setPiece.phase === 'ready' ? 1 : 0,
+                STATE.setPiece.t, r2(STATE.setPiece.spot.x), r2(STATE.setPiece.spot.z)] : 0,
         };
     }
     function hostGoal(team) {
@@ -1181,6 +1193,7 @@ const ONLINE = (() => {
             if (fx & 8) { if (!u.diveSeen) { u.diveT = 0.6; u.diveX = pb[5]; u.diveZ = pb[6]; u.diveSeen = true; } } else u.diveSeen = false;
             u.stamina = pb[3] / 100;
             u.tired = !!(fx & 16);
+            u.throwPose = !!(fx & 32);
             u.charging = pb[4] >= 0;
             if (u.charging) u.chargeStart = now2 - pb[4];
         });
@@ -1202,7 +1215,16 @@ const ONLINE = (() => {
             if (slot && typeof setControlled === 'function') setControlled(slot, p);
         });
         STATE.inputLocked = !!b.m.k;
+        // a corner or a throw-in, as the host has it: the strip, and the click if it is ours
+        const sp = b.m.sp;
+        if (sp) {
+            STATE.setPiece = { kind: sp[0] === 1 ? 'corner' : 'throw', team: sp[1], phase: sp[2] ? 'ready' : 'out', t: sp[3],
+                spot: { x: sp[4], z: sp[5] }, sx: Math.sign(sp[4]) || 1, sz: Math.sign(sp[5]) || 1, mirror: true };
+            if (!sp[2] && sp[3] >= SP_OUT_TICKS - SP_CUT_LEAD && !cutShown) { cutShown = true; flashCut(); }
+        } else STATE.setPiece = null;
+        if (!sp || sp[2]) cutShown = false;
     }
+    let cutShown = false;
 
     // the guest's keys and stick, sent whenever they change
     function sendInput() {
@@ -1220,6 +1242,7 @@ const ONLINE = (() => {
         // a swipe up as Schiet was let go: a high shot. Held a moment, so the
         // host still has it when the release arrives
         if (typeof touchShotHigh !== 'undefined' && touchShotHigh) { highUntil = now + 250; touchShotHigh = false; }
+        if (typeof touchPassHigh !== 'undefined' && touchPassHigh) { highUntil = now + 250; touchPassHigh = false; }
         if ((b & 1) || now < highUntil) b |= 128;
         const stick = typeof touchMove !== 'undefined' && touchMove.active;
         const x = stick ? Math.round(touchMove.x * 10) / 10 : 0;
@@ -1241,6 +1264,8 @@ const ONLINE = (() => {
         enabled: () => ENABLED,
         isHost: () => !!room && room.role === 'host' && STATE.mode === 'online',
         isGuest: () => !!room && room.role === 'guest' && STATE.mode === 'online',
+        // the guest's click for its corner or throw-in
+        sendAim(x, z) { send({ t: 'aim', x: r2(x), z: r2(z) }); },
         open,
         step,
         guestFrame,

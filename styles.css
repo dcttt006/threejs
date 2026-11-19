@@ -382,6 +382,40 @@ kbd {
 }
 .pause-btn span { width: 6px; height: 18px; background: var(--ink); }
 
+/* a corner or a throw-in: a strip under the scoreboard, the side's colour
+   on the left; for whoever takes it a second line says how (game.js) */
+.setpiece {
+    position: absolute;
+    z-index: 3;
+    top: calc(46px + var(--safe-t));
+    left: 50%;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 4px;
+    padding: 6px 12px 7px;
+    border-left: 6px solid var(--red);
+    background: rgba(18, 21, 18, .9);
+    color: #fff;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+}
+.setpiece[data-team="blue"] { border-left-color: var(--blue); }
+.setpiece__kind { font: 800 17px/1 var(--font-cond); letter-spacing: .04em; text-transform: uppercase; }
+.setpiece__team { font: 700 15px/1 var(--font-cond); letter-spacing: .04em; color: rgba(255, 255, 255, .7); }
+.setpiece__hint { grid-column: 1 / -1; font: 600 14px/1.2 var(--font-text); color: var(--yellow); }
+/* the click or tap that says where the ball goes; under the touch buttons, so Pass (Kort) still works */
+.aim-layer { position: absolute; inset: 0; z-index: 2; cursor: crosshair; touch-action: none; }
+#game-screen.is-aiming .touch__zone,
+#game-screen.is-aiming .touch__btn--shoot,
+#game-screen.is-aiming .touch__btn--sprint { display: none; }
+/* the dip to black while the players are put in place */
+.cut { position: absolute; inset: 0; z-index: 2; background: #000; opacity: 0; pointer-events: none; }
+.cut.is-on { animation: cut .6s linear; }
+@keyframes cut { 0% { opacity: 0; } 38% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+
 /* while the stadium downloads: a small strip under the clock */
 .stadium-loading {
     position: absolute;
@@ -2462,6 +2496,24 @@ html .splash__name { color: #fff; font-weight: 900; }
 .touch__btn--shoot.is-tackle::after { content: none; }
 .touch__btn--shoot.is-high::before { background: #fff; }
 .touch__btn--shoot.is-high { transform: translateY(-6px) scale(.97); }
+/* held on: a power shot is ready */
+.touch__btn--shoot.is-power::before { background: var(--red); }
+.touch__btn--shoot.is-power { color: #fff; }
+/* Pass with the ball: a swipe up over it as you let go = a high pass */
+.touch__btn--pass.is-ball::after {
+    content: '\2191  hoog';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, .75);
+    font: 700 11px/1 var(--font-text);
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.touch__btn--pass.is-high { background: #fff; color: var(--ink); transform: translateY(-6px) scale(.97); }
 
 /* full time: possession, shots (on target) and passes, red left and blue right */
 .match-stats {

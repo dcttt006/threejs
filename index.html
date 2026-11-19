@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=135">
+    <link rel="stylesheet" href="styles.css?v=136">
 </head>
 <body>
     <!-- shared icons -->
@@ -270,6 +270,17 @@
         <div class="stadium-loading" id="stadium-loading" role="status" hidden>
             Stadion laden <span id="stadium-loading-pct"></span>
         </div>
+
+        <!-- a corner or a throw-in (game.js: set pieces): what it is and for whom, and
+             for whoever takes it how; the layer catches the click or tap on the pitch -->
+        <div class="setpiece" id="setpiece" role="status" hidden>
+            <span class="setpiece__kind" id="setpiece-kind">Hoekschop</span>
+            <span class="setpiece__team" id="setpiece-team">SP1</span>
+            <span class="setpiece__hint" id="setpiece-hint" hidden></span>
+        </div>
+        <div class="aim-layer" id="aim-layer" hidden></div>
+        <!-- the screen dips for a moment while the players are put in place for it -->
+        <div class="cut" id="cut" hidden></div>
 
         <!-- key legends, filled in by paintHud() -->
         <div class="hud-keys hud-keys--left" id="hud-keys-p1"></div>
@@ -641,15 +652,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=156"></script>
+    <script src="game.core.js?v=157"></script>
     <script src="game.screen.js?v=11"></script>
     <script src="game.stadium.js?v=134"></script>
-    <script src="game.ui.js?v=131"></script>
+    <script src="game.ui.js?v=132"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
-    <script src="game.js?v=137"></script>
+    <script src="game.js?v=138"></script>
     <script src="game.pens.js?v=3"></script>
-    <script src="game.online.js?v=4"></script>
+    <script src="game.online.js?v=5"></script>
 </body>
 </html>

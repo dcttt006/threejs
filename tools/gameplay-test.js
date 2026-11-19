@@ -8,7 +8,10 @@
 // the Schiet / Pass buttons), plus matches nobody touches, and reports every
 // moment the game misbehaves: a ball lying still that nobody fetches, nobody
 // moving, a keeper holding on too long, trembling or standing in a strange
-// place, the ball jumping between players, a player who can't get the ball.
+// place, the ball jumping between players, a player who can't get the ball,
+// a slide that never ends, a corner or throw-in that is never taken. It also
+// counts how many of the player's passes reach his own side (ground and high,
+// with the line to the receiver open or not) and the corners and throw-ins.
 //
 //   node tools/gameplay-test.js            all scenarios
 //   node tools/gameplay-test.js --quick    a short run
@@ -124,8 +127,9 @@ const BRIDGE = `
     get team1() { return team1Players; }, get team2() { return team2Players; },
     get p1() { return controlledP1; }, get p2() { return controlledP2; },
     get keys() { return keys; }, get keysPressed() { return keysPressed; }, get touchMove() { return touchMove; },
-    setTouchHigh(v) { touchShotHigh = v; }, get kickoffHold() { return kickoffHold; }, get lastKick() { return lastKick; },
+    setTouchHigh(v) { touchShotHigh = v; }, setTouchPassHigh(v) { touchPassHigh = v; }, get kickoffHold() { return kickoffHold; }, get lastKick() { return lastKick; },
     get MATCH() { return MATCH; }, get passTarget() { return passTarget; },
+    get setPiece() { return STATE.setPiece; }, aim(x, z) { return setPieceAim(x, z); },
     C: { FIELD_W, FIELD_L, GOAL_W, GOAL_H, PLAYER_SIZE, BALL_SIZE, CARRY_REACH },
 };`;
 const SOURCE = ['game.core.js', 'game.ui.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n') + BRIDGE;
@@ -164,6 +168,33 @@ function makeHuman(sim, device, rand) {
     return function act() {
         const me = sim.p1, ball = sim.ball, C = sim.C;
         if (!me || sim.STATE.scoring) { move(0, 0, false); if (st.shooting) { release('Space'); st.shooting = false; } return; }
+        // a corner or a throw-in: whoever takes it clicks somewhere sensible, or plays it short
+        const sp = sim.setPiece;
+        if (sp) {
+            if (st.shooting) { release('Space'); st.shooting = false; }
+            if (sp.phase === 'ready' && sp.taker === me) {
+                move(0, 0, false);
+                if (st.spWait === undefined) st.spWait = 20 + Math.floor(rand() * 70);
+                if (--st.spWait <= 0) {
+                    st.spWait = undefined;
+                    if (rand() < 0.65) {
+                        const gx = sp.kind === 'corner' ? sp.sx * (C.FIELD_W / 2 - 14 - rand() * 18) : sp.spot.x + (rand() - 0.5) * 50;
+                        const gz = sp.kind === 'corner' ? (rand() - 0.5) * 30 : sp.spot.z - sp.sz * (10 + rand() * 30);
+                        st.aimed = (st.aimed || 0) + 1;
+                        sim.aim(gx, gz);
+                    } else press('KeyQ');
+                }
+                return;
+            }
+        } else st.spWait = undefined;
+        // a ball of ours on its way to me: now and then strike it first time
+        const pt = sim.passTarget;
+        if (pt && pt.to === me && !sim.carrier && !st.volleyArmed && rand() < 0.02) {
+            const gx0 = me.team === 1 ? C.FIELD_W / 2 : -C.FIELD_W / 2;
+            if (Math.abs(gx0 - me.position.x) < 45) { press('Space'); st.volleyArmed = true; st.releaseSoon = 3; }
+        }
+        if (st.releaseSoon > 0 && --st.releaseSoon === 0) release('Space');
+        if (!pt) st.volleyArmed = false;
         if (st.tackleCd > 0) st.tackleCd--;
         if (st.passCd > 0) st.passCd--;
         // a human reacts in steps, not every tick
@@ -191,6 +222,10 @@ function makeHuman(sim, device, rand) {
                 press('Space'); st.shooting = true; st.shootHold = 6 + Math.floor(rand() * 34);
             } else if (pressure < 5 && st.passCd === 0 && rand() < 0.3) {
                 press('KeyQ'); st.passCd = 40;
+            } else if (pressure > 9 && st.passCd === 0 && rand() < 0.05) {
+                // a high pass, over the top: W (or a swipe up over Pass) with it
+                if (keyboard) sim.keys.KeyW = true; else sim.setTouchPassHigh(true);
+                press('KeyQ'); st.passCd = 40; st.highPassKey = keyboard;
             } else sprint = rand() < 0.3;
         } else if (carrier && carrier.team === me.team) {
             // a teammate has it: run into space ahead, sometimes ask for it
@@ -206,6 +241,7 @@ function makeHuman(sim, device, rand) {
         }
         st.lastWant = [want[0], want[1], sprint];
         move(want[0], want[1], sprint);
+        if (st.highPassKey) { sim.keys.KeyW = true; st.highPassKey = false; }     // held with Q
         if (sim.keys.KeyW && !st.shooting && keyboard) { /* direction keys rebuilt each tick */ }
     };
 }
@@ -230,7 +266,8 @@ function runMatch(scn, seed) {
     const stat = { looseTicks: 0, liveTicks: 0, gains: 0, teamSwaps: 0, keeperHolds: 0, parries: 0, goals: [0, 0], shots: [0, 0],
         longestLoose: 0, humanTouches: 0, botStill: 0, botTicks: 0, mateStill: 0, mateTicks: 0,
         dives: 0, divesOnShot: 0, divesOnOwnPass: 0, divesFar: 0, divesBeforeMoving: 0, possTicks: [], curPoss: 0,
-        shotLog: [], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 } };
+        shotLog: [], setPieces: [0, 0], humanPasses: [[], [], [], []], humanLost: { afgepakt: 0, gepasst: 0, geschoten: 0, keeper: 0, los: 0 }, humanCarry: [], humanGain: [], holdTicks: 0, catchFrom: { schot: 0, pass_tegenstander: 0, eigen_pass: 0, losse_bal: 0, van_dribbelaar: 0 } };
+    let spSeen = false, spStart = 0, prevLkObj = null, pendingPass = null, prevP1 = sim.p1;
     let prevCarrier = null, prevLastKick = null, shotCount = 0, liveShot = null, humanSince = -1, humanFromX = 0, humanLostAt = -1;
     let lastCarrier = null, lastTeam = 0, carrierSwaps = [], lastHold = [false, false], lastDive = [0, 0], lastParry = [0, 0];
     let keeperFlips = [[], []], keeperLastVz = [0, 0], score = [0, 0];
@@ -297,7 +334,54 @@ function runMatch(scn, seed) {
                 stat.shotLog.push({ ...liveShot, out: 'weg' }); liveShot = null;
             }
         }
-        const live = !S.scoring && !S.paused && !sim.kickoffHold;
+        // set pieces: how many, and none that hangs
+        const spNow = sim.setPiece;
+        if (spNow && !spSeen) { stat.setPieces[spNow.kind === 'corner' ? 0 : 1]++; spSeen = true; spStart = t; }
+        if (!spNow) spSeen = false;
+        if (spNow && t - spStart === 12 * 60) once('SPELHERVATTING_HANGT', t, `${spNow.kind} ${spNow.phase}: ` + describe());
+        // the human's passes: does the ball get to one of his own side?
+        const lkNow = sim.lastKick;
+        if (lkNow && lkNow !== prevLkObj && lkNow.kind === 'pass' && lkNow.by === prevP1 && !lkNow.setPiece) {
+            const to = lkNow.to;
+            const enemiesL = (lkNow.team === 1 ? sim.team2 : sim.team1).slice(1);
+            const ax = prevP1.position.x, az = prevP1.position.z, bx = to.position.x, bz = to.position.z;
+            const L2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1;
+            const lane = Math.min(...enemiesL.filter(e => Math.hypot(e.position.x - ax, e.position.z - az) > 8).map(e => {
+                const k = Math.max(0, Math.min(1, ((e.position.x - ax) * (bx - ax) + (e.position.z - az) * (bz - az)) / L2));
+                return Math.hypot(ax + (bx - ax) * k - e.position.x, az + (bz - az) * k - e.position.z);
+            }), 99);
+            const at0 = new Map(enemiesL.map(e => [e, [e.position.x, e.position.z]]));
+            pendingPass = { team: lkNow.team, t, high: !!lkNow.high, to, open: lane >= 3.5, at0, from: [ax, az], dest: [bx, bz], toAt: [to.position.x, to.position.z],
+                info: (lkNow.high ? 'HOOG ' : '') + `afstand ${Math.hypot(to.position.x - prevP1.position.x, to.position.z - prevP1.position.z).toFixed(0)} v${Math.hypot(sim.ball.velocity.x, sim.ball.velocity.z).toFixed(2)}`
+                    + ` druk ${Math.min(...(lkNow.team === 1 ? sim.team2 : sim.team1).slice(1).map(e => Math.hypot(e.position.x - prevP1.position.x, e.position.z - prevP1.position.z))).toFixed(1)}` };
+        }
+        prevLkObj = lkNow;
+        if (pendingPass) {
+            const kh1 = keeperOf(1).userData.holdingBall, kh2 = keeperOf(2).userData.holdingBall;
+            let done = null;
+            // struck first time by the one it was for: it got there
+            if (lkNow && lkNow.kind === 'shot' && lkNow.by === pendingPass.to) done = true;
+            else if (car) done = car.team === pendingPass.team;
+            else if (kh1 || kh2) done = (kh1 ? 1 : 2) === pendingPass.team;
+            else if (spNow || S.scoring || t - pendingPass.t > 240) done = false;
+            if (done !== null) {
+                stat.humanPasses[pendingPass.high ? 1 : 0].push(done);
+                if (!pendingPass.high) stat.humanPasses[pendingPass.open ? 2 : 3].push(done);
+                if (!done && VERBOSE) once('PASS_MIS', t, `${pendingPass.info}, na ${t - pendingPass.t} ticks, `
+                    + (car ? `onderschept (ontvanger op ${Math.hypot(pendingPass.to.position.x - ball.position.x, pendingPass.to.position.z - ball.position.z).toFixed(1)})` : spNow ? 'uit' : 'anders')
+                    + (car && pendingPass.at0.has(car) ? ` door een die stond op (${pendingPass.at0.get(car).map(v => v.toFixed(0))}), pass van (${pendingPass.from.map(v => v.toFixed(0))}) naar (${pendingPass.dest.map(v => v.toFixed(0))})${pendingPass.open ? ' VRIJ' : ''}` : '')
+                    + ': ' + describe());
+                pendingPass = null;
+            }
+        }
+        prevP1 = sim.p1;
+        // a slide that never ends (someone left lying in the slide after a switch)
+        allPlayers().forEach((p) => {
+            const u = p.userData;
+            u.__slideFor = (u.tackleT > 0 || u.getUpT > 0) ? (u.__slideFor || 0) + 1 : 0;
+            if (u.__slideFor === 80) once('TACKLE_BLIJFT_HANGEN', t, describe());
+        });
+        const live = !S.scoring && !S.paused && !sim.kickoffHold && !spNow;
         if (!live) { Object.keys(open).forEach(k => episode(k, false, t)); continue; }
         stat.liveTicks++;
         const holds = [keeperOf(1).userData.holdingBall, keeperOf(2).userData.holdingBall];
@@ -447,6 +531,7 @@ for (const scn of SCENARIOS) {
         if (!agg.stat) agg.stat = JSON.parse(JSON.stringify(r.stat));
         else for (const k in r.stat) {
             if (k === 'possTicks' || k === 'shotLog' || k === 'humanCarry' || k === 'humanGain') agg.stat[k].push(...r.stat[k]);
+            else if (k === 'humanPasses') r.stat[k].forEach((l, i) => agg.stat[k][i].push(...l));
             else if (Array.isArray(r.stat[k])) r.stat[k].forEach((v, i) => { agg.stat[k][i] += v; });
             else if (k === 'longestLoose') agg.stat[k] = Math.max(agg.stat[k], r.stat[k]);
             else if (k === 'curPoss') {}
@@ -489,6 +574,11 @@ for (const r of results) {
         console.log(`        schoten: ${L.length}, raak ${pc(L)} (op doel gericht ${onT.length}: raak ${pc(onT)}, gered ${onT.filter(x => x.out === 'gered').length})`
             + `   van <15: ${pc(bucket(0, 15))} (${bucket(0, 15).length})  15-25: ${pc(bucket(15, 25))} (${bucket(15, 25).length})  25+: ${pc(bucket(25, 999))} (${bucket(25, 999).length})`
             + `   computer ${pc(L.filter(x => x.bot))}  speler ${pc(L.filter(x => !x.bot))}  hoog ${pc(L.filter(x => x.high))}`);
+    }
+    {
+        const hp = s.humanPasses, rate = (l) => l.length ? Math.round(100 * l.filter(Boolean).length / l.length) + '% (' + l.length + ')' : '-';
+        console.log(`        hoekschoppen ${s.setPieces[0]}, inworpen ${s.setPieces[1]}`
+            + (r.scn.device !== 'idle' ? `   jouw passes komen aan: ${rate(hp[0])} (vrije lijn ${rate(hp[2])}, dichte lijn ${rate(hp[3])}), hoge passes: ${rate(hp[1])}` : ''));
     }
     if (r.scn.device !== 'idle') {
         const hc = s.humanCarry, avg = (f) => hc.length ? (hc.reduce((a, x) => a + f(x), 0) / hc.length) : 0;
