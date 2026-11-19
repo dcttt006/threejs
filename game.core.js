@@ -310,15 +310,15 @@ const STADIUMS = [
         club: 'AFC Ajax',
         city: 'Amsterdam',
         // built from nothing by tools/arena_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/johan_cruijff_arena.glb?v=1',
+        file: 'media/models/stadiums/johan_cruijff_arena.glb?v=3',
         capacity: '56.120',
         pitch: { x: 0, z: 0.41, w: 72.60, l: 46.20, angle: Math.PI, y: 5.81 },
         look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
-        // the two screens hanging from the roof over both ends: the clock, a
-        // round badge per team and the score; the home logo shows when this
-        // file exists (put the official logo there yourself)
+        // the two screens hanging under the championship banners at both ends
+        // of the roof opening: the clock, the score and a badge per team, the
+        // home side with the Ajax logo (img/logo3.png)
         screen: 'arena',
-        screenLogo: 'img/ajax.png',
+        screenLogo: 'img/logo3.png',
         view: { lookZ: -12 },
     },
 ];

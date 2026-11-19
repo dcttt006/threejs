@@ -9,25 +9,36 @@
 # Burgemeester Stramanweg and the parking garage):
 #   - inside, a rectangle with rounded corners: two rings of red seats, the
 #     second ring steep and close, a ring of lit skyboxes between them; AJAX in
-#     white seats in the first ring behind the south goal (the F-side), the
-#     XXX of Amsterdam (three white crosses on black) in strips in the second
-#     ring; a red LED band on the front of the second ring: AJAX F-SIDE SINDS
-#     1976 and the European cups; red LED boards round the pitch
+#     white seats filling the first ring of the far long side, on the halfway
+#     line, the XXX of Amsterdam (three white crosses on black) in two narrow
+#     strips in the second ring at the ends of that side; dark skybox glass
+#     between the rings; a
+#     red LED band on the front of the second ring: AMSTERDAMSCHE FOOTBALL CLUB
+#     AJAX SINDS 18 MAART 1900 over AJAX, AJAX F-SIDE SINDS 1976 and the
+#     European cups over the south goal (the F-side); red LED boards along the
+#     sides and close behind the goals, grass and a concrete walk behind them,
+#     the yellow disc of the Johan Cruyff Foundation on the grass behind the
+#     north goal; a red sign over every tunnel mouth
 #   - the roof: fixed over all the stands, grey with solar panels on top and
-#     white steel trusses underneath, floodlights and 36 red championship
-#     banners along the edge of the opening; the opening is open, its two
+#     a lattice of white steel underneath, floodlights along the edge of the
+#     opening, a row of red championship banners across each end of it with
+#     the live screen hanging under the middle; the opening is open, its two
 #     translucent panels parked over the ends; two big white steel arches
 #     along the long sides carry them, from four corner towers with round caps
-#   - two live screens (game.screen.js, style 'arena') hanging from the roof
-#     over both ends, as on the photo of the screen
+#   - two live screens (game.screen.js, style 'arena') under the banners, as
+#     on the photos of the screen in a match; the Ajax logo on it is img/logo3.png
 #   - outside, the "flying saucer": a grey roof rim with red stripes over a
 #     slatted underside, the white upper concourse with red accents bulging out
 #     (the 2018 renovation), raked grey concrete struts all round, round glass
 #     stair towers at the corners, two glass escalator tubes, at each end a
-#     white stair tower with big round holes; on the north one the red JOHAN
-#     CRUIJFF ARENA banner (the portrait is left out: a plain grey field); the
-#     deck, the garage under it and the road passing beneath the stadium
-# No club, sponsor or city logos: lettering, the crosses and plain shapes only.
+#     white stair tower with six round windows; on the north one the portrait
+#     of Johan Cruijff in black and white over the red JOHAN CRUIJFF ARENA
+#     banner, the glass doors of gate B under it, the escalators climbing to
+#     it from the right; the deck, the garage under it and the road passing
+#     beneath the stadium
+# No sponsor logos. The portrait, the Foundation disc, AJAX in the seats and
+# the banners are pictures made by tools/arena_assets.py (the portrait: Rob
+# Mieremet / Anefo, Nationaal Archief, 1974, CC0) and read from tools/arena/.
 #
 # The helpers, the pitch and the export are the ones of tools/dekuip_build.py.
 import bpy, bmesh, math, os, random, sys, time
@@ -46,8 +57,8 @@ for name in ('01_Pitch', '02_Bowl', '03_Seats', '04_Roof', '05_Outside'):
 # K units a metre) and the bowl as a rounded rectangle round an 84 x 48 core.
 # The front wall at r = 13 keeps every stand out of the block the game cuts
 # away towards the camera (|x| < 51.2, y > -32.4 in these units).
-# +x is the south end (the F-side, AJAX in the seats), -x the north end (the
-# Johan Cruijff facade), -y the far long side in the game.
+# +x is the south end (the F-side), -x the north end (the Johan Cruijff
+# facade), -y the far long side in the game (AJAX in the seats).
 PW, PL = 88.0, 56.0
 K = PW / 105.0
 LINE = 0.14
@@ -59,7 +70,8 @@ N_SIDE, W_SIDE, S_SIDE, E_SIDE = (k * (SEG + 1) + SEG for k in range(4))   # +y 
 GAIN = 2.0                      # the game draws the model unlit at this gain (catalog: look.gain)
 SEAT_W = 0.5
 
-BOARD_R = 9.0                                                       # the LED boards round the pitch
+BOARD_R = 9.0                                                       # the LED boards along the long sides (from the core)
+BOARD_X = PW / 2 + 3.6                                              # and behind the goals, close to the line as on the photos
 WALL_R, WALL_Z = 13.0, 1.3                                          # the low wall in front of the first ring
 LOW = dict(r=13.3, z=1.3, rows=26, depth=0.80, rise=0.40)           # first ring: to r 34.1, z 11.3
 SKY_R = LOW['r'] + LOW['depth'] * LOW['rows']                       # the skyboxes at its back
@@ -301,7 +313,7 @@ rng = np.random.default_rng(1996)
 
 def seat_tile(color):
     t = np.zeros((32, 32, 3), 'f')
-    t[:] = np.array(color, 'f') * np.linspace(0.62, 1.0, 32)[:, None, None]
+    t[:] = np.array(color, 'f') * np.linspace(0.80, 1.0, 32)[:, None, None]
     t[:, :2] *= 0.22; t[:, -2:] *= 0.22
     t[-2:] *= 1.12
     return t
@@ -350,6 +362,19 @@ def solar_tex():
     t[:, (np.arange(w) % 32) < 2] = (0.55, 0.56, 0.58)
     t[(np.arange(h) % 32) < 2] = (0.55, 0.56, 0.58)
     t[:, (np.arange(w) % 8) == 4] *= 0.75
+    return t
+
+
+def roof_under_tex():
+    # under the roof, as on the photos: a close lattice of white steel against the dark deck
+    w = h = 128
+    t = np.ones((h, w, 3), 'f') * np.array((0.20, 0.21, 0.22), 'f')
+    yy, xx = np.mgrid[0:h, 0:w]
+    steel = np.array((0.80, 0.81, 0.82), 'f')
+    t[(xx % 32) < 3] = steel
+    t[(yy % 64) < 3] = steel
+    t[((xx + yy) % 64) < 2] = steel * 0.85
+    t[((xx - yy) % 64) < 2] = steel * 0.85
     return t
 
 
@@ -419,16 +444,9 @@ def tower_glass_tex():
     return t
 
 
-def portrait_tex():
-    # the banner on the north tower: a plain grey field where the portrait hangs
-    w, h = 64, 128
-    v = np.linspace(0, 1, h)[:, None, None]
-    return np.ones((h, w, 3), 'f') * (0.62 + 0.18 * v) * np.array((0.96, 0.96, 0.95), 'f')
-
-
 seat_cols = [image_material('M_Seat%d' % i, painted('arena_seat%d' % i, seat_tile(c)), 0.6)
-             for i, c in enumerate(((0.62, 0.035, 0.04), (0.55, 0.03, 0.035), (0.68, 0.045, 0.05),
-                                    (0.86, 0.86, 0.86), (0.035, 0.035, 0.04)))]
+             for i, c in enumerate(((0.74, 0.035, 0.045), (0.70, 0.032, 0.042), (0.77, 0.04, 0.05),
+                                    (0.90, 0.90, 0.90), (0.035, 0.035, 0.04)))]
 concrete = principled('M_Concrete', (0.46, 0.46, 0.47), 0.9)
 concrete_dark = principled('M_ConcreteDark', (0.22, 0.22, 0.23), 0.9)
 concrete_light = principled('M_ConcreteLight', (0.66, 0.66, 0.65), 0.85)
@@ -441,7 +459,11 @@ steel_white = principled('M_SteelWhite', (0.80, 0.81, 0.82), 0.5)
 steel_dark = principled('M_SteelDark', (0.07, 0.07, 0.08), 0.6)
 roof_top = image_material('M_RoofTop', painted('arena_roof', roof_tex()), 0.5, 0.15)
 solar = image_material('M_Solar', painted('arena_solar', solar_tex()), 0.3)
-roof_under = principled('M_RoofUnder', (0.33, 0.34, 0.36), 0.8)
+roof_under = image_material('M_RoofUnder', painted('arena_roofunder', roof_under_tex()), 0.8)        # white steel lattice
+sky_glass = image_material('M_SkyGlass', painted('arena_skyglass', windows_tex(lit=0.15)), 0.2)     # the skyboxes: dark glass, as on the photos
+_bimg = D.images.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arena', 'banners.png'))
+_bimg.pack()
+banner_tex = image_material('M_Banners', _bimg, 0.9)                                           # the championship banners (tools/arena_assets.py)
 roof_clear = principled('M_RoofClear', (0.80, 0.82, 0.84), 0.5)                            # the translucent sliding panels
 fascia = principled('M_Fascia', (0.52, 0.52, 0.53), 0.6)                                   # the grey rim of the saucer
 slats = image_material('M_Slats', painted('arena_slats', slats_tex()), 0.8)
@@ -451,7 +473,9 @@ concwall = image_material('M_ConcWall', painted('arena_concwall', concwall_tex()
 tower_glass = image_material('M_TowerGlass', painted('arena_towerglass', tower_glass_tex()), 0.2)
 escalator = principled('M_Escalator', (0.10, 0.22, 0.17), 0.2, (0.16, 0.34, 0.26), 1.0)    # the green glass tubes, lit inside
 white_wall = principled('M_WhiteWall', (0.84, 0.84, 0.83), 0.8)
-portrait = image_material('M_Portrait', painted('arena_portrait', portrait_tex()), 0.8)
+_pimg = D.images.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arena', 'portrait.png'))
+_pimg.pack()
+portrait = image_material('M_Portrait', _pimg, 0.8)                                         # Johan Cruijff, 1974 (tools/arena_assets.py)
 banner_red = principled('M_BannerRed', (0.62, 0.03, 0.04), 0.9)
 banner_white = principled('M_BannerWhite', (0.90, 0.90, 0.90), 0.9)
 lamp = principled('M_FloodLight', (1.0, 1.0, 0.97), 0.3, (1.0, 1.0, 0.96), 3.0)
@@ -580,40 +604,40 @@ AISLE_EVERY, AISLE_W = 12.0, 1.0
 UP_V = Vector((0, 0, 1))
 V3 = lambda p, z: Vector((p[0], p[1], z))
 
-# AJAX in white seats in the first ring behind the south goal (+x), as on the
-# photos: bold block letters, each square two seats wide and two rows high
-GLYPHS = {
-    'A': (' #### ', '##  ##', '##  ##', '######', '##  ##', '##  ##', '##  ##'),
-    'J': ('  ####', '    ##', '    ##', '    ##', '##  ##', '##  ##', ' #### '),
-    'X': ('##  ##', '##  ##', ' #### ', '  ##  ', ' #### ', '##  ##', '##  ##'),
-}
-WORD = 'AJAX'
-WORD_PX = len(WORD) * 7 - 1
-LETTER_ROW0 = 6                                      # the bottom row of the letters
+# AJAX in white seats in the first ring of the far long side (-y), centred on
+# the halfway line, as on the photos: tools/arena/ajax.png, one pixel a seat
+# and one row a row of seats; the stairs on the halfway line run between J and A
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arena')
+_aj = D.images.load(os.path.join(ASSETS, 'ajax.png'))
+AJ_W, AJ_H = _aj.size
+_px = np.empty(AJ_W * AJ_H * 4, 'f'); _aj.pixels.foreach_get(_px)
+AJ_MASK = _px.reshape(AJ_H, AJ_W, 4)[::-1, :, 0] > 0.5      # row 0 at the top
+D.images.remove(_aj)
+LETTER_ROW0 = 2                                      # the bottom row: the letters fill most of the ring, as on the photos
 
 
-def ajax_on(y, row):
-    # seen from the pitch the south end runs from +y (left) to -y (right)
-    px = math.floor(WORD_PX / 2 - y)                 # one square = 1 m = two seats
-    pr = (LETTER_ROW0 + 13 - row) // 2
-    if not (0 <= px < WORD_PX and 0 <= pr < 7):
-        return False
-    ch, cx = WORD[px // 7], px % 7
-    return cx < 6 and GLYPHS[ch][pr][cx] == '#'
+def ajax_on(x, row):
+    # seen from the pitch the far side runs from +x (left) to -x (right)
+    col = math.floor((AJ_W * SEAT_W / 2 - x) / SEAT_W)
+    pr = LETTER_ROW0 + AJ_H - 1 - row
+    return 0 <= col < AJ_W and 0 <= pr < AJ_H and bool(AJ_MASK[pr, col])
 
 
-# the XXX of Amsterdam in the second ring: a strip of black seats 6 m wide from
-# the bottom to the top, three white crosses in it, one over the other
-STRIPS = {N_SIDE: (-20.0, 20.0), S_SIDE: (-20.0, 20.0), E_SIDE: (-18.0, 18.0), W_SIDE: (-18.0, 18.0)}
+# the XXX of Amsterdam in the second ring: a strip of black seats nine seats
+# wide from the bottom to the top, three white crosses in it, one over the
+# other; as on the photos only two, on the far long side, out at its ends
+STRIP_W = 4.5
+STRIPS = {S_SIDE: (-39.25, 39.25)}
+
 
 
 def strip_at(seg, x, y):
-    s = x if seg in (N_SIDE, S_SIDE) else y if seg in (E_SIDE, W_SIDE) else None
-    if s is None:
+    if seg not in STRIPS:
         return None
+    s = x if seg in (N_SIDE, S_SIDE) else y
     for c in STRIPS[seg]:
-        if abs(s - c) < 3.0:
-            return s - (c - 3.0)                     # 0 .. 6 m across the strip
+        if abs(s - c) < STRIP_W / 2:
+            return s - (c - STRIP_W / 2)             # 0 .. STRIP_W across the strip
     return None
 
 
@@ -624,13 +648,13 @@ def cross_on(u, row):
     if not 1 <= rr <= 6:
         return False
     r = rr - 1
-    col = u / SEAT_W                                 # 0 .. 12 seats
+    col = u / STRIP_W * 12                           # 0 .. 12 across the strip
     return abs(col - (2 * r + 1)) <= 1.3 or abs(col - (11 - 2 * r)) <= 1.3
 
 
 def seat_colour(tier, seg, row, x, y, h):
     # 0, 1, 2 reds; 3 white; 4 black
-    if tier == 'low' and seg == E_SIDE and ajax_on(y, row):
+    if tier == 'low' and seg == S_SIDE and ajax_on(x, row):
         return 3
     if tier == 'up':
         u = strip_at(seg, x, y)
@@ -683,6 +707,9 @@ def seat_row(bm, aisles, dark, a, b, row, tier, seg, rise):
                 if rise:
                     down, out = Vector((0, 0, -rise)), -back * 0.012
                     face(dark, [f0 + down + out, f1 + down + out, f1 + out, f0 + out], -back, 0)
+                if row == max(portal_rows(tier)):
+                    sg = [g0.lerp(g1, 0.18), g0.lerp(g1, 0.82)]
+                    face(dark, [sg[0] + Vector((0, 0, 0.95)), sg[1] + Vector((0, 0, 0.95)), sg[1] + Vector((0, 0, 1.45)), sg[0] + Vector((0, 0, 1.45))], -back, 1)
         q = 0
         while q < seats:
             m = mats[q]
@@ -715,7 +742,7 @@ def build_tier(name, t, base_z, tier):
     new_obj('Bowl_' + name, steps, '02_Bowl', [concrete, concrete_dark])
     new_obj('Seats_' + name, seats, '03_Seats', seat_cols)
     new_obj('Aisles_' + name, aisles, '02_Bowl', [concrete_light])
-    new_obj('Portals_' + name, dark, '02_Bowl', [portal])
+    new_obj('Portals_' + name, dark, '02_Bowl', [portal, led_red])
 
 
 random.seed(1996)
@@ -728,19 +755,33 @@ ring(bm, WALL_R, 0.0, WALL_R, WALL_Z, 0)
 ring(bm, WALL_R, WALL_Z, LOW['r'], WALL_Z, 0, want='up')
 ring(bm, WALL_R - 0.05, WALL_Z + 0.9, WALL_R - 0.05, WALL_Z + 1.0, 1)          # the rail on the wall
 new_obj('Pitch_Wall', bm, '02_Bowl', [concrete_dark, steel_white])
+BY_ = CY + BOARD_R
+BOARD_LINES = [  # (start, end, outward angle): the far side, the near side, the south end, the north end
+    (Vector((BOARD_X, -BY_, 0)), Vector((-BOARD_X, -BY_, 0)), -math.pi / 2),
+    (Vector((-BOARD_X, BY_, 0)), Vector((BOARD_X, BY_, 0)), math.pi / 2),
+    (Vector((BOARD_X, BY_, 0)), Vector((BOARD_X, -BY_, 0)), 0.0),
+    (Vector((-BOARD_X, -BY_, 0)), Vector((-BOARD_X, BY_, 0)), math.pi),
+]
 bm = bmesh.new()
-ring(bm, BOARD_R, 0.1, BOARD_R, 1.0, 0)
-ring(bm, BOARD_R + 0.25, 0.1, BOARD_R + 0.25, 1.0, 1, want='out')               # their dark backs
-ring(bm, BOARD_R, 1.0, BOARD_R + 0.25, 1.0, 1, want='up')
+for a, b, ang in BOARD_LINES:
+    out = Vector((math.cos(ang), math.sin(ang), 0))
+    n = max(1, math.ceil((b - a).length / 4.0))
+    for k in range(n):
+        p0, p1 = a.lerp(b, k / n), a.lerp(b, (k + 1) / n)
+        q0, q1 = p0 + out * 0.25, p1 + out * 0.25
+        face(bm, [(p0.x, p0.y, 0.1), (p1.x, p1.y, 0.1), (p1.x, p1.y, 1.0), (p0.x, p0.y, 1.0)], -out, 0)
+        face(bm, [(q0.x, q0.y, 0.1), (q1.x, q1.y, 0.1), (q1.x, q1.y, 1.0), (q0.x, q0.y, 1.0)], out, 1)
+        face(bm, [(p0.x, p0.y, 1.0), (p1.x, p1.y, 1.0), (q1.x, q1.y, 1.0), (q0.x, q0.y, 1.0)], UP_V, 1)
 new_obj('LED_Boards', bm, '02_Bowl', [led_red, steel_dark])
-
-
-def band_text(name, r, z0, z1, texts, step):
-    for i, (x, y, a) in enumerate(ring_points(r, step)):
-        wall_text('%s_T%d' % (name, i), texts[i % len(texts)], (x, y, z0 + (z1 - z0) * 0.2), a, (z1 - z0) * 0.62, '02_Bowl', letters_white)
-
-
-band_text('Boards', BOARD_R - 0.05, 0.1, 1.0, ['AJAX', 'JOHAN CRUIJFF ARENA', 'AMSTERDAM'], 12.0)
+BOARD_TEXT = ['AJAX', 'JOHAN CRUIJFF ARENA', 'AMSTERDAM']
+ti = 0
+for a, b, ang in BOARD_LINES:
+    out = Vector((math.cos(ang), math.sin(ang), 0))
+    n = max(1, round((b - a).length / 12.0))
+    for k in range(n):
+        p = a.lerp(b, (k + 0.5) / n) - out * 0.05
+        wall_text('Boards_T%d' % ti, BOARD_TEXT[ti % 3], (p.x, p.y, 0.28), ang, 0.56, '02_Bowl', letters_white)
+        ti += 1
 
 # the skyboxes at the back of the first ring, under the second
 bm = bmesh.new()
@@ -749,7 +790,7 @@ ring(bm, SKY_R, SKY_Z0 + 0.6, SKY_R, BAND_Z0 - 0.7, 1, u_len=PANE_W * PANES)
 ring(bm, SKY_R, BAND_Z0 - 0.7, SKY_R, BAND_Z0, 2)
 ring(bm, BAND_R, BAND_Z0, SKY_R, BAND_Z0, 0, want='down')           # the underside of the overhang
 ring(bm, SKY_R - 0.05, SKY_Z0 + 0.95, SKY_R - 0.05, SKY_Z0 + 1.05, 3)   # the glass balustrade's rail
-new_obj('Skyboxes', bm, '02_Bowl', [concrete_light, glass_lit, concrete_dark, steel_white])
+new_obj('Skyboxes', bm, '02_Bowl', [concrete_light, sky_glass, concrete_dark, steel_white])
 bm = bmesh.new()
 for x, y, a in ring_points(SKY_R - 0.07, 4.0):
     box(bm, (x, y), (math.cos(a + math.pi / 2), math.sin(a + math.pi / 2)), 0.06, (math.cos(a), math.sin(a)), 0.06, SKY_Z0 + 0.6, BAND_Z0 - 0.7, 0)
@@ -761,10 +802,11 @@ ring(bm, BAND_R, BAND_Z0, BAND_R, BAND_Z1, 0)
 ring(bm, BAND_R, BAND_Z1, UP['r'], BAND_Z1, 1, want='up')
 new_obj('Band', bm, '02_Bowl', [led_red, concrete])
 BAND_TEXT = {
-    # side: [(position along it, text)], as on the photo of the F-side: the cups to the left and the right
-    S_SIDE: [(26.0, 'EUROPA CUP II  1987'), (0.0, 'AJAX F-SIDE SINDS 1976'), (-26.0, 'EUROPA CUP I  1971 1972 1973 1995')],
-    N_SIDE: [(-26.0, 'UEFA CUP  1992'), (0.0, 'JOHAN CRUIJFF ARENA'), (26.0, 'WERELDBEKER  1972 1995')],
-    E_SIDE: [(12.0, 'EUROPA CUP I'), (-12.0, 'AJAX F-SIDE SINDS 1976')],
+    # side: [(position along it, text)]; over the south goal as on the photo of
+    # the F-side: AJAX F-SIDE SINDS 1976 with the cups to the left and the right
+    S_SIDE: [(31.0, 'WERELDBEKERS'), (0.0, 'AMSTERDAMSCHE FOOTBALL CLUB AJAX SINDS 18 MAART 1900'), (-31.0, 'LANDSKAMPIOENEN')],
+    N_SIDE: [(-26.0, 'AMSTERDAM'), (0.0, 'JOHAN CRUIJFF ARENA'), (26.0, 'AMSTERDAM')],
+    E_SIDE: [(15.0, 'EUROPA CUP II  1987'), (0.0, 'AJAX F-SIDE SINDS 1976'), (-15.0, 'EUROPA CUP I  1971 1972 1973 1995')],
     W_SIDE: [(-12.0, 'EUROPA CUP II'), (12.0, 'UEFA CUP')],
 }
 bh = BAND_Z1 - BAND_Z0
@@ -813,25 +855,27 @@ def roof_under_at(x, y):
     return roof_t_z(t) - roof_thick(t)
 
 
-# the two live screens (game.screen.js, style 'arena'), hanging from the roof
-# over both ends, as on the photos. Exported together as 'StadiumScreens'.
-SCREEN_W, SCREEN_H = 17.0, 9.0
-SCREEN_Z = 22.0
-SCREEN_R = 30.0
+# the two live screens (game.screen.js, style 'arena'), as on the photos from
+# the ends: hanging from the roof at both ends of the opening, right under the
+# row of championship banners. Exported together as 'StadiumScreens'.
+EDGE_Z = roof_t_z(1) - roof_thick(1)                               # the underside of the roof at the opening
+BANNER_TOP, BANNER_H, BANNER_W = EDGE_Z - 5.6, 5.8, 2.5
+SCREEN_W, SCREEN_H = 14.5, 7.7
+SCREEN_Z = BANNER_TOP - BANNER_H - 0.8 - SCREEN_H
 live = principled('M_LiveScreen', (1.0, 1.0, 1.0), 0.4, (0.10, 0.10, 0.16), 2.0)
 SCREEN_FACES = []
 for sx in (1, -1):
     d = Vector((sx, 0, 0))                                          # out from the middle of the end
     tn = Vector((-d.y, d.x, 0))
-    c = Vector((sx * (CX + SCREEN_R), 0, 0))
+    c = Vector((sx * (OPEN_X - 2.2), 0, 0))
     bm = bmesh.new()
     box(bm, (c.x + d.x * 0.3, c.y), (tn.x, tn.y), SCREEN_W / 2 + 0.4, (d.x, d.y), 0.25, SCREEN_Z - 0.4, SCREEN_Z + SCREEN_H + 0.4, 0)
-    top = roof_under_at(c.x, c.y)
-    for s in (-1, 1):                                               # the hangers up to the roof truss
-        p = c + tn * s * (SCREEN_W / 2 - 1.0) + d * 0.3
+    top = EDGE_Z - 1.6 + 0.8
+    for s in (-1, 1):                                               # the hangers up to the truss at the edge, between two banners
+        p = c + tn * s * (SCREEN_W / 2 - 0.6) + d * 0.3
         tube(bm, Vector((p.x, p.y, SCREEN_Z + SCREEN_H + 0.4)), Vector((p.x, p.y, top - 0.8)), 0.12, 1, seg=6)
     tube(bm, Vector((c.x + d.x * 0.6, c.y - SCREEN_W / 2, SCREEN_Z + SCREEN_H + 1.2)), Vector((c.x + d.x * 0.6, c.y + SCREEN_W / 2, SCREEN_Z + SCREEN_H + 1.2)), 0.25, 1, seg=6)
-    new_obj('Scoreboard_%d' % sx, bm, '02_Bowl', [steel_dark, steel_white])
+    new_obj('Scoreboard_%d' % sx, bm, '02_Bowl', [portal, steel_white])                 # the box black, as on the photo from behind it
     fb = bmesh.new()
     face(fb, [c + tn * (SCREEN_W / 2) + Vector((0, 0, SCREEN_Z)), c - tn * (SCREEN_W / 2) + Vector((0, 0, SCREEN_Z)),
               c - tn * (SCREEN_W / 2) + Vector((0, 0, SCREEN_Z + SCREEN_H)), c + tn * (SCREEN_W / 2) + Vector((0, 0, SCREEN_Z + SCREEN_H))],
@@ -876,7 +920,8 @@ for i in range(NP):
         uvs = [(CUM[i] / 8, t0 * 5), (CUM[i + 1] / 8, t0 * 5), (CUM[i + 1] / 8, t1 * 5), (CUM[i] / 8, t1 * 5)]
         face(bm, [rp(i, t0, roof_t_z(t0)), rp(j, t0, roof_t_z(t0)), rp(j, t1, roof_t_z(t1)), rp(i, t1, roof_t_z(t1))], UP_V, m, uvs)
         face(bm, [rp(i, t0, roof_t_z(t0) - roof_thick(t0)), rp(j, t0, roof_t_z(t0) - roof_thick(t0)),
-                  rp(j, t1, roof_t_z(t1) - roof_thick(t1)), rp(i, t1, roof_t_z(t1) - roof_thick(t1))], -UP_V, 2)
+                  rp(j, t1, roof_t_z(t1) - roof_thick(t1)), rp(i, t1, roof_t_z(t1) - roof_thick(t1))], -UP_V, 2,
+             [(CUM[i] / 6, t0 * 6), (CUM[i + 1] / 6, t0 * 6), (CUM[i + 1] / 6, t1 * 6), (CUM[i] / 6, t1 * 6)])
     # the edge of the opening: a white face from the underside to the top
     face(bm, [rp(i, 1.0, roof_t_z(1) - roof_thick(1)), rp(j, 1.0, roof_t_z(1) - roof_thick(1)), rp(j, 1.0, roof_t_z(1)), rp(i, 1.0, roof_t_z(1))],
          -(OUT_PTS[i % NP]).normalized(), 3)
@@ -914,7 +959,6 @@ new_obj('Roof_Trusses', bm, '04_Roof', [steel_white])
 
 # round the opening: a white truss under the edge, floodlights on it all the
 # way round, black loudspeaker clusters hanging from it
-EDGE_Z = roof_t_z(1) - roof_thick(1)
 RECT = [Vector((OPEN_X, OPEN_Y, 0)), Vector((-OPEN_X, OPEN_Y, 0)), Vector((-OPEN_X, -OPEN_Y, 0)), Vector((OPEN_X, -OPEN_Y, 0))]
 
 
@@ -950,23 +994,32 @@ for p, n in rect_points(2.2, 0.5):
     face(bm, [c - t * 0.7 - up * 0.35, c + t * 0.7 - up * 0.35, c + t * 0.7 + up * 0.35, c - t * 0.7 + up * 0.35], nrm, 0)
 new_obj('Roof_Lamps', bm, '04_Roof', [lamp])
 
-# the 36 red championship banners hanging from the edge over the far side
+# the championship banners, as on the photos from the ends: a row across each
+# end of the opening, hanging on wires from the truss at the edge, the screen
+# under the middle of it. Red, a white edge, the trophy and the year
+# (tools/arena/banners.png: 8 x 4 banners, read the same from both sides)
 bm = bmesh.new()
-NB = 36
-yb = -OPEN_Y + 0.7
-for k in range(NB):
-    x = -29.0 + 58.0 * (k + 0.5) / NB
-    w = 1.25
-    for side in (1, -1):
-        dy = 0.02 * side
-        n = Vector((0, side, 0))
-        face(bm, [(x - w / 2, yb + dy, EDGE_Z - 6.4), (x + w / 2, yb + dy, EDGE_Z - 6.4), (x + w / 2, yb + dy, EDGE_Z - 1.6), (x - w / 2, yb + dy, EDGE_Z - 1.6)], n, 0)
-        d2 = dy * 2
-        face(bm, [(x - 0.3, yb + d2, EDGE_Z - 4.2), (x + 0.3, yb + d2, EDGE_Z - 4.2), (x + 0.42, yb + d2, EDGE_Z - 3.0), (x - 0.42, yb + d2, EDGE_Z - 3.0)], n, 1)   # the cup
-        face(bm, [(x - 0.12, yb + d2, EDGE_Z - 4.7), (x + 0.12, yb + d2, EDGE_Z - 4.7), (x + 0.12, yb + d2, EDGE_Z - 4.2), (x - 0.12, yb + d2, EDGE_Z - 4.2)], n, 1)
-        face(bm, [(x - w / 2, yb + d2, EDGE_Z - 6.2), (x + w / 2, yb + d2, EDGE_Z - 6.2), (x + w / 2, yb + d2, EDGE_Z - 5.8), (x - w / 2, yb + d2, EDGE_Z - 5.8)], n, 1)
-    tube(bm, Vector((x - w / 2, yb, EDGE_Z - 1.6)), Vector((x + w / 2, yb, EDGE_Z - 1.6)), 0.03, 0, seg=4)
-new_obj('Banners', bm, '04_Roof', [banner_red, banner_white])
+NB, BSPAN = 22, 72.0
+for sx in (1, -1):
+    xb = sx * (OPEN_X - 0.7)
+    for k in range(NB):
+        y = -BSPAN / 2 + BSPAN * (k + 0.5) / NB
+        cell = (k + (0 if sx > 0 else NB)) % 32
+        u0, u1 = (cell % 8) / 8, (cell % 8 + 1) / 8
+        v1 = 1 - (cell // 8) / 4; v0 = v1 - 0.25
+        y0, y1 = y - BANNER_W / 2, y + BANNER_W / 2
+        z0, z1 = BANNER_TOP - BANNER_H, BANNER_TOP
+        for side in (-1, 1):                                          # the face towards the pitch, and the back
+            xf = xb + side * 0.03
+            n = Vector((side, 0, 0))
+            # seen from its own side, the banner's left is +y when facing +x and -y when facing -x
+            l, r = (y1, y0) if side < 0 else (y0, y1)
+            face(bm, [(xf, l, z0), (xf, r, z0), (xf, r, z1), (xf, l, z1)], n, 0, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
+        tube(bm, Vector((xb, y0 - 0.1, z1 + 0.09)), Vector((xb, y1 + 0.1, z1 + 0.09)), 0.05, 1, seg=4)     # clear of the cloth: its corners take the baked light
+        tube(bm, Vector((xb, y0, z0 - 0.07)), Vector((xb, y1, z0 - 0.07)), 0.035, 1, seg=4)
+        for yy in (y0 + 0.15, y1 - 0.15):                             # the wires up to the truss
+            tube(bm, Vector((xb, yy, z1 + 0.09)), Vector((xb, yy, EDGE_Z - 1.6)), 0.02, 1, seg=3)
+new_obj('Banners', bm, '04_Roof', [banner_tex, steel_white])
 
 # the two sliding panels, parked over the ends: translucent, a little crowned,
 # hanging under the arches
@@ -1129,17 +1182,20 @@ for sx in (1, -1):
         tube(bm, Vector((c.x, c.y, TOP)), Vector((c.x, c.y, TOP + 0.6)), R + 0.4, 1, seg=NSEG)
         new_obj('GlassTower_%d%d' % (sx, sy), bm, '05_Outside', [tower_glass, white_wall])
 
-# two glass escalator tubes up the north front, side by side
+# two glass escalator tubes up the north front, side by side: as on the photo
+# from the deck on the right (-y, seen from the front) up to the upper
+# concourse beside the tower
 bm = bmesh.new()
-A, B = Vector((-(CX + 67.0), 12.0, 0.0)), Vector((-(CX + 58.5), 40.0, 21.0))
+A, B = Vector((-(CX + 66.0), -42.0, 0.6)), Vector((-(CX + 57.5), -15.5, 20.0))
 hd = Vector(((B - A).x, (B - A).y, 0)).normalized()
 perp = Vector((-hd.y, hd.x, 0))
-for off in (0.0, 3.2):
+for off in (0.0, 3.0):
     a, b = A + perp * off, B + perp * off
-    beam(bm, a, b, perp, 2.6, 3.0, 0)
-    for f in (0.35, 0.7):
+    tube(bm, a, b, 1.35, 0, seg=14)
+    beam(bm, a - Vector((0, 0, 1.2)), b - Vector((0, 0, 1.2)), perp, 1.6, 0.5, 1)        # the truss under it
+    for f in (0.3, 0.62):
         p = a.lerp(b, f)
-        tube(bm, Vector((p.x, p.y, GROUND_Z)), Vector((p.x, p.y, p.z - 1.5)), 0.35, 1, seg=8)
+        tube(bm, Vector((p.x, p.y, 0.0)), Vector((p.x, p.y, p.z - 1.4)), 0.3, 1, seg=8)
 new_obj('Escalators', bm, '05_Outside', [escalator, concrete_light])
 
 # at each end a white stair tower with big round holes; on the north one the
@@ -1149,26 +1205,35 @@ for sx in (1, -1):
     bm = bmesh.new()
     gridbox(bm, sx * (CX + 61.0) - 5.0, sx * (CX + 61.0) + 5.0, -14.0, 14.0, GROUND_Z, 31.0, 0, step=1.5)
     out = Vector((sx, 0, 0))
-    for yy in (-9.5, 9.5):
-        for zz in (7.0, 14.5, 22.0):
-            pts = [(xo + sx * 0.06, yy + math.cos(2 * math.pi * k / 28) * 2.4, zz + math.sin(2 * math.pi * k / 28) * 2.4) for k in range(28)]
+    # as on the photo of the north front: two columns of three round windows,
+    # dark glass with two crossed bars in a grey frame; between them the
+    # portrait from the top down, the red banner under it, and the glass doors
+    # of gate B across the whole foot of the tower
+    WR = 2.6
+    for yy in (-8.6, 8.6):
+        for zz in (8.6, 16.4, 24.2):
+            pts = [(xo + sx * 0.06, yy + math.cos(2 * math.pi * k / 28) * WR, zz + math.sin(2 * math.pi * k / 28) * WR) for k in range(28)]
             face(bm, pts, out, 1)
             for k in range(28):
                 a0, a1 = 2 * math.pi * k / 28, 2 * math.pi * (k + 1) / 28
-                face(bm, [(xo + sx * 0.08, yy + math.cos(a0) * 2.4, zz + math.sin(a0) * 2.4), (xo + sx * 0.08, yy + math.cos(a1) * 2.4, zz + math.sin(a1) * 2.4),
-                          (xo + sx * 0.08, yy + math.cos(a1) * 2.75, zz + math.sin(a1) * 2.75), (xo + sx * 0.08, yy + math.cos(a0) * 2.75, zz + math.sin(a0) * 2.75)], out, 2)
-    face(bm, [(xo + sx * 0.07, -5.5, 0.0), (xo + sx * 0.07, 5.5, 0.0), (xo + sx * 0.07, 5.5, 3.2), (xo + sx * 0.07, -5.5, 3.2)], out, 3,
-         [(0, 0), (2.75, 0), (2.75, 1), (0, 1)])
+                face(bm, [(xo + sx * 0.08, yy + math.cos(a0) * WR, zz + math.sin(a0) * WR), (xo + sx * 0.08, yy + math.cos(a1) * WR, zz + math.sin(a1) * WR),
+                          (xo + sx * 0.08, yy + math.cos(a1) * (WR + 0.35), zz + math.sin(a1) * (WR + 0.35)), (xo + sx * 0.08, yy + math.cos(a0) * (WR + 0.35), zz + math.sin(a0) * (WR + 0.35))], out, 2)
+            for a in (math.pi / 4, -math.pi / 4):                                   # the two bars across
+                d, n = Vector((0, math.cos(a), math.sin(a))), Vector((0, -math.sin(a), math.cos(a))) * 0.16
+                c0, c1 = Vector((xo + sx * 0.1, yy, zz)) - d * WR, Vector((xo + sx * 0.1, yy, zz)) + d * WR
+                face(bm, [c0 - n, c1 - n, c1 + n, c0 + n], out, 2)
+    face(bm, [(xo + sx * 0.07, -12.5, 0.0), (xo + sx * 0.07, 12.5, 0.0), (xo + sx * 0.07, 12.5, 4.6), (xo + sx * 0.07, -12.5, 4.6)], out, 3,
+         [(0, 0), (6.25, 0), (6.25, 1), (0, 1)])
     if sx < 0:
-        face(bm, [(xo - 0.08, -5.0, 13.5), (xo - 0.08, 5.0, 13.5), (xo - 0.08, 5.0, 29.5), (xo - 0.08, -5.0, 29.5)], out, 4, [(0, 0), (1, 0), (1, 1), (0, 1)])
-        face(bm, [(xo - 0.08, -5.0, 3.2), (xo - 0.08, 5.0, 3.2), (xo - 0.08, 5.0, 13.5), (xo - 0.08, -5.0, 13.5)], out, 5)
-        face(bm, [(xo - 0.1, -2.6, 3.35), (xo - 0.1, 2.6, 3.35), (xo - 0.1, 2.6, 4.15), (xo - 0.1, -2.6, 4.15)], out, 5)   # the sign of gate B
+        face(bm, [(xo - 0.08, -5.2, 16.4), (xo - 0.08, 5.2, 16.4), (xo - 0.08, 5.2, 30.6), (xo - 0.08, -5.2, 30.6)], out, 4, [(1, 0), (0, 0), (0, 1), (1, 1)])
+        face(bm, [(xo - 0.08, -5.2, 6.6), (xo - 0.08, 5.2, 6.6), (xo - 0.08, 5.2, 16.4), (xo - 0.08, -5.2, 16.4)], out, 5)
+        face(bm, [(xo - 0.1, -2.6, 4.85), (xo - 0.1, 2.6, 4.85), (xo - 0.1, 2.6, 5.75), (xo - 0.1, -2.6, 5.75)], out, 5)   # the sign of gate B
     new_obj('EndTower_%d' % sx, bm, '05_Outside', [white_wall, portal, concrete_light, glass_lit, portrait, red])
 NX = -(CX + 66.0) - 0.14
-wall_text('Banner_Name1', 'JOHAN CRUIJFF', (NX, 0.0, 10.6), 0.0, 1.25, '05_Outside', letters_white)
-wall_text('Banner_Name2', 'ARENA', (NX, 0.0, 6.3), 0.0, 3.1, '05_Outside', letters_white)
-wall_text('Banner_Tag', '#JohanCruijffArenA', (NX, 0.0, 4.4), 0.0, 0.62, '05_Outside', letters_white)
-wall_text('Gate_B', 'NOORD B', (NX - 0.02, 0.0, 3.5), 0.0, 0.55, '05_Outside', letters_white)
+wall_text('Banner_Name1', 'JOHAN CRUIJFF', (NX, 0.0, 14.1), 0.0, 1.4, '05_Outside', letters_white)
+wall_text('Banner_Name2', 'ARENA', (NX, 0.0, 10.6), 0.0, 3.6, '05_Outside', letters_white)
+wall_text('Banner_Tag', '#JohanCruijffArenA', (NX, 0.0, 8.8), 0.0, 0.7, '05_Outside', letters_white)
+wall_text('Gate_B', 'NOORD B', (NX - 0.02, 0.0, 5.05), 0.0, 0.55, '05_Outside', letters_white)
 
 # the gate signs of NOORD A and NOORD C on posts on the deck
 bm = bmesh.new()
@@ -1260,6 +1325,33 @@ alpha = (np.clip(blur(line_m, 0.8), 0, 1) * np.clip(0.82 + 0.12 * vnoise(90, 90)
 out_px = np.clip(out_px * (1 - alpha) + np.array((0.78, 0.80, 0.76), 'f') * alpha, 0, 1)
 del fine, shade, bands_x, wear, runoff_px, grass_px, alpha, rgb
 
+# behind the boards at the ends, as on the photos from there: grass in the
+# middle, a concrete walk along the stand and to the corners
+behind = np.abs(X) > BOARD_X + 0.25
+walk = behind & ((np.abs(X) > CX + WALL_R - 1.3) | (np.abs(Y) > 22.0))
+lawn_px = np.array((0.068, 0.165, 0.040), 'f') * (1 + 0.06 * vnoise(64, 64) + 0.03 * rng.normal(0, 1, (H, W)).astype('f'))[..., None]
+out_px = np.where((behind & ~walk)[..., None], lawn_px, out_px)
+out_px = np.where(walk[..., None], np.array((0.22, 0.22, 0.21), 'f') * (1 + 0.04 * vnoise(32, 32))[..., None], out_px)
+del lawn_px
+
+# the yellow disc of the Johan Cruyff Foundation on that grass behind the north
+# goal, as on the photos from that end; read from the camera (tools/arena/foundation.png)
+FD_R = 2.6
+FD_X, FD_Y = -(BOARD_X + 0.25 + (CX + WALL_R - 1.3 - BOARD_X - 0.25) / 2), -3.0
+_fd = D.images.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arena', 'foundation.png'))
+FS = _fd.size[0]
+_f = np.empty(FS * FS * 4, 'f'); _fd.pixels.foreach_get(_f)
+_f = _f.reshape(FS, FS, 4)[::-1]                                     # row 0 at the top
+D.images.remove(_fd)
+_f[..., :3] = np.where(_f[..., :3] <= 0.04045, _f[..., :3] / 12.92, ((_f[..., :3] + 0.055) / 1.055) ** 2.4)
+_f[..., :3] *= 1.0                                                   # bright paint: the pitch light still darkens it
+ys, xs = np.nonzero((np.abs(X - FD_X) < FD_R) & (np.abs(Y - FD_Y) < FD_R))
+iu = np.clip(((FD_X - X[0, xs]) / (2 * FD_R) + 0.5) * FS, 0, FS - 1).astype(int)      # the camera's left is +x
+iv = np.clip(((Y[ys, 0] - FD_Y) / (2 * FD_R) + 0.5) * FS, 0, FS - 1).astype(int)      # its top the far side, -y
+src = _f[iv, iu]
+out_px[ys, xs] = out_px[ys, xs] * (1 - src[:, 3:4]) + src[:, :3] * src[:, 3:4]
+del _f, src
+
 
 # ---------------------------------------------------------------- night: floodlights from the ring
 def light(coll, kind, loc, energy, color, target=None, size=60, blend=0.35, radius=0.3):
@@ -1298,6 +1390,10 @@ for sx in (1, -1):                                                  # the white 
 for sx in (1, -1):                                                  # the corner towers of the arches
     for sy in (1, -1):
         light(coll, 'SPOT', (sx * (ARCH_X + 14.0), sy * (ARCH_Y + 14.0), 8.0), NIGHT['tower'] * 0.6, (0.95, 0.96, 1.0), target=(sx * ARCH_X, sy * ARCH_Y, 30), size=35, blend=0.5)
+for sx in (1, -1):                                                  # the championship banners and the screens at both ends
+    for y in (-32.0, -16.0, 0.0, 16.0, 32.0):
+        light(coll, 'SPOT', (sx * (OPEN_X - 15.0), y, BANNER_TOP - 1.0), 3200, FLOOD,
+              target=(sx * (OPEN_X - 0.7), y, BANNER_TOP - BANNER_H / 2), size=55, blend=0.5)
 for s in (-1, 1):                                                   # the banner on the north tower
     light(coll, 'SPOT', (-(CX + DECK_R) - 10.0, s * 7.0, 8.0), NIGHT['banner'], (1.0, 0.97, 0.92), target=(-(CX + 66.0), 0, 16), size=45, blend=0.5)
 for o in (grass, lines, surround, goals):

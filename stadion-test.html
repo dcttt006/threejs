@@ -15,6 +15,10 @@
     button, select { font: inherit; color: inherit; background: #2a3038; border: 1px solid #3a424d; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
     button:hover { background: #343c46; }
     #status { margin-left: auto; color: #9aa4af; }
+    #walk.on { background: #c8102e; border-color: #e0475f; }
+    #walkhelp { position: fixed; left: 12px; bottom: 12px; padding: 10px 12px; background: rgba(20,23,26,.88); border: 1px solid #2c323a; border-radius: 4px; line-height: 1.5; }
+    #walkhelp[hidden] { display: none; }
+    #walkhelp kbd { display: inline-block; min-width: 18px; padding: 0 4px; text-align: center; background: #2a3038; border: 1px solid #3a424d; border-radius: 3px; font: 12px/18px system-ui, sans-serif; }
     #status.new { color: #7fd18b; }
     #status.err { color: #ff8a80; }
 </style>
@@ -31,7 +35,14 @@
     <button data-view="foto">Zoals foto 2</button>
     <button data-view="doel">Doel</button>
     <button data-view="dugouts">Dug-outs</button>
+    <button id="walk" type="button">Rondlopen</button>
     <span id="status">laden…</span>
+</div>
+<div id="walkhelp" hidden>
+    <strong>Rondlopen</strong><br>
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> of pijltjes: lopen · <kbd>Shift</kbd> ingedrukt: rennen<br>
+    <kbd>E</kbd> / <kbd>spatie</kbd>: omhoog (de tribune op) · <kbd>Q</kbd> / <kbd>C</kbd>: omlaag<br>
+    slepen met de muis: rondkijken · <kbd>Esc</kbd>: stoppen
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -78,7 +89,77 @@ function setView(name) {
     controls.target.set(centre.x + t[0] * span, centre.y + t[1] * span, centre.z + t[2] * span);
     controls.update();
 }
-document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { setWalk(false); setView(b.dataset.view); });
+
+// Rondlopen: a person on the pitch at eye height (1.7 m), walking with the
+// keys and looking round by dragging; up and down to climb into the stands.
+// Distances in metres, turned into model units from the pitch (105 m long).
+const walk = { on: false, yaw: 0, pitch: 0, keys: {}, drag: null };
+const walkBtn = document.getElementById('walk'), walkHelp = document.getElementById('walkhelp');
+// the game scales a model to 264 across its longest side (span); the catalog's
+// pitch.w is the 105 m pitch in those units, pitch.y its height over the model's foot
+function metre() {
+    const st = current();
+    return st && st.pitch ? st.pitch.w * span / 264 / 105 : span / 300;
+}
+function groundY() {
+    const st = current();
+    return centre.y + (st && st.pitch ? (st.pitch.y || 0) * span / 264 : 0);
+}
+function setWalk(on) {
+    if (on === walk.on) return;
+    walk.on = on;
+    walkBtn.classList.toggle('on', on);
+    walkHelp.hidden = !on;
+    controls.enabled = !on;
+    if (on) {
+        const m = metre();
+        // start on the near touchline at the halfway line, looking across the pitch
+        camera.fov = 70; camera.near = 0.05 * m; camera.updateProjectionMatrix();
+        camera.position.set(centre.x, groundY() + 1.7 * m, centre.z - 40 * m);
+        walk.yaw = Math.PI; walk.pitch = 0.08;
+    } else {
+        camera.fov = 40; camera.near = span / 2000; camera.updateProjectionMatrix();
+        controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(walk.pitch, walk.yaw, 0, 'YXZ')).multiplyScalar(span * 0.1));
+        controls.update();
+    }
+}
+walkBtn.onclick = () => setWalk(!walk.on);
+addEventListener('keydown', (e) => {
+    if (!walk.on) return;
+    if (e.code === 'Escape') { setWalk(false); return; }
+    walk.keys[e.code] = true;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+});
+addEventListener('keyup', (e) => { walk.keys[e.code] = false; });
+addEventListener('blur', () => { walk.keys = {}; });
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (!walk.on) return;
+    walk.drag = { x: e.clientX, y: e.clientY, yaw: walk.yaw, pitch: walk.pitch };
+    renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!walk.on || !walk.drag) return;
+    walk.yaw = walk.drag.yaw - (e.clientX - walk.drag.x) * 0.0045;
+    walk.pitch = Math.max(-1.45, Math.min(1.45, walk.drag.pitch - (e.clientY - walk.drag.y) * 0.0045));
+});
+renderer.domElement.addEventListener('pointerup', () => { walk.drag = null; });
+let walkLast = performance.now();
+function walkStep() {
+    const now = performance.now(), dt = Math.min(0.05, (now - walkLast) / 1000);
+    walkLast = now;
+    if (!walk.on) return;
+    const k = walk.keys, m = metre();
+    const speed = (k.ShiftLeft || k.ShiftRight ? 14 : 5) * m * dt;          // walking 5 m/s, running 14
+    const fwd = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
+    const side = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+    const up = (k.KeyE || k.Space ? 1 : 0) - (k.KeyQ || k.KeyC ? 1 : 0);
+    const f = new THREE.Vector3(-Math.sin(walk.yaw), 0, -Math.cos(walk.yaw));     // where you look, flat
+    const r = new THREE.Vector3(Math.cos(walk.yaw), 0, -Math.sin(walk.yaw));
+    camera.position.addScaledVector(f, fwd * speed).addScaledVector(r, side * speed);
+    camera.position.y = Math.max(groundY() + 1.7 * m, camera.position.y + up * 4 * m * dt);
+    camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+}
 
 // stadium list from the game's own catalog (read out of game.core.js without
 // running the game); ?stadion=<id> picks one
@@ -171,7 +252,7 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 readCatalog().then(() => load(true)).catch((e) => { status.className = 'err'; status.textContent = 'kon de stadionlijst niet lezen'; console.error(e); });
-(function frame() { requestAnimationFrame(frame); controls.update(); renderer.render(scene, camera); })();
+(function frame() { requestAnimationFrame(frame); if (walk.on) walkStep(); else controls.update(); renderer.render(scene, camera); })();
 </script>
 </body>
 </html>

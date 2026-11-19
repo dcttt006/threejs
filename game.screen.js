@@ -17,11 +17,10 @@
 // screen: 'campin' (El Campín) is the big screen of Bogotá: the two teams'
 // colours running into each other, a plain shield for each with its short
 // name, the score '0 : 0' in the middle and the clock under it.
-// screen: 'arena' (Johan Cruijff ArenA) is the ArenA's screen: dark navy with
-// a red glow across the middle, the clock at the top, the big score with a
-// small red and white mark between the figures, a round badge for each team.
-// The home logo is the file the catalog names (screenLogo), with three gold
-// stars over it as on the screen; without it a white disc with the short name.
+// screen: 'arena' (Johan Cruijff ArenA) is the ArenA's screen: an almost black
+// board, the clock small at the top, the home logo in a white disc on the left
+// (the file the catalog names: screenLogo), the away side's disc on the right,
+// the score in square figures with round corners and a long bar between them.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -379,7 +378,12 @@ const STADIUM_SCREEN = (() => {
         eTexture.needsUpdate = true;
     }
 
-    // ---- the Johan Cruijff ArenA: the big screen (14 x 7.4 m, drawn 1024 x 541) ----
+    // ---- the Johan Cruijff ArenA: the screen over each end (14.5 x 7.7 m, drawn 1024 x 541) ----
+    // As on the photos of the screen in a match: an almost black board, the
+    // clock small at the top, the home logo in a white disc on the left, the
+    // away side's badge on the right, between them the score in the screen's
+    // own figures (square with round corners, a slash through the 0) with a
+    // long bar between them. The lower part of the board stays empty.
     const AW = 1024, AH = 541;
     let aCanvas = null, aCtx = null, aTexture = null;
     let arenaLogo = null, arenaLogoSrc = null;
@@ -388,59 +392,121 @@ const STADIUM_SCREEN = (() => {
         arenaLogoSrc = src;
         const im = new Image();
         im.onload = () => { arenaLogo = im; last = ''; redraw(); };
-        im.src = src;                              // missing file: the white disc stays
+        im.src = src;                              // missing file: a white disc with the short name
     }
-    function star(c, cx, cy, r) {
-        c.beginPath();
-        for (let i = 0; i < 10; i++) {
-            const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.42 : r;
-            c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    // for now the away side shows the game's own club badge (a test), as the
+    // screen shows the visitors' crest; without the file a disc in their colour
+    const ARENA_AWAY = 'img/logo2.png';
+    let arenaAway = null;
+    function loadArenaAway() {
+        if (arenaAway || typeof Image === 'undefined') return;
+        const im = new Image();
+        im.onload = () => { arenaAway = im; last = ''; redraw(); };
+        im.src = ARENA_AWAY;
+    }
+    // the figures as strokes in a unit box (x right, y down); the corners rounded
+    const ARENA_GLYPHS = {
+        '0': [[[0, 0], [1, 0], [1, 1], [0, 1], 'z']],
+        '1': [[[0.18, 0.2], [0.62, 0], [0.62, 1]]],
+        '2': [[[0, 0], [1, 0], [1, 0.5], [0, 0.5], [0, 1], [1, 1]]],
+        '3': [[[0, 0], [1, 0], [1, 1], [0, 1]], [[0.3, 0.5], [1, 0.5]]],
+        '4': [[[0.78, 1], [0.78, 0], [0, 0.66], [1, 0.66]]],
+        '5': [[[1, 0], [0, 0], [0, 0.48], [1, 0.48], [1, 1], [0, 1]]],
+        '6': [[[1, 0], [0, 0], [0, 1], [1, 1], [1, 0.5], [0, 0.5]]],
+        '7': [[[0, 0], [1, 0], [1, 0.28], [0.42, 1]]],
+        '8': [[[0, 0], [1, 0], [1, 1], [0, 1], 'z'], [[0, 0.5], [1, 0.5]]],
+        '9': [[[1, 0.5], [0, 0.5], [0, 0], [1, 0], [1, 1], [0, 1]]],
+    };
+    function arenaFigure(c, ch, x, y, w, h, lw) {
+        const g = ARENA_GLYPHS[ch];
+        if (!g) return;
+        const ix = x + lw / 2, iy = y + lw / 2, iw = w - lw, ih = h - lw;
+        const r = Math.min(iw, ih) * 0.42;
+        c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
+        g.forEach((line) => {
+            const closed = line[line.length - 1] === 'z';
+            const pts = (closed ? line.slice(0, -1) : line).map(([u, v]) => [ix + u * iw, iy + v * ih]);
+            c.beginPath();
+            if (closed) {
+                const n = pts.length, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+                const s0 = mid(pts[n - 1], pts[0]);
+                c.moveTo(s0[0], s0[1]);
+                for (let k = 0; k < n; k++) c.arcTo(pts[k][0], pts[k][1], pts[(k + 1) % n][0], pts[(k + 1) % n][1], r);
+                c.closePath();
+            } else {
+                c.moveTo(pts[0][0], pts[0][1]);
+                for (let k = 1; k < pts.length - 1; k++) c.arcTo(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], r);
+                c.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+            }
+            c.stroke();
+        });
+        if (ch === '0') {                                   // the slash through the 0, thinner
+            c.lineWidth = lw * 0.62;
+            c.beginPath();
+            c.moveTo(ix + iw * 0.3, iy + ih * 0.7);
+            c.lineTo(ix + iw * 0.7, iy + ih * 0.3);
+            c.stroke();
         }
-        c.closePath();
-        c.fill();
+    }
+    // a string of figures (and ':'), centred on cx
+    function arenaString(c, str, cx, y, h, lw, aspect, gap) {
+        const w = h * aspect;
+        const widths = [...str].map(ch => ch === ':' ? h * 0.22 : w);
+        const total = widths.reduce((a, b) => a + b, 0) + gap * (str.length - 1);
+        let x = cx - total / 2;
+        [...str].forEach((ch, k) => {
+            if (ch === ':') {
+                const d = lw * 1.1;
+                c.fillRect(x + widths[k] / 2 - d / 2, y + h * 0.27 - d / 2, d, d);
+                c.fillRect(x + widths[k] / 2 - d / 2, y + h * 0.73 - d / 2, d, d);
+            } else {
+                arenaFigure(c, ch, x, y, w, h, lw);
+            }
+            x += widths[k] + gap;
+        });
     }
     function drawArena(clock, s1, s2) {
         const c = aCtx;
-        // in a match the two sides; on the test page Ajax red against the CPU
+        // in a match the two sides; on the test page Ajax against the CPU
         const playing = typeof STATE !== 'undefined' && STATE.screen === 'playing';
         const [ta, tb] = playing ? campinTeams() : [{ code: 'AJA', color: '#d2122e' }, { code: 'CPU', color: '#1c2c5c' }];
-        // dark navy, a little lighter at the top, a red glow across the middle
-        const bg = c.createLinearGradient(0, 0, 0, AH);
-        bg.addColorStop(0, '#2a3046'); bg.addColorStop(1, '#1b2032');
-        c.fillStyle = bg; c.fillRect(0, 0, AW, AH);
-        const glow = c.createLinearGradient(0, AH * 0.38, 0, AH * 0.86);
-        glow.addColorStop(0, 'rgba(150,36,48,0)'); glow.addColorStop(0.5, 'rgba(150,36,48,0.42)'); glow.addColorStop(1, 'rgba(150,36,48,0)');
-        c.fillStyle = glow; c.fillRect(0, AH * 0.38, AW, AH * 0.48);
-        c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#f4f4f6';
-        // the clock at the top
-        c.font = `700 92px ${CF}`;
-        c.fillText(clock, AW / 2, 96);
-        // a round badge each side: the home logo with three gold stars, or a disc with the short name
-        const badge = (cx, cy, team, logoImg) => {
-            if (logoImg) {
-                const box = 190, k = Math.min(box / logoImg.width, box / logoImg.height);
-                c.drawImage(logoImg, cx - logoImg.width * k / 2, cy - logoImg.height * k / 2, logoImg.width * k, logoImg.height * k);
-                c.fillStyle = '#e4b12f';
-                [-46, 0, 46].forEach((dx) => star(c, cx + dx, cy - 128 + (dx ? 6 : 0), 15));
+        c.fillStyle = '#1b1c1f'; c.fillRect(0, 0, AW, AH);
+        c.fillStyle = '#f2f2f2'; c.strokeStyle = '#f2f2f2';
+        // the clock, small at the top
+        arenaString(c, clock, AW / 2, 66, 46, 7, 0.62, 7);
+        // a badge each side: the home logo in a white disc, the away side a disc in its colour
+        const R = 88, BY = 262;
+        const badge = (cx, team, img) => {
+            if (img && img === arenaAway) {                 // a crest as it is, no disc, as on the photos
+                const k = Math.min(2.1 * R / img.width, 2.1 * R / img.height);
+                c.drawImage(img, cx - img.width * k / 2, BY - img.height * k / 2, img.width * k, img.height * k);
                 return;
             }
-            c.fillStyle = '#f4f4f6';
-            c.beginPath(); c.arc(cx, cy, 92, 0, Math.PI * 2); c.fill();
-            c.fillStyle = team.color;
-            c.beginPath(); c.arc(cx, cy, 80, 0, Math.PI * 2); c.fill();
-            c.fillStyle = lightness(team.color) > 0.62 ? '#1b2032' : '#f4f4f6';
-            c.font = `700 52px ${CF}`;
-            c.fillText(team.code, cx, cy + 3);
+            c.save();
+            c.beginPath(); c.arc(cx, BY, R, 0, Math.PI * 2); c.closePath();
+            c.fillStyle = '#f4f4f4'; c.fill();
+            if (img) {
+                c.clip();
+                const k = (2 * R) / Math.min(img.width, img.height) * 1.02;
+                c.drawImage(img, cx - img.width * k / 2, BY - img.height * k / 2, img.width * k, img.height * k);
+            } else {
+                c.fillStyle = team.color;
+                c.beginPath(); c.arc(cx, BY, R - 12, 0, Math.PI * 2); c.fill();
+                c.fillStyle = lightness(team.color) > 0.62 ? '#1b1c1f' : '#f4f4f4';
+                c.font = `700 50px ${CF}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+                c.fillText(team.code, cx, BY + 3);
+            }
+            c.restore();
         };
-        badge(186, 318, ta, arenaLogo);
-        badge(AW - 186, 318, tb, null);
-        // the score, and the small red and white mark between the figures
-        c.fillStyle = '#f4f4f6';
-        c.font = `700 210px ${CF}`;
-        c.fillText(String(s1), AW / 2 - 165, 326);
-        c.fillText(String(s2), AW / 2 + 165, 326);
-        c.fillStyle = '#f4f4f6'; c.fillRect(AW / 2 - 13, 314, 26, 26);
-        c.fillStyle = '#d2122e'; c.fillRect(AW / 2 - 13, 314, 26, 13);
+        badge(146, ta, arenaLogo);
+        badge(AW - 146, tb, arenaAway);
+        // the score: the figures and the long bar between them
+        c.fillStyle = '#f2f2f2'; c.strokeStyle = '#f2f2f2';
+        const FH = 176, FY = BY - FH / 2, LW = 25;
+        arenaString(c, String(s1), AW / 2 - 168, FY, FH, LW, 0.46, 14);
+        arenaString(c, String(s2), AW / 2 + 168, FY, FH, LW, 0.46, 14);
+        c.lineCap = 'round'; c.lineWidth = 22;
+        c.beginPath(); c.moveTo(AW / 2 - 62, BY); c.lineTo(AW / 2 + 62, BY); c.stroke();
         aTexture.needsUpdate = true;
     }
 
@@ -508,7 +574,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -531,7 +597,7 @@ const STADIUM_SCREEN = (() => {
             mats.forEach((m) => { m.map = tex; m.color && m.color.setRGB(1, 1, 1); m.needsUpdate = true; });
         });
         if (style === 'kuip') loadKuipLogo(logo);
-        if (style === 'arena') loadArenaLogo(logo);
+        if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
         use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : texture);
         use(band, rTexture);
         last = '';
