@@ -2518,6 +2518,150 @@ html .stadium-row { border-bottom: 1px solid var(--edge); text-transform: none; 
 html .stadium__foot { border-top: 1px solid var(--edge); background: #0b1424; }
 html .menu .stadium__foot .btn { border: 0; }
 
+/* Stadion kiezen in two steps: the competitions as tiles, then one of them
+   with its stadiums; on a big screen the other competitions in a strip on the left */
+.league-sub {
+    margin: 6px 0 0;
+    color: var(--dim);
+    font: italic 700 clamp(15px, 2vw, 22px)/1 var(--font-cond);
+}
+.leagues {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+    grid-auto-rows: minmax(118px, auto);
+    align-content: start;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 2px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.league-tile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name n" "land land" "list list";
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    gap: 8px 12px;
+    padding: 16px 18px;
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    background: #0b1424;
+    color: var(--text);
+    font: 500 14px/1.35 var(--font-text);
+    text-align: left;
+    cursor: pointer;
+}
+.league-tile__name {
+    grid-area: name;
+    color: #fff;
+    font: italic 800 clamp(22px, 2.3vw, 32px)/1 var(--font-cond);
+    text-transform: uppercase;
+}
+.league-tile__n {
+    grid-area: n;
+    color: var(--dim);
+    font: italic 900 clamp(26px, 2.8vw, 42px)/.85 var(--font-cond);
+}
+.league-tile__land { grid-area: land; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.league-tile__stadiums { grid-area: list; align-self: end; color: var(--dim); font-size: 13px; }
+.league-tile__stadiums b { color: var(--text); font-weight: 600; }
+.league-flag {
+    flex: none;
+    width: 34px;
+    height: 23px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .14);
+}
+.league-tile.is-active { border-color: var(--amber); background: var(--amber); color: #0b1220; }
+.league-tile.is-active .league-tile__name,
+.league-tile.is-active .league-tile__n,
+.league-tile.is-active .league-tile__stadiums,
+.league-tile.is-active .league-tile__stadiums b { color: #0b1220; }
+.league-tile:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@media (hover: hover) {
+    .league-tile:not(.is-active):hover { border-color: var(--amber); }
+    .league-tile:not(.is-active):hover .league-tile__name { color: var(--amber); }
+}
+/* the stadiums of one competition: the club under the name, few rows, so no stretching */
+#stadium-screen .stadium-list--league { grid-auto-rows: 58px; }
+#stadium-screen .stadium-row__name { display: grid; gap: 3px; }
+.stadium-row__club {
+    overflow: hidden;
+    color: var(--dim);
+    font: 500 12px/1 var(--font-text);
+    font-style: normal;
+    text-overflow: ellipsis;
+}
+.stadium-row.is-active .stadium-row__club { color: #0b1220; }
+/* the strip of competitions: only where there is room for three columns */
+.league-strip { display: none; }
+@media (orientation: landscape) and (min-width: 1000px) and (min-height: 560px) {
+    #stadium-screen .stadium--league { grid-template-columns: 210px minmax(0, 1.4fr) minmax(280px, 1fr); }
+    .league-strip {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow-y: auto;
+        border: 1px solid var(--edge);
+        border-radius: 3px;
+        background: #0b1424;
+    }
+    .league-strip__item {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 46px;
+        padding: 0 12px;
+        border: 0;
+        border-bottom: 1px solid var(--edge);
+        background: none;
+        color: var(--text);
+        font: italic 800 17px/1 var(--font-cond);
+        text-align: left;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+    .league-strip__item .league-flag { width: 26px; height: 17px; }
+    .league-strip__name { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .league-strip__n { color: var(--dim); }
+    .league-strip__item.is-active { background: var(--amber); color: #0b1220; }
+    .league-strip__item.is-active .league-strip__n { color: #0b1220; }
+    .league-strip__item:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
+}
+@media (orientation: landscape) and (min-width: 1000px) and (min-height: 560px) and (hover: hover) {
+    .league-strip__item:not(.is-active):hover { color: var(--amber); }
+}
+/* a big screen on its side: four tiles a row, roomier */
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 560px) {
+    .leagues { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(clamp(130px, calc(var(--vh) * 17), 180px), auto); gap: 14px; margin-top: 20px; }
+    .league-tile { padding: 20px 22px; }
+    .league-tile__stadiums { font-size: 14px; }
+}
+/* a phone upright: two tiles a row */
+@media (orientation: portrait) and (max-width: 699px) {
+    .leagues { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(112px, auto); gap: 10px; }
+    .league-tile { padding: 12px 14px; gap: 6px 8px; }
+    .league-tile__name { font-size: 20px; }
+    .league-tile__n { font-size: 26px; }
+    .league-tile__land { gap: 8px; font-size: 13px; }
+    .league-flag { width: 28px; height: 19px; }
+    .league-tile__stadiums { font-size: 12px; }
+}
+/* phones on their side: smaller tiles, the stadiums on one line */
+@media (orientation: landscape) and (max-height: 519px) {
+    .leagues { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows: minmax(84px, auto); gap: 8px; margin-top: 8px; }
+    .league-tile { padding: 10px 12px; gap: 4px 10px; }
+    .league-tile__name { font-size: 19px; }
+    .league-tile__n { font-size: 24px; }
+    .league-tile__stadiums { overflow: hidden; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+    .league-sub { display: none; }
+}
+
 /* WK */
 html .wk-group,
 html .wk-panel,

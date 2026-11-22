@@ -135,9 +135,8 @@ function litMat(hex) {
 }
 
 function buildSky() {
-    const skyGeo = new THREE.SphereGeometry(900, 24, 12);
-    const skyMat = new THREE.MeshBasicMaterial({ color: srgb(0x0b1220), side: THREE.BackSide, fog: false });
-    scene.add(new THREE.Mesh(skyGeo, skyMat));
+    // night blue, or the day sky of a stadium with the sun baked in (game.stadium.js)
+    scene.add(stadiumSkyMesh(matchStadium(), 900));
 }
 
 function buildLights() {

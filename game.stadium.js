@@ -47,14 +47,51 @@ function preloadSelectedStadium() {
     if (st.file && typeof THREE.FileLoader === 'function') fetchStadium(st.file).catch(() => {});
 }
 
+// ----------- SKY -----------
+// Most stadiums are played at night under a dark sky. A stadium with the
+// afternoon sun baked in (catalog look.sky: [overhead, horizon], sRGB) gets a
+// day sky instead: deep blue overhead, paler towards the horizon.
+function isBackdrop(o) {
+    for (; o; o = o.parent) if (o.name === 'StadiumBackdrop') return true;
+    return false;
+}
+function stadiumSkyMesh(stadium, radius) {
+    const geo = new THREE.SphereGeometry(radius, 32, 16);
+    const sky = stadium && stadium.look && stadium.look.sky;
+    if (!sky) {
+        return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0x0b1220).convertSRGBToLinear(), side: THREE.BackSide, fog: false }));
+    }
+    const top = new THREE.Color(sky[0]).convertSRGBToLinear(), low = new THREE.Color(sky[1]).convertSRGBToLinear();
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+        const t = Math.max(0, pos.getY(i) / radius);
+        c.copy(low).lerp(top, Math.pow(t, 0.55));
+        col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false });
+    mat.toneMapped = false;                         // the colours as given, like the baked stadium under it
+    return new THREE.Mesh(geo, mat);
+}
+
 // ----------- STADIUM PICKER -----------
-let stadiumPickerIdx = 0;
+// Two steps on one screen: first the competitions as tiles, then the
+// stadiums of the one you open, with the 3D model; on a big screen the other
+// competitions stay in a strip on the left, so you can switch without going
+// back. Terug (or Escape) on the stadiums goes back to the competitions.
+let stadiumPickerIdx = 0;            // index in STADIUMS of the stadium shown
+let pickerStep = 'leagues';          // 'leagues' | 'stadiums'
+let pickerLeague = null;             // the open competition (from stadiumLeagues())
+let pickerTile = 0;                  // the highlighted tile in step 1
 
 function bindStadium() {
     const back    = $('stadium-back');
     const confirm = $('stadium-confirm');
 
-    back?.addEventListener('click', () => history.back());
+    back?.addEventListener('click', () => {
+        if (pickerStep === 'stadiums') showLeagueTiles();
+        else history.back();
+    });
     confirm?.addEventListener('click', () => {
         const stadium = STADIUMS[stadiumPickerIdx];
         if (stadium) {
@@ -69,27 +106,162 @@ function bindStadium() {
     document.addEventListener('keydown', (e) => {
         if (STATE.screen !== 'stadium') return;
         const onButton = e.target instanceof Element && !!e.target.closest('button');
-        if (e.code === 'ArrowLeft' || e.code === 'ArrowUp')         { e.preventDefault(); navigateStadium(-1); }
-        else if (e.code === 'ArrowRight' || e.code === 'ArrowDown') { e.preventDefault(); navigateStadium(+1); }
-        else if (e.code === 'Escape')                               { e.preventDefault(); history.back(); }
+        if (e.code === 'Escape') { e.preventDefault(); back?.click(); return; }
+        if (pickerStep === 'leagues') {
+            const n = stadiumLeagues().length, cols = leagueColumns();
+            const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.code];
+            if (step) {
+                e.preventDefault();
+                pickerTile = Math.max(0, Math.min(n - 1, pickerTile + step));
+                renderLeagueTiles(true);
+            } else if (e.code === 'Enter' && !onButton) {
+                e.preventDefault();
+                openLeague(stadiumLeagues()[pickerTile].id);
+            }
+            return;
+        }
+        if (e.code === 'ArrowUp')                                   { e.preventDefault(); navigateStadium(-1); }
+        else if (e.code === 'ArrowDown')                            { e.preventDefault(); navigateStadium(+1); }
+        else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); switchLeague(e.code === 'ArrowLeft' ? -1 : 1); }
         // a focused button handles its own Enter; anywhere else Enter confirms
         else if (e.code === 'Enter' && !onButton)                   { e.preventDefault(); confirm?.click(); }
     });
 }
 
+// the competition a stadium is in
+function leagueOf(stadiumId) {
+    return stadiumLeagues().find(l => l.list.some(s => s.id === stadiumId)) || stadiumLeagues()[0];
+}
+
+// how many tiles a row of the grid holds (for the arrow keys)
+function leagueColumns() {
+    const grid = $('stadium-leagues');
+    if (!grid) return 1;
+    return Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+}
+
 function openStadiumPicker() {
     const sel = getSelectedStadium();
     stadiumPickerIdx = Math.max(0, STADIUMS.findIndex(s => s.id === sel.id));
-    // Show the screen first so the viewer has real dimensions when the 3D
-    // preview measures itself; otherwise getBoundingClientRect would return 0×0.
+    pickerTile = Math.max(0, stadiumLeagues().findIndex(l => l.id === leagueOf(sel.id).id));
     gotoScreen('stadium');
-    renderStadiumList();
+    showLeagueTiles();
+}
+
+// step 1: the competitions
+function showLeagueTiles() {
+    pickerStep = 'leagues';
+    STADIUM_PREVIEW.detach();
+    $('stadium-pick').hidden = true;
+    $('stadium-leagues').hidden = false;
+    $('stadium-sub').hidden = true;
+    setText('stadium-title', 'Competitie kiezen');
+    renderLeagueTiles(true);
+}
+
+function flagImg(code, cls) {
+    if (!code) return null;
+    const img = document.createElement('img');
+    img.className = cls;
+    img.src = `media/flags/${code}.svg`;
+    img.alt = '';
+    return img;
+}
+
+function renderLeagueTiles(focus) {
+    const grid = $('stadium-leagues');
+    if (!grid) return;
+    const leagues = stadiumLeagues();
+    const chosenId = getSelectedStadium().id;
+    grid.replaceChildren(...leagues.map((l, i) => {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'league-tile' + (i === pickerTile ? ' is-active' : '');
+        const name = document.createElement('span');
+        name.className = 'league-tile__name';
+        name.textContent = l.name;
+        const count = document.createElement('span');
+        count.className = 'league-tile__n';
+        count.textContent = String(l.list.length);
+        count.title = l.list.length === 1 ? '1 stadion' : `${l.list.length} stadions`;
+        const land = document.createElement('span');
+        land.className = 'league-tile__land';
+        const flag = flagImg(l.flag, 'league-flag');
+        if (flag) land.append(flag);
+        land.append(l.land);
+        const names = document.createElement('span');
+        names.className = 'league-tile__stadiums';
+        l.list.forEach((s, k) => {
+            if (k) names.append(' · ');
+            const b = document.createElement(s.id === chosenId ? 'b' : 'span');
+            b.textContent = s.name;
+            names.append(b);
+        });
+        tile.append(name, count, land, names);
+        tile.addEventListener('click', () => { pickerTile = i; openLeague(l.id); });
+        return tile;
+    }));
+    if (focus) grid.children[pickerTile]?.focus({ preventScroll: true });
+    grid.children[pickerTile]?.scrollIntoView({ block: 'nearest' });
+}
+
+// step 2: the stadiums of one competition
+function openLeague(id) {
+    const leagues = stadiumLeagues();
+    pickerLeague = leagues.find(l => l.id === id) || leagues[0];
+    pickerTile = leagues.indexOf(pickerLeague);
+    pickerStep = 'stadiums';
+    // the chosen stadium if it is in here, else the first of the competition
+    const cur = STADIUMS[stadiumPickerIdx];
+    const inside = pickerLeague.list.find(s => s.id === getSelectedStadium().id) || (cur && pickerLeague.list.includes(cur) ? cur : pickerLeague.list[0]);
+    stadiumPickerIdx = STADIUMS.indexOf(inside);
+    $('stadium-leagues').hidden = true;
+    // shown first, so the viewer has real dimensions when the 3D preview measures itself
+    $('stadium-pick').hidden = false;
+    setText('stadium-title', pickerLeague.name);
+    const sub = $('stadium-sub');
+    sub.hidden = false;
+    setText('stadium-sub', `${pickerLeague.land} · ${pickerLeague.list.length === 1 ? '1 stadion' : pickerLeague.list.length + ' stadions'}`);
+    renderLeagueStrip();
+    renderStadiumList(true);
     renderStadiumCard(stadiumPickerIdx);
 }
 
+function switchLeague(delta) {
+    const leagues = stadiumLeagues();
+    const i = leagues.findIndex(l => l.id === pickerLeague.id);
+    openLeague(leagues[(i + delta + leagues.length) % leagues.length].id);
+}
+
+// the other competitions, down the left on a big screen
+function renderLeagueStrip() {
+    const strip = $('stadium-strip');
+    if (!strip) return;
+    strip.replaceChildren(...stadiumLeagues().map((l) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'league-strip__item' + (l.id === pickerLeague.id ? ' is-active' : '');
+        if (l.id === pickerLeague.id) b.setAttribute('aria-current', 'true');
+        const flag = flagImg(l.flag, 'league-flag');
+        if (flag) b.append(flag);
+        const name = document.createElement('span');
+        name.className = 'league-strip__name';
+        name.textContent = l.name;
+        const n = document.createElement('span');
+        n.className = 'league-strip__n';
+        n.textContent = String(l.list.length);
+        b.append(name, n);
+        b.addEventListener('click', (e) => { if (e.detail > 0) b.blur(); openLeague(l.id); });
+        return b;
+    }));
+    strip.querySelector('.is-active')?.scrollIntoView({ block: 'nearest' });
+}
+
 function navigateStadium(delta) {
-    if (STADIUMS.length <= 1) return;
-    selectStadiumIndex((stadiumPickerIdx + delta + STADIUMS.length) % STADIUMS.length);
+    const list = pickerLeague ? pickerLeague.list : STADIUMS;
+    if (list.length <= 1) return;
+    const i = Math.max(0, list.indexOf(STADIUMS[stadiumPickerIdx]));
+    selectStadiumIndex(STADIUMS.indexOf(list[(i + delta + list.length) % list.length]));
 }
 
 function selectStadiumIndex(idx) {
@@ -98,43 +270,49 @@ function selectStadiumIndex(idx) {
     renderStadiumList();
 }
 
-// The list on the right: one row per stadium, built once and then only
-// re-flagged, so a row keeps keyboard focus while you move through it.
-function renderStadiumList() {
+// The list on the right: one row per stadium of the open competition (its
+// name, the club under it, the seats), built when the competition changes and
+// then only re-flagged, so a row keeps keyboard focus while you move through it.
+function renderStadiumList(rebuild) {
     const list = $('stadium-list');
-    if (!list) return;
+    if (!list || !pickerLeague) return;
 
-    if (!list.children.length) {
-        STADIUMS.forEach((s, i) => {
+    if (rebuild || list.dataset.league !== pickerLeague.id) {
+        list.dataset.league = pickerLeague.id;
+        list.replaceChildren(...pickerLeague.list.map((s, i) => {
             const row = document.createElement('button');
             row.type = 'button';
             row.className = 'stadium-row';
+            row.dataset.idx = String(STADIUMS.indexOf(s));
             const cell = (cls, text) => {
                 const el = document.createElement('span');
                 el.className = cls;
                 el.textContent = text;
                 return el;
             };
+            const name = cell('stadium-row__name', s.name);
+            name.append(cell('stadium-row__club', s.club));
             row.append(
                 cell('stadium-row__num', String(i + 1)),
-                cell('stadium-row__name', s.name),
+                name,
                 cell('stadium-row__tag', 'gekozen'),
                 cell('stadium-row__cap', s.capacity),
             );
             row.addEventListener('click', (e) => {
                 // after a mouse click, hand focus back so Enter confirms
                 if (e.detail > 0) row.blur();
-                selectStadiumIndex(i);
+                selectStadiumIndex(STADIUMS.indexOf(s));
             });
-            list.appendChild(row);
-        });
+            return row;
+        }));
     }
 
     const chosenId = getSelectedStadium().id;
-    [...list.children].forEach((row, i) => {
-        const active = i === stadiumPickerIdx;
+    [...list.children].forEach((row) => {
+        const idx = +row.dataset.idx;
+        const active = idx === stadiumPickerIdx;
         row.classList.toggle('is-active', active);
-        row.classList.toggle('is-chosen', STADIUMS[i].id === chosenId);
+        row.classList.toggle('is-chosen', STADIUMS[idx].id === chosenId);
         if (active) {
             row.setAttribute('aria-current', 'true');
             row.scrollIntoView({ block: 'nearest' });
@@ -258,7 +436,11 @@ const STADIUM_PREVIEW = (() => {
     }
 
     function frameModel(obj) {
-        const bbox = new THREE.Box3().setFromObject(obj);
+        // the stadium itself, not the scenery behind it (a model's
+        // 'StadiumBackdrop', such as the Montjuïc hill), decides the framing
+        obj.updateMatrixWorld(true);
+        const bbox = new THREE.Box3();
+        obj.traverse((c) => { if (c.isMesh && !isBackdrop(c)) bbox.expandByObject(c); });
         if (bbox.isEmpty()) {
             console.warn('stadium preview: bbox empty', obj);
             return;
@@ -311,6 +493,9 @@ const STADIUM_PREVIEW = (() => {
     function prepareModel(gltf, stadium) {
         const obj = gltf.scene;
         obj.rotation.y = stadium.rotateY ?? 0;
+        // the scenery behind a stadium (the Montjuïc hill) is for the match
+        // camera; seen from above here it would only cover the stadium
+        obj.traverse((c) => { if (c.name === 'StadiumBackdrop') c.visible = false; });
         // its big screens before kick-off: 00:00 and 0-0
         if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(obj, stadium.screen, stadium.screenLogo)) STADIUM_SCREEN.update('00:00', 0, 0);
 

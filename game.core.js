@@ -336,7 +336,49 @@ const STADIUMS = [
         hangOverPitch: true,          // the screens and banners hang over the pitch: not cut away (dressStadium)
         view: { lookZ: -12 },
     },
+    {
+        id: 'montjuic',
+        name: 'Estadi Olímpic Lluís Companys',
+        club: 'FC Barcelona',
+        city: 'Barcelona',
+        // built from nothing by tools/montjuic_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/montjuic.glb?v=1',
+        capacity: '55.926',
+        // measured with the Montjuïc hill behind the east stand (the 'StadiumBackdrop' in the model)
+        pitch: { x: 8.80, z: -29.33, w: 61.60, l: 39.89, angle: Math.PI, y: 0.03 },
+        // the afternoon sun is baked into the model: drawn unlit, at twice the
+        // stored light, under a day sky (overhead, horizon) instead of the night
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // the two screens over the south curve: the clock, the score (game.screen.js)
+        screen: 'montjuic',
+        view: { lookZ: -12 },
+    },
 ];
+
+// The competitions in Stadion kiezen: first you pick one, then one of its
+// stadiums. A stadium that is in none of them shows up under 'Overig'.
+const LEAGUES = [
+    { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['camp-nou', 'montjuic', 'wanda-metropolitano'] },
+    { id: 'premier',    name: 'Premier League',   land: 'Engeland',         flag: 'gb-eng', stadiums: ['old-trafford', 'anfield', 'emirates', 'etihad'] },
+    { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip'] },
+    { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park'] },
+    { id: 'efl',        name: 'EFL',              land: 'Engeland',         flag: 'gb-eng', stadiums: ['home-park', 'cheltenham'] },
+    { id: 'bundesliga2', name: '2. Bundesliga',   land: 'Duitsland',        flag: 'de',     stadiums: ['olympiastadion'] },
+    { id: 'argentina',  name: 'Liga Profesional', land: 'Argentinië',       flag: 'ar',     stadiums: ['la-bombonera'] },
+    { id: 'colombia',   name: 'Liga BetPlay',     land: 'Colombia',         flag: 'co',     stadiums: ['el-campin'] },
+    { id: 'russia',     name: 'Premjer-Liga',     land: 'Rusland',          flag: 'ru',     stadiums: ['otkritie-arena'] },
+    { id: 'kleague',    name: 'K League 1',       land: 'Zuid-Korea',       flag: 'kr',     stadiums: ['jeju'] },
+    { id: 'wk2026',     name: 'WK 2026',          land: 'Verenigde Staten', flag: 'us',     stadiums: ['metlife'] },
+    { id: 'college',    name: 'College',          land: 'Verenigde Staten', flag: 'us',     stadiums: ['jordan-hare'] },
+];
+// the competitions with their stadiums (catalog entries), only those that have any
+function stadiumLeagues() {
+    const out = LEAGUES.map(l => Object.assign({}, l, { list: l.stadiums.map(id => STADIUMS.find(s => s.id === id)).filter(Boolean) }));
+    const placed = new Set(out.flatMap(l => l.list.map(s => s.id)));
+    const rest = STADIUMS.filter(s => !placed.has(s.id));
+    if (rest.length) out.push({ id: 'overig', name: 'Overig', land: 'Overal', flag: null, list: rest });
+    return out.filter(l => l.list.length);
+}
 
 const STADIUM_STORAGE_KEY = 'pitchRoyale.stadium';
 // Lotto Park is the stadium every time the game is opened; a stadium you pick

@@ -185,6 +185,12 @@ const SETTINGS_PREVIEW = (() => {
         const mine = ++token;
         if (rig) { sc.remove(rig); rig = null; }
         rigId = stadium.id;
+        // the night, or the day sky of a stadium with the sun baked in
+        const oldSky = sc.getObjectByName('set-sky');
+        if (oldSky) sc.remove(oldSky);
+        const sky = stadiumSkyMesh(stadium, 1800);
+        sky.name = 'set-sky';
+        sc.add(sky);
         const wait = $('set-preview-wait');
         const ownGrass = (show) => sc.children.forEach(c => { if (c.name === 'set-grass' || c.name === 'set-line') c.visible = show; });
         ownGrass(true);

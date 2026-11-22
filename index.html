@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=139">
+    <link rel="stylesheet" href="styles.css?v=141">
 </head>
 <body>
     <!-- shared icons -->
@@ -606,9 +606,15 @@
         </header>
 
         <main class="page">
-            <h1 class="title">Stadion kiezen</h1>
+            <h1 class="title" id="stadium-title">Competitie kiezen</h1>
+            <p class="league-sub" id="stadium-sub" hidden></p>
 
-            <div class="stadium">
+            <!-- step 1: the competitions (game.stadium.js: renderLeagueTiles) -->
+            <div class="leagues" id="stadium-leagues" role="group" aria-label="Competities"></div>
+
+            <!-- step 2: the stadiums of one competition, the others in a strip on the left -->
+            <div class="stadium stadium--league" id="stadium-pick" hidden>
+                <nav class="league-strip" id="stadium-strip" aria-label="Andere competitie"></nav>
                 <div class="stadium__view">
                     <!-- STADIUM_PREVIEW mounts its canvas in here -->
                     <div class="viewer" id="stadium-viewer">
@@ -630,7 +636,7 @@
                     <div class="stadium-list__head" aria-hidden="true">
                         <span>#</span><span>Stadion</span><span></span><span>Plaatsen</span>
                     </div>
-                    <div class="stadium-list" id="stadium-list" role="group" aria-label="Stadions"></div>
+                    <div class="stadium-list stadium-list--league" id="stadium-list" role="group" aria-label="Stadions"></div>
                     <div class="stadium__foot">
                         <button id="stadium-confirm" class="btn" type="button">Dit stadion kiezen</button>
                     </div>
@@ -725,15 +731,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=160"></script>
-    <script src="game.screen.js?v=11"></script>
-    <script src="game.stadium.js?v=134"></script>
-    <script src="game.ui.js?v=133"></script>
+    <script src="game.core.js?v=162"></script>
+    <script src="game.screen.js?v=12"></script>
+    <script src="game.stadium.js?v=136"></script>
+    <script src="game.ui.js?v=134"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
     <script src="game.players.js?v=1"></script>
-    <script src="game.js?v=143"></script>
+    <script src="game.js?v=144"></script>
     <script src="game.referee.js?v=7"></script>
     <script src="game.pens.js?v=3"></script>
     <script src="game.var.js?v=1"></script>

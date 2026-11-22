@@ -21,6 +21,10 @@
 // board, the clock small at the top, the home logo in a white disc on the left
 // (the file the catalog names: screenLogo), the away side's disc on the right,
 // the score in square figures with round corners and a long bar between them.
+// screen: 'montjuic' (Estadi Olímpic Lluís Companys) is the pair of screens
+// over the south curve: on the left of the middle one a white clock with the
+// time of day, as on the photos; right of it (all the other screen shows) the
+// match clock, a block in each side's colour with its code and the score.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -228,6 +232,7 @@ const STADIUM_SCREEN = (() => {
         [kCanvas, kCtx, kTexture] = make(1024, 256, 256 / KH);
         [eCanvas, eCtx, eTexture] = make(CW2, CH2, 1);
         [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
+        [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -510,6 +515,57 @@ const STADIUM_SCREEN = (() => {
         aTexture.needsUpdate = true;
     }
 
+    // ---- Montjuïc: the two screens over the south curve (1024 x 512) ----
+    // the middle screen (13 x 6.5 m) shows all of it, the one east of it
+    // (8.6 x 6.5 m) only the part right of the clock, from x = 358
+    const MW = 1024, MH = 512, MSPLIT = 358;
+    let mCanvas = null, mCtx = null, mTexture = null;
+    function montjuicTeams() {
+        if (typeof STATE !== 'undefined' && STATE.screen === 'playing' && typeof KIT !== 'undefined') return campinTeams();
+        return [{ code: 'FCB', color: '#a50044' }, { code: 'CPU', color: '#1c3f94' }];     // Barça against the CPU on the test page
+    }
+    function drawMontjuic(clock, s1, s2) {
+        const c = mCtx, [ta, tb] = montjuicTeams();
+        c.fillStyle = '#0b0c0f'; c.fillRect(0, 0, MW, MH);
+        // the clock: a white face, black marks and hands, the time of day
+        const cx = 178, cy = 222, R = 148;
+        c.fillStyle = '#f3f2ee';
+        c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#141414'; c.lineCap = 'butt';
+        for (let i = 0; i < 60; i++) {
+            const a = i / 60 * Math.PI * 2, big = i % 5 === 0;
+            c.lineWidth = big ? 9 : 3;
+            const r0 = R - (big ? 30 : 14), r1 = R - 6;
+            c.beginPath(); c.moveTo(cx + Math.sin(a) * r0, cy - Math.cos(a) * r0); c.lineTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); c.stroke();
+        }
+        const now = new Date(), mins = now.getMinutes() + now.getSeconds() / 60, hrs = (now.getHours() % 12) + mins / 60;
+        const hand = (a, len, w) => {
+            c.lineWidth = w; c.lineCap = 'round';
+            c.beginPath(); c.moveTo(cx - Math.sin(a) * 16, cy + Math.cos(a) * 16); c.lineTo(cx + Math.sin(a) * len, cy - Math.cos(a) * len); c.stroke();
+        };
+        hand(hrs / 12 * Math.PI * 2, R * 0.52, 16);
+        hand(mins / 60 * Math.PI * 2, R * 0.82, 10);
+        c.fillStyle = '#141414'; c.beginPath(); c.arc(cx, cy, 12, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e6e6e6'; c.font = `600 30px ${CF}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('ESTADI OLÍMPIC', cx, 436);
+        // the match: the clock on top, the sides' blocks, the score between them
+        const xm = (MSPLIT + MW) / 2;
+        c.fillStyle = '#ffffff'; c.font = `600 84px ${CF}`;
+        c.fillText(clock, xm, 96);
+        const block = (x, team) => {
+            c.fillStyle = team.color; c.fillRect(x - 68, 200, 136, 136);
+            c.fillStyle = lightness(team.color) > 0.62 ? '#141414' : '#ffffff';
+            c.font = `700 48px ${CF}`; c.fillText(team.code, x, 270);
+        };
+        block(MSPLIT + 98, ta);
+        block(MW - 98, tb);
+        c.fillStyle = '#ffffff'; c.font = `700 178px ${CF}`;
+        c.fillText(String(s1), xm - 86, 278);
+        c.fillText(String(s2), xm + 86, 278);
+        c.fillRect(xm - 20, 262, 40, 15);
+        mTexture.needsUpdate = true;
+    }
+
     function drawKuip(clock, s1, s2) {
         const c = kCtx, mid = KTOP + (KH - KTOP) / 2;
         c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, KW, KH);
@@ -574,7 +630,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -583,6 +639,7 @@ const STADIUM_SCREEN = (() => {
         drawKuip(current.clock, current.s1, current.s2);
         drawCampin(current.clock, current.s1, current.s2);
         drawArena(current.clock, current.s1, current.s2);
+        drawMontjuic(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -598,7 +655,7 @@ const STADIUM_SCREEN = (() => {
         });
         if (style === 'kuip') loadKuipLogo(logo);
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();
