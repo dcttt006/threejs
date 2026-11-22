@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=141">
+    <link rel="stylesheet" href="styles.css?v=142">
 </head>
 <body>
     <!-- shared icons -->
@@ -638,6 +638,11 @@
                     </div>
                     <div class="stadium-list stadium-list--league" id="stadium-list" role="group" aria-label="Stadions"></div>
                     <div class="stadium__foot">
+                        <!-- a stadium with a retractable roof: open or closed (game.stadium.js: renderRoofButtons) -->
+                        <div class="seg roof-seg" id="stadium-roof" role="radiogroup" aria-label="Dak" hidden>
+                            <button class="seg__btn" type="button" role="radio" data-roof="open">Dak open</button>
+                            <button class="seg__btn" type="button" role="radio" data-roof="closed">Dak dicht</button>
+                        </div>
                         <button id="stadium-confirm" class="btn" type="button">Dit stadion kiezen</button>
                     </div>
                 </div>
@@ -731,10 +736,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=162"></script>
-    <script src="game.screen.js?v=12"></script>
-    <script src="game.stadium.js?v=136"></script>
-    <script src="game.ui.js?v=134"></script>
+    <script src="game.core.js?v=164"></script>
+    <script src="game.screen.js?v=15"></script>
+    <script src="game.stadium.js?v=137"></script>
+    <script src="game.ui.js?v=135"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>

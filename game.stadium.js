@@ -92,6 +92,12 @@ function bindStadium() {
         if (pickerStep === 'stadiums') showLeagueTiles();
         else history.back();
     });
+    // Dak open / Dak dicht, for a stadium with a retractable roof
+    document.querySelectorAll('#stadium-roof [data-roof]').forEach((b) => b.addEventListener('click', () => {
+        setStadiumRoofClosed(b.dataset.roof === 'closed');
+        STADIUM_PREVIEW.refreshRoof();
+        renderRoofButtons(STADIUMS[stadiumPickerIdx]);
+    }));
     confirm?.addEventListener('click', () => {
         const stadium = STADIUMS[stadiumPickerIdx];
         if (stadium) {
@@ -322,6 +328,18 @@ function renderStadiumList(rebuild) {
     });
 }
 
+function renderRoofButtons(stadium) {
+    const seg = $('stadium-roof');
+    if (!seg) return;
+    seg.hidden = !(stadium && stadium.roof);
+    const closed = stadiumRoofClosed();
+    seg.querySelectorAll('[data-roof]').forEach((b) => {
+        const on = (b.dataset.roof === 'closed') === closed;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+}
+
 function setText(id, value) {
     const el = $(id);
     if (el && el.textContent !== value) el.textContent = value;
@@ -337,6 +355,7 @@ function renderStadiumCard(idx) {
     setText('stadium-club', [stadium.club, stadium.city].filter(Boolean).join(' · '));
     setText('stadium-cap', `${stadium.capacity} plaatsen`);
     setText('stadium-confirm', isChosen ? 'Dit stadion houden' : 'Dit stadion kiezen');
+    renderRoofButtons(stadium);
 
     const slot = $('stadium-viewer');
     if (!slot) return;
@@ -496,6 +515,7 @@ const STADIUM_PREVIEW = (() => {
         // the scenery behind a stadium (the Montjuïc hill) is for the match
         // camera; seen from above here it would only cover the stadium
         obj.traverse((c) => { if (c.name === 'StadiumBackdrop') c.visible = false; });
+        applyStadiumRoof(obj, stadium);
         // its big screens before kick-off: 00:00 and 0-0
         if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.attach(obj, stadium.screen, stadium.screenLogo)) STADIUM_SCREEN.update('00:00', 0, 0);
 
@@ -619,7 +639,13 @@ const STADIUM_PREVIEW = (() => {
         host = null;
     }
 
-    return { show, detach };
+    // the roof of the stadium on show, after Dak open / Dak dicht
+    function refreshRoof() {
+        const stadium = STADIUMS.find(s => s.id === currentId);
+        if (model && stadium) applyStadiumRoof(model, stadium);
+    }
+
+    return { show, detach, refreshRoof };
 })();
 
 // ----------- stadium model -----------
@@ -671,6 +697,7 @@ function buildStadium() {
         if (modelGoals) modelGoals.parent.remove(modelGoals);
         // the stadium's big screens show the live clock and score (game.screen.js)
         if (typeof STADIUM_SCREEN !== 'undefined') STADIUM_SCREEN.attach(gltf.scene, stadium.screen, stadium.screenLogo);
+        applyStadiumRoof(gltf.scene, stadium);          // open or closed, as picked in Stadion kiezen
         const rig = fitStadiumToPitch(gltf.scene, stadium);
         if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
         dressStadium(rig, stadium);

@@ -25,6 +25,10 @@
 // over the south curve: on the left of the middle one a white clock with the
 // time of day, as on the photos; right of it (all the other screen shows) the
 // match clock, a block in each side's colour with its code and the score.
+// screen: 'bernabeu' (Santiago Bernabéu) is the 360-degree ring round the
+// roof's opening, one picture every 64 m on royal blue: a lilac panel per side
+// with its colour, code and score, the clock between them, BIENVENIDOS and
+// HALA MADRID at the ends.
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -233,6 +237,8 @@ const STADIUM_SCREEN = (() => {
         [eCanvas, eCtx, eTexture] = make(CW2, CH2, 1);
         [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
         [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
+        [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
+        bTexture.wrapS = THREE.RepeatWrapping;         // the ring repeats the picture all the way round
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -566,6 +572,39 @@ const STADIUM_SCREEN = (() => {
         mTexture.needsUpdate = true;
     }
 
+    // ---- Bernabéu: the 360 ring, 64 x 8 m a picture (2048 x 256) ----
+    const BW = 2048, BH = 256;
+    let bCanvas = null, bCtx = null, bTexture = null;
+    function bernabeuTeams() {
+        if (typeof STATE !== 'undefined' && STATE.screen === 'playing' && typeof KIT !== 'undefined') return campinTeams();
+        return [{ code: 'RMA', color: '#f4f4f6' }, { code: 'CPU', color: '#1c3f94' }];
+    }
+    function drawBernabeu(clock, s1, s2) {
+        // royal blue as on the photos, a lilac panel per side with its name,
+        // the score and the clock in the middle, BIENVENIDOS at the ends
+        const c = bCtx, [ta, tb] = bernabeuTeams();
+        c.fillStyle = '#1631b4'; c.fillRect(0, 0, BW, BH);
+        c.fillStyle = '#0c1a78'; c.fillRect(0, 0, BW, 14); c.fillRect(0, BH - 14, BW, 14);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#ffffff'; c.font = `700 58px ${CF}`;
+        c.fillText('BIENVENIDOS', 245, BH / 2 + 4);
+        c.fillText('HALA MADRID', BW - 245, BH / 2 + 4);
+        const xm = BW / 2;
+        const panel = (x, team) => {
+            c.fillStyle = '#c9c3f2'; c.fillRect(x - 230, 34, 460, 188);
+            c.fillStyle = team.color; c.fillRect(x - 210, 58, 120, 140);
+            c.fillStyle = lightness(team.color) > 0.62 ? '#0c1a78' : '#ffffff';
+            c.font = `700 50px ${CF}`; c.fillText(team.code, x - 150, 130);
+            c.fillStyle = '#0c1a78'; c.font = `700 150px ${CF}`;
+            c.fillText(String(team.score), x + 90, 136);
+        };
+        panel(xm - 300, Object.assign({ score: s1 }, ta));
+        panel(xm + 300, Object.assign({ score: s2 }, tb));
+        c.fillStyle = '#ffffff'; c.font = `700 64px ${CF}`;
+        c.fillText(clock, xm, BH / 2 + 4);
+        bTexture.needsUpdate = true;
+    }
+
     function drawKuip(clock, s1, s2) {
         const c = kCtx, mid = KTOP + (KH - KTOP) / 2;
         c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, KW, KH);
@@ -640,6 +679,7 @@ const STADIUM_SCREEN = (() => {
         drawCampin(current.clock, current.s1, current.s2);
         drawArena(current.clock, current.s1, current.s2);
         drawMontjuic(current.clock, current.s1, current.s2);
+        drawBernabeu(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -655,7 +695,7 @@ const STADIUM_SCREEN = (() => {
         });
         if (style === 'kuip') loadKuipLogo(logo);
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();

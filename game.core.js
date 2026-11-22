@@ -353,12 +353,28 @@ const STADIUMS = [
         screen: 'montjuic',
         view: { lookZ: -12 },
     },
+    {
+        id: 'bernabeu',
+        name: 'Santiago Bernabéu',
+        club: 'Real Madrid',
+        city: 'Madrid',
+        // built from nothing by tools/bernabeu_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/bernabeu.glb?v=2',
+        capacity: '78.297',
+        pitch: { x: -1.74, z: -3.47, w: 72.95, l: 47.24, angle: Math.PI, y: 0 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
+        // the 360-degree screen round under the roof (game.screen.js)
+        screen: 'bernabeu',
+        // the retractable roof: the model has it open and closed, Stadion kiezen picks (stadiumRoofClosed)
+        roof: true,
+        view: { lookZ: -12 },
+    },
 ];
 
 // The competitions in Stadion kiezen: first you pick one, then one of its
 // stadiums. A stadium that is in none of them shows up under 'Overig'.
 const LEAGUES = [
-    { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['camp-nou', 'montjuic', 'wanda-metropolitano'] },
+    { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['bernabeu', 'camp-nou', 'montjuic', 'wanda-metropolitano'] },
     { id: 'premier',    name: 'Premier League',   land: 'Engeland',         flag: 'gb-eng', stadiums: ['old-trafford', 'anfield', 'emirates', 'etihad'] },
     { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip'] },
     { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park'] },
@@ -401,6 +417,25 @@ function matchStadium() {
         if (wkStadium) return wkStadium;
     }
     return getSelectedStadium();
+}
+// A stadium with a retractable roof (catalog: roof) comes with it open and
+// closed ('StadiumRoofOpen', 'StadiumRoofClosed' in the model); Stadion kiezen
+// picks one, for as long as the game stays open, like the stadium itself.
+const ROOF_STORAGE_KEY = 'pitchRoyale.roof';
+function stadiumRoofClosed() {
+    try { return sessionStorage.getItem(ROOF_STORAGE_KEY) === 'closed'; } catch (_) { return false; }
+}
+function setStadiumRoofClosed(closed) {
+    try { sessionStorage.setItem(ROOF_STORAGE_KEY, closed ? 'closed' : 'open'); } catch (_) {}
+}
+// show the roof as chosen on a loaded model (a model without one is left alone)
+function applyStadiumRoof(root, stadium) {
+    if (!root || !stadium || !stadium.roof) return;
+    const closed = stadiumRoofClosed();
+    root.traverse((o) => {
+        if (o.name === 'StadiumRoofOpen') o.visible = !closed;
+        if (o.name === 'StadiumRoofClosed') o.visible = closed;
+    });
 }
 function setSelectedStadium(id) {
     if (!STADIUMS.find(s => s.id === id)) return;

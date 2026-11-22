@@ -2597,6 +2597,9 @@ html .menu .stadium__foot .btn { border: 0; }
     text-overflow: ellipsis;
 }
 .stadium-row.is-active .stadium-row__club { color: #0b1220; }
+/* Dak open / Dak dicht over the button, for a stadium with a retractable roof */
+html .menu .roof-seg { display: flex; width: 100%; margin-bottom: 10px; }
+html .menu .roof-seg .seg__btn { flex: 1 1 0; min-height: 44px; }
 /* the strip of competitions: only where there is room for three columns */
 .league-strip { display: none; }
 @media (orientation: landscape) and (min-width: 1000px) and (min-height: 560px) {

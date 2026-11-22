@@ -191,6 +191,9 @@ function load(reframe) {
         const sky = stadium.look && stadium.look.sky;      // a day stadium: its horizon colour behind it
         renderer.setClearColor(sky ? sky[1] : baked ? 0x0b1220 : 0x8fa3b5);
         if (STADIUM_SCREEN.attach(model, stadium.screen, stadium.screenLogo)) STADIUM_SCREEN.update('00:00', 0, 0);       // the live screens, before kick-off
+        // a retractable roof: open, or closed with ?dak=dicht
+        const closed = new URLSearchParams(location.search).get('dak') === 'dicht';
+        model.traverse((o) => { if (o.name === 'StadiumRoofOpen') o.visible = !closed; if (o.name === 'StadiumRoofClosed') o.visible = closed; });
         model.traverse((c) => {
             if (!c.isMesh) return;
             if (baked) {

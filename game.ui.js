@@ -204,6 +204,7 @@ const SETTINGS_PREVIEW = (() => {
             rig = fitStadiumToPitch(gltf.scene, stadium);
             if (!stadium.pitch.own) levelStadiumPitch(rig, stadium);
             dressStadium(rig, stadium);
+            applyStadiumRoof(rig, stadium);
             sc.add(rig);
             ownGrass(!usesStadiumPitch(stadium));
             if (wait) wait.hidden = true;
@@ -221,6 +222,7 @@ const SETTINGS_PREVIEW = (() => {
         const w = Math.max(1, Math.floor(host.clientWidth)), h = Math.max(1, Math.round(w / aspect));
         r.setSize(w, h, false);
         // the camera as applyGameplayCamera (game.js) puts it, the ball on the centre spot
+        if (rig) applyStadiumRoof(rig, getSelectedStadium());          // the roof as picked in Stadion kiezen
         const c = cameraFor(device), view = getSelectedStadium().view || {};
         cam.aspect = aspect;
         cam.fov = c.fov;
