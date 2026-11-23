@@ -97,15 +97,45 @@ function cameraFocus() {
 function cameraTargetX() {
     const f = cameraFocus();
     if (!f) return 0;
-    return Math.max(-CAM.maxX, Math.min(CAM.maxX, f.x * CAM.follow));
+    let x = f.x;
+    // Alleen keeper: a little towards your own goal, so you see what comes at you
+    if (humanKeeper && ball && f === ball.position) x += ((humanKeeper.team === 1 ? -FIELD_W / 2 : FIELD_W / 2) - x) * 0.22;
+    return Math.max(-CAM.maxX, Math.min(CAM.maxX, x * CAM.follow));
 }
 function cameraTargetZ() {
     const f = cameraFocus();
     return f && CAM.followZ ? f.z * CAM.followZ : 0;
 }
+// your own goal kick: the camera goes behind the keeper, low, looking up the
+// pitch past the ball (as in FC); gkBlend runs from the match camera (0) to it (1)
+let gkBlend = 0, gkView = null;
+// (beside the goal, behind the line: the ball is on the corner of the goal area)
+const GK_CAM = { back: 10, height: 12, ahead: 75, fov: 52 };
+function goalKickView() {
+    const sp = STATE.setPiece;
+    if (!sp || sp.kind !== 'goalkick' || sp.phase !== 'ready' || !aimingHere()) return null;
+    const dir = sp.sx;                                   // the way the side attacks
+    const camX = -dir * (FIELD_W / 2 + GK_CAM.back);
+    return {
+        pos: new THREE.Vector3(camX, GK_CAM.height, sp.spot.z + sp.sz * 1.5),
+        look: new THREE.Vector3(sp.spot.x + dir * GK_CAM.ahead, 0, sp.spot.z * 0.35),
+    };
+}
 function placeCamera() {
     camera.position.set(camX, CAM.height, CAM.back + camZ);
-    camera.lookAt(camX, 0, CAM.lookZ + camLookShift * CAM.shift + camZ);
+    const look = new THREE.Vector3(camX, 0, CAM.lookZ + camLookShift * CAM.shift + camZ);
+    const baseFov = camera.userData.baseFov || camera.fov;
+    if (gkBlend > 0 && gkView) {
+        const t = gkBlend * gkBlend * (3 - 2 * gkBlend);
+        camera.position.lerp(gkView.pos, t);
+        look.lerp(gkView.look, t);
+        camera.fov = baseFov + ((gkView.fov || GK_CAM.fov) - baseFov) * t;
+        camera.updateProjectionMatrix();
+    } else if (camera.fov !== baseFov) {
+        camera.fov = baseFov;
+        camera.updateProjectionMatrix();
+    }
+    camera.lookAt(look);
 }
 function applyGameplayCamera() {
     CAM = cameraFor(typeof IS_TOUCH !== 'undefined' && IS_TOUCH ? 'phone' : 'laptop');
@@ -113,15 +143,44 @@ function applyGameplayCamera() {
     camera.aspect = aspect;
     // widen the lens on narrow windows so both touchlines stay in frame
     camera.fov = aspect >= 1.6 ? CAM.fov : Math.min(62, CAM.fov * 1.6 / aspect);
+    camera.userData.baseFov = camera.fov;
     camera.far = Math.max(2000, CAM.back * 12);
     camera.updateProjectionMatrix();
     camX = cameraTargetX();
     camZ = cameraTargetZ();
     placeCamera();
 }
+// Alleen keeper: always behind you, low over your goal and looking up the
+// pitch past you (as on the goal kick), turning with the ball; smoothed
+// (high enough to see over your crossbar; your own net is faint: buildGoals)
+const KEEPER_CAM = { back: 15, height: 16, fov: 58 };
+let kcPos = null, kcLook = null;
+function keeperView() {
+    const k = humanKeeper, dir = k.team === 1 ? 1 : -1;
+    const bx = ball ? ball.position.x : 0, bz = ball ? ball.position.z : 0;
+    const ahead = Math.max(22, Math.min(45, (bx - k.position.x) * dir * 0.5));
+    return {
+        pos: new THREE.Vector3(k.position.x - dir * KEEPER_CAM.back, KEEPER_CAM.height, k.position.z * 0.7 + bz * 0.15),
+        look: new THREE.Vector3(k.position.x + dir * ahead, 0, k.position.z * 0.4 + bz * 0.45),
+    };
+}
 function updateCamera(dt) {
     camX += (cameraTargetX() - camX) * Math.min(1, dt * 3);
     camZ += (cameraTargetZ() - camZ) * Math.min(1, dt * 2);
+    if (humanKeeper) {
+        const want = goalKickView() || keeperView();
+        if (!kcPos) { kcPos = want.pos.clone(); kcLook = want.look.clone(); }
+        kcPos.lerp(want.pos, Math.min(1, dt * 2.5));
+        kcLook.lerp(want.look, Math.min(1, dt * 3.5));
+        gkView = { pos: kcPos, look: kcLook, fov: STATE.setPiece && STATE.setPiece.kind === 'goalkick' ? GK_CAM.fov : KEEPER_CAM.fov };
+        gkBlend = 1;
+        placeCamera();
+        return;
+    }
+    kcPos = kcLook = null;
+    const gk = goalKickView();
+    if (gk) { gkView = gk; gkBlend = 1; }                 // straight there: it comes after the cut
+    else if (gkBlend > 0) gkBlend = Math.max(0, gkBlend - dt * 1.4);   // and back over the kick
     placeCamera();
 }
 
@@ -274,14 +333,16 @@ function buildGoals() {
     const baseNet = makeNetTexture();
     const st = typeof matchStadium === 'function' ? matchStadium() : null;
     const colours = (st && st.nets) || null;
-    const netPanel = (wUnits, hUnits, colour) => {
+    // Alleen keeper: your own net is faint, the camera looks through it from behind
+    const ownSide = STATE.keeperMode ? (STATE.p1.team === 1 ? -1 : 1) : 0;
+    const netPanel = (wUnits, hUnits, colour, faint) => {
         const tex = baseNet.clone();
         tex.needsUpdate = true;
         tex.repeat.set(wUnits / 0.9, hUnits / 0.9);   // one mesh square ≈ 0.9 units
         return new THREE.Mesh(
             new THREE.PlaneGeometry(wUnits, hUnits),
             new THREE.MeshBasicMaterial({ map: tex, color: srgb(colour || 0xffffff), transparent: true,
-                opacity: colour ? 0.85 : 0.6, side: THREE.DoubleSide, depthWrite: false })
+                opacity: faint ? 0.16 : colour ? 0.85 : 0.6, side: THREE.DoubleSide, depthWrite: false })
         );
     };
     const R = 0.24;
@@ -305,17 +366,18 @@ function buildGoals() {
 
         // rear and roof in two halves, one per colour; each side panel in its half's colour
         [-1, 1].forEach(zs => {
-            const rear = netPanel(GOAL_W / 2, GOAL_H, colourAt(zs));
+            const faint = side === ownSide;
+            const rear = netPanel(GOAL_W / 2, GOAL_H, colourAt(zs), faint);
             rear.rotation.y = Math.PI / 2;
             rear.position.set(back, GOAL_H / 2, zs * GOAL_W / 4);
             scene.add(rear);
 
-            const roof = netPanel(GOAL_DEPTH, GOAL_W / 2, colourAt(zs));
+            const roof = netPanel(GOAL_DEPTH, GOAL_W / 2, colourAt(zs), faint);
             roof.rotation.x = -Math.PI / 2;                    // depth along x, width along z
             roof.position.set(x + side * GOAL_DEPTH / 2, GOAL_H, zs * GOAL_W / 4);
             scene.add(roof);
 
-            const flank = netPanel(GOAL_DEPTH, GOAL_H, colourAt(zs));
+            const flank = netPanel(GOAL_DEPTH, GOAL_H, colourAt(zs), faint);
             flank.position.set(x + side * GOAL_DEPTH / 2, GOAL_H / 2, zs * GOAL_W / 2);
             scene.add(flank);
         });
@@ -445,7 +507,20 @@ function buildPlayers() {
     // with a star of your own you play him, and only him, the whole match
     lockedSlot[1] = !!stars[STATE.p1.team];
     lockedSlot[2] = false;
-    setControlled(1, mains[STATE.p1.team]);
+    humanKeeper = null;
+    if (STATE.keeperMode) {
+        // Alleen keeper: you play your side's keeper and nobody else; the four
+        // in front of you (your star among them) are the computer
+        lockedSlot[1] = false;
+        humanKeeper = (STATE.p1.team === 1 ? team1Players : team2Players)[0];
+        humanKeeper.userData.human = true;
+        if (typeof scene !== 'undefined' && scene) {
+            addStaminaBar(humanKeeper);
+            addPlayerArrow(humanKeeper, ARROW_P1);
+        }
+    } else {
+        setControlled(1, mains[STATE.p1.team]);
+    }
     if (!isCpu) setControlled(2, mains[STATE.p2.team]);
     // the referee and his assistants (game.referee.js)
     if (typeof REF !== 'undefined') REF.build();
@@ -462,6 +537,8 @@ const switchAt = { 1: 0, 2: 0 };
 // as player 1 in Hot-Seat): no switching, his teammates are all the computer.
 // Only a red card (force) moves it to someone else.
 const lockedSlot = { 1: false, 2: false };
+// Alleen keeper (STATE.keeperMode): the keeper you play, else null
+let humanKeeper = null;
 function setControlled(slot, p, force) {
     const old = slot === 1 ? controlledP1 : controlledP2;
     if (!p || old === p || p.userData.isKeeper) return;
@@ -586,9 +663,10 @@ const STAMINA_COLOR = srgb(0xffd60a);
 const TIRED_COLOR   = srgb(0xd91e36);
 
 function updateStaminaBars() {
-    [controlledP1, controlledP2].forEach(p => {
+    [controlledP1, controlledP2, humanKeeper].forEach(p => {
         const ar = p && p.userData.arrow;
         if (ar) {
+            ar.visible = !(p === humanKeeper && camera.position.distanceTo(p.position) < 45);   // not in your face behind him
             ar.quaternion.copy(camera.quaternion);       // always face the camera
             ar.position.y = ARROW_Y + Math.sin(performance.now() / 260) * 0.25;   // a slow bob
         }
@@ -621,6 +699,21 @@ function updateStaminaBars() {
         shoot?.classList.toggle('is-tackle', !own && !coming);
         pass?.classList.toggle('is-ball', own && !STATE.setPiece);
         shoot?.classList.toggle('is-resting', !own && controlledP1.userData.tackleCd > 0);
+    } else if (btn && humanKeeper) {
+        // Alleen keeper: Duik and Uit (come out at the ball); with the ball in
+        // his hands Trap (kick it long) and Gooi (throw it); a goal kick Lang and Kort
+        const ku = humanKeeper.userData;
+        btn.style.setProperty('--stamina', (ku.stamina ?? 1).toFixed(3));
+        btn.classList.toggle('is-tired', !!ku.tired);
+        const shoot = $('touch-shoot'), pass = $('touch-pass');
+        const gk = aimingHere(), holding = !!ku.holdingBall;
+        const shootText = gk ? 'Lang' : holding ? 'Trap' : 'Duik';
+        const passText = gk ? 'Kort' : holding ? 'Gooi' : 'Uit';
+        if (shoot && shoot.textContent !== shootText) shoot.textContent = shootText;
+        if (pass && pass.textContent !== passText) pass.textContent = passText;
+        shoot?.classList.toggle('is-tackle', false);
+        pass?.classList.toggle('is-ball', holding);
+        shoot?.classList.toggle('is-resting', (ku.downT || 0) > 0 || (ku.diveTicks || 0) > 0);
     }
 }
 
@@ -797,6 +890,9 @@ function positionForKickoff() {
         p.userData.vz = 0;
         p.userData.cooldown = 0;
         p.userData.diveT = 0;
+        p.userData.diveTicks = 0;
+        p.userData.downT = 0;
+        p.userData.kin = null;
         p.userData.react = 0;
         p.userData.tackleT = p.userData.getUpT = p.userData.tackleCd = 0;
         p.userData.callT = 0;
@@ -1081,7 +1177,9 @@ function gameTick() {
         for (const k in keysPressed) keysPressed[k] = false;
         return;
     }
+    if (humanKeeper) humanKeeper.userData.kin = null;
     if (!STATE.inputLocked && !STATE.scoring) {
+        if (humanKeeper) keeperControls(humanKeeper, controls()[0]);
         if (!STATE.setPiece) {
             autoSwitch(1);
             autoSwitch(2);
@@ -1101,7 +1199,7 @@ function gameTick() {
                     // your star doesn't take it, a teammate does: you still say where it goes
                     // (a click, or Pass for short) while you find a spot
                     const lockedHere = (c.p === controlledP1 && lockedSlot[1]) || (c.p === controlledP2 && lockedSlot[2]);
-                    if (lockedHere && sp.phase === 'ready' && sp.team === c.p.team && pressedOnce(c.pass)) takeSetPiece(null);
+                    if ((lockedHere || sp.kind === 'goalkick') && sp.phase === 'ready' && sp.team === c.p.team && pressedOnce(c.pass)) takeSetPiece(null);
                     movePlayer(c.p, c.move);
                     keepAway(c.p, sp);
                 }
@@ -2063,6 +2161,147 @@ const KEEPER_QUICK_MAX = 850;
 const KEEPER_CALL_MIN = 500;      // asked for it: never sooner than this
 const KEEPER_DIVE_TICKS = 26;     // he only goes down for a ball that is this close to arriving
 
+// ----------- Alleen keeper: the keeper you play -----------
+// You move him anywhere in your penalty area (WASD or the arrows, the stick on
+// a phone; Shift: faster while it lasts). Schiet: a dive, where you push, or
+// with nothing pushed towards where the ball will cross your line; in the air
+// he reaches further, then he needs a moment to get up. Pass held: out at the
+// ball (to take it off an attacker's foot). With the ball in your hands: Pass
+// throws it (to the teammate you push towards, else the freest), Schiet kicks
+// it long up the pitch. A goal kick: click where it goes, Pass short, Schiet long.
+const KEEPER_HUMAN = {
+    walk: 0.40,          // top speed, units a tick (an outfield player runs 0.50)
+    accel: 0.06,
+    dive: 1.0,           // the push off the ground
+    diveTicks: 20,       // in the air
+    downTicks: 16,       // getting up again
+    reach: 2.6,          // further, at full stretch
+    gather: 280,         // ms with the ball before he can play it
+    holdMax: 4500,       // ms: then he plays it out himself
+};
+function keeperControls(k, c) {
+    const u = k.userData;
+    if (!c) return;
+    let x = 0, z = 0;
+    if (pressed(c.move.up)) z -= 1;
+    if (pressed(c.move.down)) z += 1;
+    if (pressed(c.move.left)) x -= 1;
+    if (pressed(c.move.right)) x += 1;
+    const stick = typeof touchMove !== 'undefined' ? touchMove : null;
+    if (stick && stick.active) { x = stick.x; z = stick.z; }
+    else { const l = Math.hypot(x, z); if (l > 1) { x /= l; z /= l; } }
+    // the camera is behind your goal: up is up the pitch, right is the screen's right
+    { const dir = k.team === 1 ? 1 : -1, fwd = -z, right = x; x = fwd * dir; z = right * dir; }
+    if (!pressed(c.pass)) u.rushBlocked = false;
+    // your goal kick: Pass short, Schiet long (a click: setPieceAim)
+    const sp = STATE.setPiece;
+    if (sp) {
+        if (sp.kind === 'goalkick' && sp.team === k.team && sp.phase === 'ready') {
+            if (pressedOnce(c.pass)) takeSetPiece(null);
+            else if (pressedOnce(c.shoot)) takeSetPiece(longBallAim(k.team));
+        }
+        if (sp.taker === k) return;
+    }
+    u.kin = { x, z, dive: pressedOnce(c.shoot), act: pressedOnce(c.pass), rush: pressed(c.pass) && !u.rushBlocked, sprint: pressed(c.move.sprint) };
+}
+// where a long ball from the back goes: at one of the two furthest forward, give or take
+function longBallAim(team) {
+    const g = team === 1 ? 1 : -1;
+    const fwd = (team === 1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper)
+        .sort((a, b) => b.position.x * g - a.position.x * g);
+    const m = fwd[Math.floor(Math.random() * Math.min(2, fwd.length))];
+    return m ? { x: m.position.x + g * 6, z: m.position.z + (Math.random() - 0.5) * 6 } : { x: g * 20, z: 0 };
+}
+// where a ball on its way will cross the line he stands on (null: not coming at him)
+function crossingZ(k) {
+    const vx = ball.velocity.x, out = k.team === 1 ? 1 : -1;
+    if (-vx * out < 0.3) return null;
+    const t = (k.position.x - ball.position.x) / vx;
+    return t > 0 && t < 90 ? ball.position.z + ball.velocity.z * t : null;
+}
+function humanKeeperMove(k) {
+    const u = k.userData, kin = u.kin;
+    if (u.downT > 0) { u.downT--; steer(k, 0, 0, 0.08); return; }      // getting up
+    if (u.diveTicks > 0) {                                             // in the air: the dive carries him
+        u.diveTicks--;
+        u.vx *= 0.93;
+        u.vz *= 0.93;
+        if (u.diveTicks === 0) u.downT = KEEPER_HUMAN.downTicks;
+        return;
+    }
+    if (!kin) { steer(k, 0, 0, RUN_BRAKE); return; }
+    if (kin.dive && !u.holdingBall) {
+        let dx = kin.x, dz = kin.z;
+        if (Math.hypot(dx, dz) < 0.2) {
+            // nothing pushed: across to where the ball will come, else at it
+            const cz = crossingZ(k);
+            dz = (cz !== null ? cz : ball.position.z) - k.position.z;
+            dx = cz !== null ? 0 : (ball.position.x - k.position.x) * 0.3;
+            if (Math.hypot(dx, dz) < 0.5) dx = k.team === 1 ? 1 : -1;          // straight at him: forwards, onto it
+        }
+        const d = Math.hypot(dx, dz) || 1;
+        u.vx = dx / d * KEEPER_HUMAN.dive;
+        u.vz = dz / d * KEEPER_HUMAN.dive;
+        u.diveTicks = KEEPER_HUMAN.diveTicks;
+        u.diveT = 0.6;                                // the animation (animatePlayers)
+        u.diveX = dx / d;
+        u.diveZ = dz / d;
+        return;
+    }
+    if (kin.rush && !u.holdingBall) {
+        // out at the ball, as fast as he goes
+        const dx = ball.position.x - k.position.x, dz = ball.position.z - k.position.z, d = Math.hypot(dx, dz) || 1;
+        const top = KEEPER_HUMAN.walk * (sprintFor(k, true) ? SPRINT_MULT : 1);
+        steer(k, dx / d * top, dz / d * top, KEEPER_HUMAN.accel * 1.4);
+        return;
+    }
+    const len = Math.min(1, Math.hypot(kin.x, kin.z));
+    const top = KEEPER_HUMAN.walk * (sprintFor(k, kin.sprint && len > 0.1) ? SPRINT_MULT : 1) * len;
+    if (len > 0.1) steer(k, kin.x / len * top, kin.z / len * top, KEEPER_HUMAN.accel);
+    else steer(k, 0, 0, RUN_BRAKE);
+}
+// the teammate you push towards (the one most in that direction, nearer ones
+// first), or with nothing pushed the one with the most room
+function keeperTarget(k, kin, forward) {
+    const g = k.team === 1 ? 1 : -1;
+    const enemies = (k.team === 1 ? team2Players : team1Players).filter(p => !p.userData.isKeeper);
+    let mates = (k.team === 1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper);
+    const len = kin ? Math.hypot(kin.x, kin.z) : 0;
+    let best = null, bestV = -Infinity;
+    mates.forEach((m) => {
+        const dx = m.position.x - k.position.x, dz = m.position.z - k.position.z, d = Math.hypot(dx, dz) || 1;
+        let v;
+        if (len > 0.2) v = (dx * kin.x + dz * kin.z) / (d * len) - d / 600;
+        else if (forward) v = m.position.x * g + nearestTo(enemies, m.position.x, m.position.z).d * 0.6;
+        else v = nearestTo(enemies, m.position.x, m.position.z).d - d * 0.05;
+        if (v > bestV) { bestV = v; best = m; }
+    });
+    return best;
+}
+function keeperThrow(k, kin) {
+    const to = keeperTarget(k, kin, false);
+    if (to) passBall(k, to);
+}
+// kicked out of his hands, high and long, to come down in front of a teammate
+function keeperPunt(k, kin) {
+    const to = keeperTarget(k, kin, true);
+    if (!to) return;
+    const u = k.userData, g = k.team === 1 ? 1 : -1;
+    MATCH.passes[k.team - 1]++;
+    u.holdingBall = false;
+    u.holdStart = 0;
+    ball.position.set(k.position.x + g * (PLAYER_SIZE / 2 + BALL_SIZE + 0.9), BALL_SIZE + 2.4, k.position.z);
+    const tx = Math.max(-FIELD_W / 2 + 6, Math.min(FIELD_W / 2 - 6, to.position.x + g * 8));
+    const tz = Math.max(-FIELD_L / 2 + 4, Math.min(FIELD_L / 2 - 4, to.position.z));
+    const T = playBallTo(tx, tz, 'cross');
+    u.kickT = 0.28;
+    lastTouch = k.team;
+    passTarget = { to, t: T + 45 };
+    curl = null;
+    lastKick = { by: k, team: k.team, kind: 'pass', to, high: true, byHuman: true, past: [], until: aiTick + 14 };
+    if (typeof REF !== 'undefined') REF.onPass(k, to, 'pass');
+}
+
 function keeperSkill(k) {
     const cpuSide = STATE.mode === 'cpu' && k.team !== STATE.p1.team;
     return (cpuSide ? getLevel() : LEVELS.medium).keeper;
@@ -2076,7 +2315,10 @@ function updateKeeper(k) {
     const out = isTeam1 ? 1 : -1;                     // direction from the goal into the pitch
     const lineX = goalLineX + out * 3.5;
 
-    if (u.holdingBall) {
+    if (u.setPieceTaker) { u.vx = 0; u.vz = 0; return; }   // behind the ball for a goal kick
+    if (u.human) {
+        humanKeeperMove(k);                           // Alleen keeper: where you send him
+    } else if (u.holdingBall) {
         // with the ball in his hands he takes a few steps out of his goal
         steer(k, out * 0.07, -k.position.z * 0.004, 0.01);
     } else {
@@ -2142,11 +2384,13 @@ function updateKeeper(k) {
     k.position.x += u.vx || 0;
     k.position.z += u.vz || 0;
 
-    // he stays in his own six-yard area
-    const minX = isTeam1 ? goalLineX + 1.2 : goalLineX - 9;
-    const maxX = isTeam1 ? goalLineX + 9 : goalLineX - 1.2;
+    // he stays in his own six-yard area (yours: anywhere in your penalty area)
+    const area = u.human ? PEN_DEPTH : 9;
+    const minX = isTeam1 ? goalLineX + 1.2 : goalLineX - area;
+    const maxX = isTeam1 ? goalLineX + area : goalLineX - 1.2;
     k.position.x = Math.max(minX, Math.min(maxX, k.position.x));
-    k.position.z = Math.max(-GOAL_W / 2 - 1, Math.min(GOAL_W / 2 + 1, k.position.z));
+    const side = u.human ? PEN_WIDTH / 2 : GOAL_W / 2 + 1;
+    k.position.z = Math.max(-side, Math.min(side, k.position.z));
 
     // catch → hold → release (only when pressured, or after a safety timeout)
     const dx = ball.position.x - k.position.x;
@@ -2156,16 +2400,20 @@ function updateKeeper(k) {
     // robbed when he walks right into the keeper, and one winding up a shot
     // only when the ball all but touches him (he used to take it off the foot
     // of anyone charging a shot near the goal, before the shot was hit)
+    // in the air: his dive (yours: from the moment you go)
+    const diving = u.human ? (u.diveTicks || 0) > 0 : u.diveT > 0 && u.react > u.reactAt;
+    const diveReach = u.human ? KEEPER_HUMAN.reach : skill.dive;
+    // yours coming out takes it off an attacker's foot a little more readily
     const reach = carrier
-        ? KEEPER_REACH * (carrier.userData.charging ? 0.35 : 0.5)
-        : KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive : 0);
+        ? KEEPER_REACH * (carrier.userData.charging ? (u.human ? 0.5 : 0.35) : (u.human ? 0.75 : 0.5))
+        : KEEPER_REACH + (diving ? diveReach : 0);
     const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
     // a high ball (a high shot): held when it comes straight at him, tipped away
     // when he has to stretch for it; his reach up there is shorter than low down,
     // so a high shot into the top corner beats him more often than a low one
     const highBall = !carrier && ball.position.y >= GOAL_H * 0.75 && ball.position.y < GOAL_H + 0.6;
     // up there a dive gains him a bit over half as much as low down
-    const highReach = KEEPER_REACH + (u.diveT > 0 && u.react > u.reactAt ? skill.dive * 0.58 : 0);
+    const highReach = KEEPER_REACH + (diving ? diveReach * 0.58 : 0);
     // a ball already past him and moving away can't be gathered any more
     const goingAway = !carrier && speed > 0.4 && (ball.velocity.x * dx + ball.velocity.z * dz) > 0;
     const catchable = !goingAway && (ball.position.y < GOAL_H * 0.75
@@ -2188,7 +2436,7 @@ function updateKeeper(k) {
             shotSaved(k.team);
             return;
         }
-        if (!(u.diveT > 0 && u.react > u.reactAt)) return;      // past him
+        if (!diving) return;                                     // past him
     }
 
     // a hard shot taken at full stretch is pushed away, not held
@@ -2234,6 +2482,17 @@ function updateKeeper(k) {
 
         const enemies = (isTeam1 ? team2Players : team1Players).filter(p => !p.userData.isKeeper);
         const heldMs = performance.now() - (k.userData.holdStart || performance.now());
+
+        // yours: Pass throws it, Schiet kicks it long; leave it and after a
+        // while he plays it out himself, as the computer's keeper does
+        if (u.human) {
+            const kin = u.kin;
+            if (kin && heldMs > KEEPER_HUMAN.gather) {
+                if (kin.act) { keeperThrow(k, kin); u.rushBlocked = true; return; }
+                if (kin.dive) { keeperPunt(k, kin); return; }
+            }
+            if (heldMs < KEEPER_HUMAN.holdMax) return;
+        }
 
         // asked for it (pass key): to you, once he has held it a moment
         if (u.calledBy && heldMs > KEEPER_CALL_MIN) {
@@ -2602,7 +2861,7 @@ function updateBotFieldPlayer(p) {
     const shootRange = Math.abs(enemyGoalX - p.position.x);
     // a way through to goal makes him shoot sooner; a man right in front, later
     const shotLane = laneRoom(p.team, p.position.x, p.position.z, enemyGoalX, 0);
-    const shootNow = Math.random() < lvl.shootChance * (shotLane > 3 ? 1.5 : 0.4);
+    const shootNow = Math.random() < lvl.shootChance * (shotLane > 3 ? 1.5 : 0.7);
     // a rebound is controlled first too (0.2 s): no shot straight off the first touch
     const settled = performance.now() - (u.gotAt || 0) > 200;
     // close in he always shoots, unless a man stands right in the way
@@ -2617,7 +2876,14 @@ function updateBotFieldPlayer(p) {
         u.aimX = tx / len;
         u.aimZ = tz / len;
         const power = POWER_MIN + (POWER_MAX - POWER_MIN) * (lvl.power[0] + Math.random() * (lvl.power[1] - lvl.power[0]));
-        knockBall(tx / len, tz / len, power, 0.14);
+        // from further out now and then a high one: under the bar, or over it
+        const lofted = shootRange > 16 && Math.random() < 0.35;
+        if (lofted) {
+            const speed = power * 0.88;
+            knockBall(tx / len, tz / len, speed, highLift(len, speed, GOAL_H * (0.55 + Math.random() * 0.9)));
+        } else {
+            knockBall(tx / len, tz / len, power, 0.14);
+        }
         ball.position.x = p.position.x + (tx / len) * CARRY_DIST;
         ball.position.z = p.position.z + (tz / len) * CARRY_DIST;
         ball.position.y = BALL_SIZE + 0.2;
@@ -2626,7 +2892,7 @@ function updateBotFieldPlayer(p) {
         carrier = null;
         passTarget = null;
         curl = null;
-        lastKick = { by: p, team: p.team, kind: 'shot', at: performance.now() };
+        lastKick = { by: p, team: p.team, kind: 'shot', at: performance.now(), high: lofted };
         lastTouch = p.team;
         shotTaken(p.team);                                   // the full-time statistics
         return;
@@ -2665,7 +2931,7 @@ function getBallOwner() {
 //   shots     every shot, low or high
 //   onTarget  shots that went in or that the keeper had to stop
 //   passes    every pass, the keeper's throws and kicks included
-const MATCH = { poss: [0, 0], shots: [0, 0], onTarget: [0, 0], passes: [0, 0], fouls: [0, 0], offsides: [0, 0], yellows: [0, 0], reds: [0, 0] };
+const MATCH = { poss: [0, 0], shots: [0, 0], onTarget: [0, 0], saves: [0, 0], passes: [0, 0], fouls: [0, 0], offsides: [0, 0], yellows: [0, 0], reds: [0, 0] };
 const MATCH_KEYS = Object.keys(MATCH);
 let possTeam = 0;
 let shotLive = null;            // { team }: a shot on its way, not yet decided
@@ -2688,7 +2954,7 @@ function shotTaken(team) {
 }
 // the keeper of keeperTeam stops a shot: it was on target
 function shotSaved(keeperTeam) {
-    if (shotLive && shotLive.team !== keeperTeam) MATCH.onTarget[shotLive.team - 1]++;
+    if (shotLive && shotLive.team !== keeperTeam) { MATCH.onTarget[shotLive.team - 1]++; MATCH.saves[keeperTeam - 1]++; }
     shotLive = null;
 }
 // the side's share of the ball, in whole percents that add up to 100
@@ -2706,6 +2972,7 @@ function renderMatchStats() {
     const rows = [
         { label: 'Balbezit', red: `${pr}%`, blue: `${pb}%`, split: [pr, pb] },
         { label: 'Schoten (op doel)', red: `${MATCH.shots[0]} (${MATCH.onTarget[0]})`, blue: `${MATCH.shots[1]} (${MATCH.onTarget[1]})` },
+        ...(STATE.keeperMode ? [{ label: 'Reddingen', red: String(MATCH.saves[0]), blue: String(MATCH.saves[1]) }] : []),
         { label: 'Passes', red: String(MATCH.passes[0]), blue: String(MATCH.passes[1]) },
         { label: 'Overtredingen', red: String(MATCH.fouls[0]), blue: String(MATCH.fouls[1]) },
         { label: 'Buitenspel', red: String(MATCH.offsides[0]), blue: String(MATCH.offsides[1]) },
@@ -2735,12 +3002,19 @@ function renderMatchStats() {
     }));
 }
 
-// A ball over the bar (or high over the line): the keeper of that goal takes
-// it for a goal kick, and plays it out after his usual wait.
-function goalKick(team) {
-    const k = (team === 1 ? team1Players : team2Players)[0];
+// A ball over the bar (or wide over the line): a goal kick. The ball goes on
+// the edge of the goal area on the side it went out, the keeper takes it
+// (startSetPiece 'goalkick'); the other side waits outside the box. Yours:
+// the camera goes behind the keeper, you click where it should come down
+// (a long one is a high ball), or Pass plays it short.
+// Without a place (the referee gives the keeper the ball after a foul on
+// him) he has it in his hands and plays it out after his usual wait.
+function goalKick(team, x, z) {
     shotLive = null;
+    const k = (team === 1 ? team1Players : team2Players)[0];
     if (!k) return;
+    lastTouch = team;
+    if (x !== undefined) { startSetPiece('goalkick', team, x, z); return; }
     carrier = null;
     curl = null;
     passTarget = null;
@@ -2748,7 +3022,6 @@ function goalKick(team) {
     ballCall = null;
     const u = k.userData;
     u.holdingBall = true;
-    lastTouch = team;
     u.holdStart = performance.now();
     u.holdFor = KEEPER_HOLD_MIN + Math.random() * (KEEPER_HOLD_MAX - KEEPER_HOLD_MIN);
     u.calledBy = null;
@@ -2779,6 +3052,10 @@ function startSetPiece(kind, team, x, z) {
     let sx = Math.sign(x) || 1, sz = Math.sign(z) || 1;
     let spot;
     if (kind === 'corner') spot = { x: sx * (FIELD_W / 2 - 0.9), z: sz * (FIELD_L / 2 - 0.9) };
+    else if (kind === 'goalkick') {
+        sx = team === 1 ? 1 : -1;                        // the way the side attacks: its goal is at -sx
+        spot = { x: -sx * (FIELD_W / 2 - BOX_DEPTH), z: sz * (BOX_WIDTH / 2 - 2) };   // the corner of the goal area
+    }
     else if (kind === 'throw') spot = { x: clampTo(x, FIELD_W / 2 - 3), z: sz * (FIELD_L / 2 - 0.4) };
     else {
         // a free kick where it happened, a penalty on the spot; sx is the way the side attacks
@@ -2795,6 +3072,12 @@ function startSetPiece(kind, team, x, z) {
     [...team1Players, ...team2Players].forEach(p => { p.userData.volley = null; p.userData.charging = false; });
 }
 
+// whether a human takes this set piece: a side with a human slot, and in
+// Alleen keeper your own goal kicks
+function humanTakes(sp) {
+    if (slotOf(sp.team)) return true;
+    return !!(humanKeeper && sp.kind === 'goalkick' && sp.team === humanKeeper.team);
+}
 function updateSetPiece() {
     const sp = STATE.setPiece;
     if (!sp || STATE.scoring) return;
@@ -2804,7 +3087,7 @@ function updateSetPiece() {
         if (sp.t >= SP_OUT_TICKS) placeSetPiece(sp);
         return;
     }
-    const human = !!slotOf(sp.team);
+    const human = humanTakes(sp);
     if (sp.t < (human ? SP_AUTO_TICKS : sp.wait)) return;
     // a penalty, or a free kick within range: the computer goes for goal
     if (sp.kind === 'penalty' || (!human && sp.kind === 'free' && sp.shootable && Math.random() < 0.7)) {
@@ -2834,7 +3117,9 @@ function placeSetPiece(sp) {
     const slot0 = slotOf(sp.team);
     const own = slot0 && lockedSlot[slot0] ? (slot0 === 1 ? controlledP1 : controlledP2) : null;
     const star = own && side.includes(own) && (sp.kind === 'free' || sp.kind === 'penalty') ? own : null;
-    const taker = star || (sp.kind === 'penalty' && side.find(p => p.userData.role === 'att')) || nearestTo(side, sp.spot.x, sp.spot.z).p;
+    const keeper = (sp.team === 1 ? team1Players : team2Players).find(p => p.userData.isKeeper);
+    const taker = sp.kind === 'goalkick' ? keeper
+        : star || (sp.kind === 'penalty' && side.find(p => p.userData.role === 'att')) || nearestTo(side, sp.spot.x, sp.spot.z).p;
     if (!taker) { STATE.setPiece = null; return; }
     sp.taker = taker;
     const u = taker.userData;
@@ -2846,6 +3131,17 @@ function placeSetPiece(sp) {
         const ax = -sp.sx, az = -sp.sz * 0.7, al = Math.hypot(ax, az);
         u.aimX = ax / al; u.aimZ = az / al;
         arrangeCorner(sp);
+    } else if (sp.kind === 'goalkick') {
+        // a few steps behind the ball, facing up the pitch; theirs out of the box
+        // a little to the left of the ball as the camera behind him sees it
+        placeAt(taker, sp.spot.x - sp.sx * 2.4, sp.spot.z - sp.sx * 2.2);
+        u.aimX = sp.sx * 0.74; u.aimZ = sp.sx * 0.67;
+        u.holdingBall = false;
+        const gx = -sp.sx * FIELD_W / 2;
+        (sp.team === 1 ? team2Players : team1Players).forEach((p) => {
+            if (p.userData.isKeeper) return;
+            if (Math.abs(p.position.x - gx) < PEN_DEPTH + 2 && Math.abs(p.position.z) < PEN_WIDTH / 2 + 2) placeAt(p, gx + sp.sx * (PEN_DEPTH + 4), p.position.z);
+        });
     } else if (sp.kind === 'free' || sp.kind === 'penalty') {
         // a few steps behind the ball, facing the goal
         const gx = sp.sx * FIELD_W / 2 - sp.spot.x, gz = -sp.spot.z, gl = Math.hypot(gx, gz) || 1;
@@ -2867,7 +3163,7 @@ function placeSetPiece(sp) {
     }
     u.faceTo = { x: u.aimX, z: u.aimZ };
     const slot = slotOf(sp.team);
-    if (slot) setControlled(slot, taker);
+    if (slot && sp.kind !== 'goalkick') setControlled(slot, taker);      // a goal kick: the keeper takes it, you say where it goes
     setPieceBall(sp);
 }
 
@@ -3011,6 +3307,10 @@ function setPieceSpot(p, sp) {
     const own = p.team === sp.team;
     let s = roleSpot(p, own);
     if (own && sp.phase === 'ready' && sp.taker) s = freeSpot(p, s, sp.taker);
+    if (sp.kind === 'goalkick' && !own) {
+        const gx = -sp.sx * FIELD_W / 2;
+        if (Math.abs(s.x - gx) < PEN_DEPTH + 2 && Math.abs(s.z) < PEN_WIDTH / 2 + 2) s = { x: gx + sp.sx * (PEN_DEPTH + 4), z: s.z };
+    }
     const dx = s.x - sp.spot.x, dz = s.z - sp.spot.z, d = Math.hypot(dx, dz);
     const free = sp.kind === 'free' || sp.kind === 'penalty';
     const gap = free && !own ? FREE_GAP + 1 : 9;
@@ -3024,6 +3324,13 @@ function setPieceSpot(p, sp) {
 
 // the computer's corner: at one of its men in the box, not quite on his head
 function cpuSetPieceAim(sp) {
+    if (sp.kind === 'goalkick') {
+        if (Math.random() < 0.35) return null;                         // short, to the freest man
+        const fwd = (sp.team === 1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper)
+            .sort((a, b) => b.position.x * sp.sx - a.position.x * sp.sx);
+        const m = fwd[Math.floor(Math.random() * Math.min(2, fwd.length))];
+        return m ? { x: m.position.x + (Math.random() - 0.5) * 8, z: m.position.z + (Math.random() - 0.5) * 8 } : null;
+    }
     if (sp.kind !== 'corner') return null;
     const atk = (sp.team === 1 ? team1Players : team2Players).filter(p => !p.userData.isKeeper && p !== sp.taker && p.userData.spSpot);
     if (!atk.length) return null;
@@ -3066,11 +3373,11 @@ function takeSetPiece(aim) {
     // back into play from inside the line: a throw from over his head, a corner off the grass
     ball.position.set(sp.spot.x, sp.kind === 'throw' ? 8.6 : BALL_SIZE + 0.2, sp.spot.z);
     const far = Math.hypot(tx - sp.spot.x, tz - sp.spot.z) > 45;
-    const how = sp.kind === 'throw' ? 'throw' : aim && (sp.kind === 'corner' || far) ? 'cross' : false;
+    const how = sp.kind === 'throw' ? 'throw' : aim && (sp.kind === 'corner' || far || (sp.kind === 'goalkick' && Math.hypot(tx - sp.spot.x, tz - sp.spot.z) > 30)) ? 'cross' : false;
     const T = playBallTo(tx, tz, how);
     const u = taker.userData;
     u.cooldown = 24;
-    if (sp.kind === 'corner') u.kickT = 0.28;
+    if (sp.kind === 'corner' || sp.kind === 'goalkick') u.kickT = 0.28;
     lastTouch = team;
     MATCH.passes[team - 1]++;
     const slot = slotOf(team);
@@ -3112,7 +3419,7 @@ function aimingHere() {
     if (!sp || sp.phase !== 'ready') return false;
     if (typeof ONLINE !== 'undefined' && ONLINE.isGuest()) return !!controlledP1 && sp.team === controlledP1.team;
     const slot = slotOf(sp.team);
-    return STATE.mode === 'online' ? slot === 1 : !!slot;
+    return STATE.mode === 'online' ? slot === 1 : humanTakes(sp);
 }
 
 // The screen dips to black for a moment while the players are put in place.
@@ -3177,6 +3484,7 @@ function updateSetPieceUI() {
     if (aimRing) aimRing.visible = aiming;
     if (aimRing && sp && sp.kind === 'penalty') aimRing.visible = false;
     const key = sp ? `${sp.kind}|${sp.team}|${sp.phase}|${aiming}` : '';
+    if (sp) { const tip = $('keeper-tip'); if (tip) tip.hidden = true; }
     if (key === spUiKey) return;
     spUiKey = key;
     box.hidden = !sp;
@@ -3184,12 +3492,12 @@ function updateSetPieceUI() {
     if (layer) layer.hidden = !aiming;
     $('game-screen').classList.toggle('is-aiming', aiming);
     // a free kick or a penalty can be struck at goal: Schiet stays on a phone
-    $('game-screen').classList.toggle('can-shoot', aiming && !!sp && (sp.kind === 'free' || sp.kind === 'penalty'));
+    $('game-screen').classList.toggle('can-shoot', aiming && !!sp && (sp.kind === 'free' || sp.kind === 'penalty' || (sp.kind === 'goalkick' && !!humanKeeper)));
     if (!sp) return;
     bindAimLayer();
     const codes = typeof hudCodes === 'function' ? hudCodes() : { red: '', blue: '' };
     box.dataset.team = sp.team === 1 ? 'red' : 'blue';
-    $('setpiece-kind').textContent = { corner: 'Hoekschop', throw: 'Inworp', free: 'Vrije trap', penalty: 'Strafschop' }[sp.kind] || '';
+    $('setpiece-kind').textContent = { corner: 'Hoekschop', throw: 'Inworp', free: 'Vrije trap', penalty: 'Strafschop', goalkick: 'Doeltrap' }[sp.kind] || '';
     $('setpiece-team').textContent = sp.team === 1 ? codes.red : codes.blue;
     const hint = $('setpiece-hint');
     const touch = typeof IS_TOUCH !== 'undefined' && IS_TOUCH;
@@ -3199,6 +3507,7 @@ function updateSetPieceUI() {
     const upDown = touch ? 'stick omhoog/omlaag' : (second ? '↑/↓' : 'W/S');
     let text = `${touch ? 'Tik' : 'Klik'} waar de bal moet komen · ${passKey}: kort`;
     if (sp.kind === 'free') text += ` · ${shootKey}: op doel`;
+    if (sp.kind === 'goalkick' && humanKeeper) text += ` · ${shootKey}: lang`;
     if (sp.kind === 'penalty') text = `${shootKey}: schieten · ${upDown}: hoek kiezen`;
     hint.textContent = aiming ? text : '';
     hint.hidden = !aiming;
@@ -3271,7 +3580,7 @@ function updateBall() {
         shotLive = null;                                   // wide or over: the shot missed
         const defending = ball.position.x > 0 ? 2 : 1;
         if (lastTouch === defending) startSetPiece('corner', 3 - defending, ball.position.x, ball.position.z);
-        else goalKick(defending);
+        else goalKick(defending, ball.position.x, ball.position.z);
         return;
     }
     if (Math.abs(ball.position.z) > FIELD_L/2) {
@@ -3509,6 +3818,8 @@ function teardownGame() {
     pauseFreezeStart = 0;
     const overlay = $('pause-overlay');
     if (overlay) overlay.hidden = true;
+    const tip = $('keeper-tip');
+    if (tip) tip.hidden = true;
     $('hud-s1').textContent = '0';
     $('hud-s2').textContent = '0';
     $('hud-timer').textContent = formatClock(0);

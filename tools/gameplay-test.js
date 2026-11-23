@@ -39,7 +39,8 @@ const BRIDGE = `
 ;globalThis.__sim = {
     setup(o) {
         scene = new THREE.Scene();
-        STATE.mode = o.mode; STATE.difficulty = o.level; STATE.p1.team = 1; STATE.p2.team = 2;
+        STATE.keeperMode = o.mode === 'keeper'; STATE.mode = STATE.keeperMode ? 'cpu' : o.mode;
+        STATE.difficulty = o.level; STATE.p1.team = 1; STATE.p2.team = 2;
         STATE.kickoffTeam = 1; STATE.score1 = 0; STATE.score2 = 0; STATE.scoring = false; STATE.paused = false;
         STATE.screen = 'playing'; STATE.wkMatch = null; STATE.goldenGoal = false; STATE.gameDuration = 1e9;
         resetMatchStats();
@@ -49,7 +50,7 @@ const BRIDGE = `
     tick() { gameTick(); animatePlayers(PHYSICS_STEP); },
     get STATE() { return STATE; }, get ball() { return ball; }, get carrier() { return carrier; },
     get team1() { return team1Players; }, get team2() { return team2Players; },
-    get p1() { return controlledP1; }, get p2() { return controlledP2; },
+    get p1() { return controlledP1; }, get p2() { return controlledP2; }, get keeper() { return humanKeeper; },
     get keys() { return keys; }, get keysPressed() { return keysPressed; }, get touchMove() { return touchMove; },
     setTouchHigh(v) { touchShotHigh = v; }, setTouchPassHigh(v) { touchPassHigh = v; }, get kickoffHold() { return kickoffHold; }, get lastKick() { return lastKick; },
     get MATCH() { return MATCH; }, get passTarget() { return passTarget; },
@@ -172,6 +173,49 @@ function makeHuman(sim, device, rand) {
     };
 }
 
+// Alleen keeper: a scripted keeper on the keyboard. He stands between the ball
+// and his goal, dives (with a direction) for a shot that is nearly there and
+// not at him, comes out (Q held) for a loose ball close by, and throws or
+// kicks the ball out of his hands after a moment; a goal kick short or long.
+function makeKeeperBot(sim, rand) {
+    let holdT = 0;
+    const press = (c) => { sim.keys[c] = true; sim.keysPressed[c] = true; };
+    return function act() {
+        ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'Space', 'ShiftLeft'].forEach(c => { sim.keys[c] = false; });
+        const k = sim.keeper, ball = sim.ball, C = sim.C;
+        if (!k || sim.STATE.scoring) return;
+        const sp = sim.setPiece;
+        if (sp && sp.kind === 'goalkick' && sp.team === k.team && sp.phase === 'ready') {
+            if (rand() < 0.03) press(rand() < 0.5 ? 'KeyQ' : 'Space');
+            return;
+        }
+        const u = k.userData, out = k.team === 1 ? 1 : -1, goalX = -out * C.FIELD_W / 2;
+        if (u.holdingBall) { if (++holdT > 50) { press(rand() < 0.6 ? 'KeyQ' : 'Space'); holdT = 0; } return; }
+        holdT = 0;
+        const vx = ball.velocity.x;
+        if (-vx * out > 0.6 && !sim.carrier) {
+            const t = (k.position.x - ball.position.x) / vx;
+            const cz = ball.position.z + ball.velocity.z * t;
+            if (t > 0 && t < 14 && Math.abs(cz) < C.GOAL_W / 2 + 3 && Math.abs(cz - k.position.z) > 1.5) {
+                press('Space');
+                sim.keys[cz > k.position.z ? 'KeyD' : 'KeyA'] = true;       // the camera is behind his goal
+                return;
+            }
+        }
+        const dist = Math.abs(ball.position.x - goalX);
+        const nearBall = Math.hypot(ball.position.x - k.position.x, ball.position.z - k.position.z);
+        if (!sim.carrier && dist < 28 && nearBall < 18 && Math.hypot(ball.velocity.x, ball.velocity.z) < 1.2) { sim.keys.KeyQ = true; return; }
+        const near = Math.max(0, Math.min(1, 1 - (dist - 10) / 45));
+        const tz = ball.position.z * (0.2 + 0.4 * near), tx = goalX + out * (3.5 + 3 * near);
+        const dz = tz - k.position.z, dx = tx - k.position.x;
+        // as the camera behind his goal sees it (team 1): up the pitch W, his right D
+        if (dz > 1) sim.keys.KeyD = true;
+        if (dz < -1) sim.keys.KeyA = true;
+        if (dx > 1) sim.keys.KeyW = true;
+        if (dx < -1) sim.keys.KeyS = true;
+    };
+}
+
 // ---------------------------------------------------------------- one match, watched
 function runMatch(scn, seed) {
     const sb = makeContext(seed);
@@ -180,7 +224,8 @@ function runMatch(scn, seed) {
     sim.setup({ mode: scn.mode, level: scn.level });
     let rs = (seed * 7919) >>> 0 || 3;
     const rand = () => { rs ^= rs << 13; rs >>>= 0; rs ^= rs >> 17; rs ^= rs << 5; rs >>>= 0; return rs / 4294967296; };
-    const human = scn.device === 'idle' ? null : makeHuman(sim, scn.device, rand);
+    const human = scn.device === 'idle' ? null : scn.device === 'keeper' ? makeKeeperBot(sim, rand) : makeHuman(sim, scn.device, rand);
+    const mine = (k) => scn.mode === 'keeper' && k === sim.keeper;      // the keeper a human plays: he stands where he likes
     const C = sim.C;
     const ticks = MATCH_SECONDS * 60;
     const keeperOf = (t) => (t === 1 ? sim.team1 : sim.team2)[0];
@@ -316,7 +361,7 @@ function runMatch(scn, seed) {
         allPlayers().forEach((p) => {
             const u = p.userData;
             // a slide by the computer that starts now: a teammate of yours or an opponent
-            if (u.tackleT > 0 && !u.__wasSliding && p !== sim.p1 && p !== sim.p2) stat.botSlides[human && p.team === sim.p1.team ? 0 : 1]++;
+            if (u.tackleT > 0 && !u.__wasSliding && p !== sim.p1 && p !== sim.p2) stat.botSlides[human && p.team === (sim.p1 || sim.keeper).team ? 0 : 1]++;
             u.__wasSliding = u.tackleT > 0;
             u.__slideFor = (u.tackleT > 0 || u.getUpT > 0) ? (u.__slideFor || 0) + 1 : 0;
             if (u.__slideFor === 80) once('TACKLE_BLIJFT_HANGEN', t, describe());
@@ -402,12 +447,13 @@ function runMatch(scn, seed) {
             if (Math.sign(vz) !== Math.sign(keeperLastVz[i]) && Math.abs(vz) > 0.03 && Math.abs(keeperLastVz[i]) > 0.03) keeperFlips[i].push(t);
             keeperLastVz[i] = vz;
             keeperFlips[i] = keeperFlips[i].filter(x => t - x < 60);
-            episode('KEEPER_TRILT_' + team, keeperFlips[i].length >= 6, t, describe);
+            episode('KEEPER_TRILT_' + team, !mine(k) && keeperFlips[i].length >= 6, t, describe);
             const ballFar = Math.abs(ball.position.x - goalX) > 60;
-            episode('KEEPER_STAAT_RAAR_' + team, ballFar && !holds[i] && (Math.abs(k.position.x - goalX) > 7 || Math.abs(k.position.z) > C.GOAL_W / 2 - 1), t, describe);
+            episode('KEEPER_STAAT_RAAR_' + team, !mine(k) && ballFar && !holds[i] && (Math.abs(k.position.x - goalX) > 7 || Math.abs(k.position.z) > C.GOAL_W / 2 - 1), t, describe);
             // a slow loose ball right by the keeper, in his area, that he leaves lying
+            // (yours, nobody at the keys: that is up to you)
             const nearK = Math.hypot(ball.position.x - k.position.x, ball.position.z - k.position.z);
-            episode('KEEPER_LAAT_BAL_LIGGEN_' + team, loose && speed < 0.3 && nearK < 6 && Math.abs(ball.position.x - goalX) < 12, t, describe);
+            episode('KEEPER_LAAT_BAL_LIGGEN_' + team, !(mine(k) && !human) && loose && speed < 0.3 && nearK < 6 && Math.abs(ball.position.x - goalX) < 12, t, describe);
         }
         // how the human loses the ball, and how far he gets with it
         if (sim.p1) {
@@ -455,6 +501,7 @@ function runMatch(scn, seed) {
     Object.keys(open).filter(k => !k.startsWith('__')).forEach(k => episode(k, false, ticks));
     stat.shots = [sim.MATCH.shots[0], sim.MATCH.shots[1]];
     stat.passes = [sim.MATCH.passes[0], sim.MATCH.passes[1]];
+    stat.saves = sim.MATCH.saves.slice();
     return { incidents, stat };
 }
 
@@ -468,6 +515,9 @@ const SCENARIOS = [
     { id: 'touch-medium', mode: 'cpu', level: 'medium', device: 'touch', label: 'telefoon, stick + knoppen (gemiddeld)' },
     { id: 'touch-hard', mode: 'cpu', level: 'hard', device: 'touch', label: 'telefoon, stick + knoppen (moeilijk)' },
     { id: 'duo-idle', mode: 'duo', level: 'medium', device: 'idle', label: 'twee spelers, niemand aan de knoppen' },
+    { id: 'keeper-idle', mode: 'keeper', level: 'medium', device: 'idle', label: 'alleen keeper, niemand aan de knoppen' },
+    { id: 'keeper-medium', mode: 'keeper', level: 'medium', device: 'keeper', label: 'alleen keeper, gescripte keeper (gemiddeld)' },
+    { id: 'keeper-hard', mode: 'keeper', level: 'hard', device: 'keeper', label: 'alleen keeper, gescripte keeper (moeilijk)' },
 ].filter(s => !ONLY || s.id === ONLY);
 
 const t0 = Date.now();
@@ -538,6 +588,7 @@ for (const r of results) {
             + `   kwijt door: ${Object.entries(s.humanLost).map(([k, v]) => k + ' ' + v).join(', ')}`);
     }
     console.log(`        scheidsrechter: ${Object.entries(s.ref).map(([k, v]) => k + ' ' + v).join(', ')}`);
+    if (r.scn.mode === 'keeper') console.log(`        reddingen: jij ${s.saves[0]}, de computerkeeper ${s.saves[1]}   tegengoals ${s.goals[1]} uit ${s.shots[1]} schoten`);
     console.log(`        bal in keepershanden ${(100 * s.holdTicks / Math.max(1, s.liveTicks)).toFixed(0)}% van de speeltijd`
         + `   gevangen na: ${Object.entries(s.catchFrom).map(([k, v]) => k.replace(/_/g, ' ') + ' ' + v).join(', ')}`);
     for (const k of kinds) {

@@ -43,7 +43,7 @@ function switchToTouch(e) {
     if (IS_TOUCH || e.pointerType !== 'touch') return;
     IS_TOUCH = true;
     touchMode();
-    if (typeof setMode === 'function' && STATE.screen !== 'playing' && STATE.mode !== 'online') setMode('cpu');
+    if (typeof setMode === 'function' && STATE.screen !== 'playing' && STATE.mode !== 'online') setMode(STATE.keeperMode ? 'keeper' : 'cpu');
     if (typeof bindTouch === 'function') bindTouch();
     document.removeEventListener('pointerdown', switchToTouch, true);
 }
@@ -54,6 +54,9 @@ function bindLaunch() {
     if (IS_TOUCH) setMode('cpu');
     $('launch-cta').addEventListener('click', () => { setMode('duo'); goToSetup(); });
     $('launch-cpu').addEventListener('click', () => { setMode('cpu'); goToSetup(); });
+    $('launch-keeper')?.addEventListener('click', () => { setMode('keeper'); goToSetup(); });
+    // the other ways into a match are never keeper-only (they run before their own handlers)
+    ['launch-online', 'launch-wk', 'launch-var'].forEach((id) => $(id)?.addEventListener('click', () => { STATE.keeperMode = false; }, true));
     $('launch-stadium-pick').addEventListener('click', openStadiumPicker);
     $('launch-settings').addEventListener('click', openSettings);
     updateLaunchSettingsLabel();
@@ -238,10 +241,12 @@ const SETTINGS_PREVIEW = (() => {
 function updateLaunchStadiumLabel() {
     const lbl = $('launch-stadium-name');
     if (lbl) lbl.textContent = getSelectedStadium().name;
+    updateLaunchLevelLabel();
 }
+// Snel spelen (Tegen de computer): the level and where it is played
 function updateLaunchLevelLabel() {
     const lbl = $('launch-cpu-level');
-    if (lbl) lbl.textContent = getLevel().label;
+    if (lbl) lbl.textContent = `${getLevel().label} · ${getSelectedStadium().name}`;
 }
 function goToSetup() {
     gotoScreen('setup');
@@ -307,8 +312,10 @@ function bindSetup() {
 }
 
 // Two players or against the computer: from the start screen or the tabs.
+// 'keeper' (Alleen keeper) is a match against the computer in which you play your keeper
 function setMode(mode) {
-    STATE.mode = mode === 'cpu' ? 'cpu' : 'duo';
+    STATE.keeperMode = mode === 'keeper';
+    STATE.mode = mode === 'cpu' || mode === 'keeper' ? 'cpu' : 'duo';
     document.querySelectorAll('.mode-tab').forEach(b => {
         const on = b.dataset.mode === STATE.mode;
         b.classList.toggle('active', on);
@@ -360,6 +367,11 @@ function applyMode() {
     if (bot) bot.hidden = !cpu;
     if (p2Input) p2Input.disabled = cpu;
     if (p1Alt) p1Alt.hidden = !cpu;
+    // Alleen keeper: no mode tabs, the keeper's keys on your card
+    const setup = $('setup-screen');
+    if (setup) setup.classList.toggle('is-keeper', !!STATE.keeperMode);
+    const title = setup && setup.querySelector('.title');
+    if (title) title.textContent = STATE.keeperMode ? 'Alleen keeper' : 'Opstelling';
     checkNames();
 }
 
@@ -517,14 +529,29 @@ function startGame() {
     paintHud();
 
     initThree();
+    showKeeperTip();
     runKickoffCountdown(() => {
         STATE.gameStartTime = Date.now();
         STATE.inputLocked = false;
+        if (STATE.keeperMode) setTimeout(() => { const tip = $('keeper-tip'); if (tip) tip.hidden = true; }, 7000);
         if (typeof PR_STATS !== 'undefined') PR_STATS.matchStart();     // statistics (game.stats.js)
         // started with the phone upright: wait until it is turned
         // (online the match can't wait: the turn-your-phone notice is enough)
         if (IS_TOUCH && isPortrait() && STATE.mode !== 'online') togglePause(true);
     });
+}
+
+// Alleen keeper: what the keys do, under the scoreboard until a few seconds
+// into the match (a set piece's strip takes its place: updateSetPieceUI)
+function showKeeperTip() {
+    $('game-screen')?.classList.toggle('is-keeper', !!STATE.keeperMode);
+    const tip = $('keeper-tip'), hint = $('keeper-tip-hint');
+    if (!tip) return;
+    tip.hidden = !STATE.keeperMode;
+    tip.dataset.team = STATE.p1.team === 1 ? 'red' : 'blue';
+    if (hint) hint.textContent = IS_TOUCH
+        ? 'Duik: duiken · Uit ingedrukt: op de bal af · bal vast: Gooi of Trap'
+        : 'Spatie: duiken · Q ingedrukt: op de bal af · bal vast: Q gooien, Spatie uittrappen';
 }
 
 // Straight to a penalty shoot-out, no match first (online, game.online.js).

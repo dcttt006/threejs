@@ -28,9 +28,11 @@
 #     horsemen of Pau Gargallo either side, BARCELONA over the tunnel under the
 #     arch; the Olympic cauldron on its column east of it and the platform on
 #     two legs on the rim
-#   - the south end: a tunnel through the first ring, the two big screens on
-#     steel legs over the second ring (game.screen.js, style 'montjuic'), the
-#     clock on the left of the middle one
+#   - the south end: a tunnel through the first ring; over the second ring,
+#     east of the middle, the screen in a grey frame on a cream concrete beam
+#     and two round columns (game.screen.js, style 'montjuic': Barça's half
+#     blue, the other red, the crests, the score and the minutes of the
+#     goals), in the middle, lower, a plain black board with a white clock
 #   - the west stand under Gregotti's roof: the press gallery behind the second
 #     ring, the glass box of the royal box in the middle, three concrete piers,
 #     the white truss on top and the stays down to the facade; outside the
@@ -1446,9 +1448,9 @@ for mx, my in MASTS:
         tube(bm, c + side_ * 3.4 * s + Vector((0, 0, -3.0)), c + side_ * 3.4 * s + Vector((0, 0, 2.6)), 0.1, 0, 4)
 new_obj('Masts', bm, '05_Outside', [steel_grey, lamp])
 
-# small light poles over the corners of the south end
+# small light poles over the corners of the south end (none by the boards)
 bm = bmesh.new()
-for a in (130, 160, 200, 230):
+for a in (130, 230):
     r_ = math.radians(a)
     p = Vector((-XS + (UP_BACK + 2.5) * math.cos(r_), (UP_BACK + 2.5) * math.sin(r_), 0))
     tube(bm, Vector((p.x, p.y, PARAPET_Z)), Vector((p.x, p.y, PARAPET_Z + 9.0)), 0.18, 0, 6)
@@ -1512,27 +1514,95 @@ cone(bm, (LC.x, LC.y), 2.0, 2.0, TZ1 + 12.0, TZ1 + 12.6, 1, 12)
 cone(bm, (LC.x, LC.y), 1.7, 0.4, TZ1 + 12.6, TZ1 + 13.6, 1, 12)
 new_obj('West_Front', bm, '05_Outside', [main_front, stone_plain, dark_glass, bronze, tower_side, dark_glass])
 
-# ---------------------------------------------------------------- the two big screens over the south end
+# ---------------------------------------------------------------- the two boards over the south end
+# as on the photos from the pitch and from the second ring: left of the middle
+# (east) the screen in a grey steel frame on a cream concrete beam, the beam
+# on two round concrete columns behind the top row, a ladder on its right, a
+# loudspeaker under the beam; in the middle, lower, a plain black board with a
+# white clock in its left top corner on a black steel frame, a red board
+# along the rim under it
 live = principled('M_LiveScreen', (1.0, 1.0, 1.0), 0.4, (0.10, 0.10, 0.12), 2.0)
-SCREENS = [(0.0, 13.0, 0.0, 1.0), (-21.5, 8.6, 0.35, 1.0)]    # (y, width, u0, u1): the one with the clock in the middle, the other east of it
-SCR_Z0, SCR_H = PARAPET_Z + 3.4, 6.5
+cream = principled('M_ConcreteCream', (0.80, 0.76, 0.67), 0.85)
+
+
+def black_board_tex(W=1024, H=512, SS=2):
+    # the middle board: black, the clock's white marks and hands at its top left
+    w, h = W * SS, H * SS
+    yy, xx = np.mgrid[0:h, 0:w].astype('f')
+    img = np.full((h, w), 0.0, 'f')
+    cx, cy, R = 0.135 * w, 0.24 * h, 0.19 * h
+
+    def seg(x0, y0, x1, y1, r):
+        dx, dy = x1 - x0, y1 - y0
+        t = np.clip(((xx - x0) * dx + (yy - y0) * dy) / (dx * dx + dy * dy), 0, 1)
+        return np.hypot(xx - x0 - t * dx, yy - y0 - t * dy) < r
+    on = np.zeros((h, w), bool)
+    for i in range(12):
+        a = i / 12 * 2 * math.pi
+        r0 = R * (0.70 if i % 3 == 0 else 0.78)
+        on |= seg(cx + math.sin(a) * r0, cy - math.cos(a) * r0, cx + math.sin(a) * R, cy - math.cos(a) * R, R * (0.065 if i % 3 == 0 else 0.05))
+    for frac, ln, wd in ((10.4 / 12, 0.52, 0.075), (22 / 60, 0.82, 0.055)):      # twenty past ten
+        a = frac * 2 * math.pi
+        on |= seg(cx - math.sin(a) * R * 0.12, cy + math.cos(a) * R * 0.12, cx + math.sin(a) * R * ln, cy - math.cos(a) * R * ln, R * wd)
+    img[on] = 1.0
+    img = img.reshape(H, SS, W, SS).mean((1, 3))
+    img = np.maximum(img, 0.006)
+    return np.repeat(img[::-1, :, None], 3, 2)        # row 0 at the bottom
+
+
+board_black = image_material('M_BlackBoard', painted('mj_blackboard', black_board_tex()), 0.35)
 SCREEN_FACES = []
 bm = bmesh.new()
-for cy_, w_, u0, u1 in SCREENS:
-    cxs = -(XS + math.sqrt(max(0.0, (UP_BACK + 0.5) ** 2 - cy_ ** 2))) - 1.2
-    box(bm, (cxs - 0.5, cy_), (0, 1), w_ / 2 + 0.3, (1, 0), 0.5, SCR_Z0 - 0.3, SCR_Z0 + SCR_H + 0.3, 0)
-    for s in (-1, 1):
-        for dx in (-0.4, 1.6):
-            p = Vector((cxs - 0.5 - dx, cy_ + s * (w_ / 2 - 1.0), 0))
-            tube(bm, Vector((p.x, p.y, PARAPET_Z)), Vector((p.x, p.y, SCR_Z0)), 0.16, 1, 6)
-        tube(bm, Vector((cxs - 0.1, cy_ + s * (w_ / 2 - 1.0), PARAPET_Z)), Vector((cxs - 2.1, cy_ + s * (w_ / 2 - 1.0), SCR_Z0)), 0.08, 1, 4)
-    tube(bm, Vector((cxs - 1.0, cy_ - w_ / 2 + 1.0, PARAPET_Z + 1.6)), Vector((cxs - 1.0, cy_ + w_ / 2 - 1.0, PARAPET_Z + 1.6)), 0.1, 1, 4)
-    fb = bmesh.new()
-    x_ = cxs + 0.02
-    face(fb, [(x_, cy_ - w_ / 2, SCR_Z0), (x_, cy_ + w_ / 2, SCR_Z0), (x_, cy_ + w_ / 2, SCR_Z0 + SCR_H), (x_, cy_ - w_ / 2, SCR_Z0 + SCR_H)],
-         Vector((1, 0, 0)), 0, [(u0, 0), (u1, 0), (u1, 1), (u0, 1)])                     # u left to right as seen from the pitch (east on the left)
-    SCREEN_FACES.append(new_obj('ScreenFace_%d' % len(SCREEN_FACES), fb, '02_Bowl', [live]))
-new_obj('Scoreboards', bm, '02_Bowl', [portal, steel_grey])
+FACE_R = UP_BACK + 0.5 + 1.2                         # the faces, over the back of the top row, from the curve's centre
+CC = Vector((-XS, 0.0, 0.0))
+
+# the screen: turned to face the curve's centre, 17 degrees east of the middle
+SCR_W, SCR_H = 11.0, 7.6
+SCR_FR = 0.28                                       # the frame round the picture
+BEAM_Z0, BEAM_H = PARAPET_Z + 2.2, 0.85
+SCR_Z0 = BEAM_Z0 + BEAM_H + SCR_FR
+PHI = math.radians(17.0)
+O = Vector((-math.cos(PHI), -math.sin(PHI), 0.0))   # outwards, away from the pitch
+T = Vector((-math.sin(PHI), math.cos(PHI), 0.0))    # left to right as seen from the pitch
+F = CC + O * FACE_R
+P = lambda u, d, z=0.0: F + T * u + O * d + Vector((0, 0, z))
+ax, ay = (T.x, T.y), (O.x, O.y)
+box(bm, P(0, 0.45).xy, ax, SCR_W / 2 + SCR_FR, ay, 0.45, SCR_Z0 - SCR_FR, SCR_Z0 + SCR_H + SCR_FR, 1)
+box(bm, P(0, 0.9).xy, ax, SCR_W / 2 + SCR_FR + 0.08, ay, 1.0, BEAM_Z0 + 0.25, BEAM_Z0 + BEAM_H, 2)
+box(bm, P(0, 1.05).xy, ax, SCR_W / 2 + SCR_FR, ay, 0.8, BEAM_Z0, BEAM_Z0 + 0.25, 2)
+for u_ in (-0.155 * SCR_W, 0.145 * SCR_W):
+    q = P(u_, 1.0)
+    cone(bm, (q.x, q.y), 0.42, 0.42, PARAPET_Z - 1.45, BEAM_Z0, 2, 16)
+box(bm, P(1.9, 0.35).xy, ax, 0.22, ay, 0.18, BEAM_Z0 - 0.4, BEAM_Z0, 1)          # the loudspeaker
+lu = 0.33 * SCR_W                                                                 # the ladder
+for s_ in (-0.25, 0.25):
+    tube(bm, P(lu + s_, 2.2, PARAPET_Z - 1.45), P(lu + s_, 2.2, BEAM_Z0), 0.035, 3, 4)
+for z_ in np.arange(PARAPET_Z - 1.1, BEAM_Z0, 0.35):
+    tube(bm, P(lu - 0.25, 2.2, z_), P(lu + 0.25, 2.2, z_), 0.02, 3, 4)
+for u_ in np.arange(-SCR_W / 2, SCR_W / 2 + 0.01, 1.83):                          # the rail behind the top row
+    tube(bm, P(u_, 1.8, PARAPET_Z - 1.45), P(u_, 1.8, PARAPET_Z), 0.03, 3, 4)
+tube(bm, P(-SCR_W / 2, 1.8, PARAPET_Z), P(SCR_W / 2, 1.8, PARAPET_Z), 0.035, 3, 4)
+fb = bmesh.new()
+face(fb, [P(-SCR_W / 2, -0.02, SCR_Z0), P(SCR_W / 2, -0.02, SCR_Z0), P(SCR_W / 2, -0.02, SCR_Z0 + SCR_H), P(-SCR_W / 2, -0.02, SCR_Z0 + SCR_H)],
+     -O, 0, [(0, 0), (1, 0), (1, 1), (0, 1)])                                     # u left to right as seen from the pitch
+SCREEN_FACES.append(new_obj('ScreenFace_0', fb, '02_Bowl', [live]))
+
+# the black board in the middle, lower, straight over the curve's end
+BB_W, BB_H, BB_FR = 13.0, 6.4, 0.22
+BB_Z0 = PARAPET_Z + 1.6
+xb = -(XS + FACE_R)
+box(bm, (xb - 0.4, 0.0), (0, 1), BB_W / 2 + BB_FR, (1, 0), 0.4, BB_Z0 - BB_FR, BB_Z0 + BB_H + BB_FR, 4)
+face(bm, [(xb + 0.01, -BB_W / 2, BB_Z0), (xb + 0.01, BB_W / 2, BB_Z0), (xb + 0.01, BB_W / 2, BB_Z0 + BB_H), (xb + 0.01, -BB_W / 2, BB_Z0 + BB_H)],
+     Vector((1, 0, 0)), 5, [(0, 0), (1, 0), (1, 1), (0, 1)])                     # u left to right as seen from the pitch (east, -y, on the left)
+# its legs from the walk behind the top row, braced, and the frame they carry
+for yl in (-BB_W / 2 + 0.6, -BB_W / 6, BB_W / 6, BB_W / 2 - 0.6):
+    for dx in (0.5, 1.9):
+        tube(bm, Vector((xb - dx, yl, PARAPET_Z - 1.45)), Vector((xb - dx, yl, BB_Z0 - BB_FR)), 0.11, 4, 6)
+    tube(bm, Vector((xb - 0.5, yl, PARAPET_Z - 1.2)), Vector((xb - 1.9, yl, BB_Z0 - BB_FR)), 0.05, 4, 4)
+tube(bm, Vector((xb - 0.5, -BB_W / 2, BB_Z0 - BB_FR - 0.1)), Vector((xb - 0.5, BB_W / 2, BB_Z0 - BB_FR - 0.1)), 0.1, 4, 4)
+# the red board along the rim under it
+box(bm, (xb + 0.15, 0.0), (0, 1), 0.29 * BB_W, (1, 0), 0.06, PARAPET_Z + 0.15, BB_Z0 - BB_FR - 0.25, 6)
+new_obj('Scoreboards', bm, '02_Bowl', [portal, steel_grey, cream, steel_white, steel_dark, board_black, board_red])
 
 # ================================================================ outside: the ground, the esplanade, the columns, trees, the hill
 bm = bmesh.new()

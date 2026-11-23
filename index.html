@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=142">
+    <link rel="stylesheet" href="styles.css?v=146">
 </head>
 <body>
     <!-- shared icons -->
@@ -64,39 +64,57 @@
         </div>
 
         <main class="home__main">
-            <h1 class="home__title"><span>Pitch</span> <span class="home__title-gold">Royale</span></h1>
-            <p class="home__tag">90 seconden. Meeste goals wint.</p>
-
-            <div class="home__menu">
-                <button id="launch-cta" class="home__btn home__btn--gold" type="button">
-                    <span class="home__btn-label">2 spelers</span>
-                    <span class="home__btn-meta">Eén toetsenbord</span>
-                </button>
-                <button id="launch-online" class="home__btn" type="button">
-                    <span class="home__btn-label">Online</span>
-                    <span class="home__btn-meta">Tegen een vriend</span>
-                </button>
-                <button id="launch-cpu" class="home__btn" type="button">
-                    <span class="home__btn-label">Tegen de computer</span>
-                    <span class="home__btn-meta" id="launch-cpu-level">Gemiddeld</span>
-                </button>
-                <button id="launch-wk" class="home__btn" type="button">
-                    <span class="home__btn-label">WK 2026</span>
-                    <span class="home__btn-meta">48 landen</span>
-                </button>
-                <button id="launch-var" class="home__btn" type="button">
-                    <span class="home__btn-label">Jij bent de VAR</span>
-                    <span class="home__btn-meta" id="launch-var-meta">Minigame</span>
-                </button>
+            <div class="home__head">
+                <h1 class="home__title"><span>Pitch</span> <span class="home__title-gold">Royale</span></h1>
+                <p class="home__tag">90 seconden. Meeste goals wint.</p>
             </div>
+
+            <div class="home__play">
+                <button id="launch-cpu" class="home__hero" type="button">
+                    <span class="home__hero-kicker">Snel spelen</span>
+                    <span class="home__hero-label">Tegen de computer</span>
+                    <span class="home__hero-meta" id="launch-cpu-level">Gemiddeld</span>
+                </button>
+                <div class="home__pair">
+                    <button id="launch-cta" class="home__btn" type="button">
+                        <span class="home__btn-label">2 spelers</span>
+                        <span class="home__btn-meta">Eén toetsenbord</span>
+                    </button>
+                    <button id="launch-online" class="home__btn" type="button">
+                        <span class="home__btn-label">Online</span>
+                        <span class="home__btn-meta">Tegen een vriend</span>
+                    </button>
+                </div>
+            </div>
+
+            <section class="home__modes" aria-label="Spelmodi">
+                <h2 class="home__kicker">Spelmodi</h2>
+                <div class="home__tiles">
+                    <button id="launch-keeper" class="home__tile" type="button">
+                        <svg class="home__tile-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M14 40V22l-4-6a3 3 0 015-3l3 4V9a3 3 0 016 0v8V7a3 3 0 016 0v10V9a3 3 0 016 0v13c0 10-4 18-12 18z"/></svg>
+                        <span class="home__tile-label">Alleen keeper</span>
+                        <span class="home__tile-meta">Jij staat op doel</span>
+                    </button>
+                    <button id="launch-wk" class="home__tile" type="button">
+                        <svg class="home__tile-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h20v10a10 10 0 01-20 0zM14 10H7c0 7 3 10 8 11M34 10h7c0 7-3 10-8 11M24 26v8M16 42h16M18 34h12v8H18z"/></svg>
+                        <span class="home__tile-label">WK 2026</span>
+                        <span class="home__tile-meta">48 landen</span>
+                    </button>
+                    <button id="launch-var" class="home__tile" type="button">
+                        <svg class="home__tile-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M18 40h12M24 33v7M14 26l7-9 5 6 4-4 4 7"/></svg>
+                        <span class="home__tile-label">Jij bent de VAR</span>
+                        <span class="home__tile-meta" id="launch-var-meta">Minigame</span>
+                    </button>
+                </div>
+            </section>
 
             <div class="home__links">
                 <button id="launch-star-pick" class="home__stadium" type="button">
-                    <span class="home__stadium-label">Speler kiezen</span>
+                    <span class="home__stadium-label">Speler</span>
                     <span class="home__stadium-name" id="launch-star-name">Lionel Messi</span>
                 </button>
                 <button id="launch-stadium-pick" class="home__stadium" type="button">
-                    <span class="home__stadium-label">Stadion kiezen</span>
+                    <span class="home__stadium-label">Stadion</span>
                     <span class="home__stadium-name" id="launch-stadium-name">Lotto Park</span>
                 </button>
                 <button id="launch-settings" class="home__stadium" type="button">
@@ -150,8 +168,17 @@
                         <div><dt>Sprinten</dt><dd><kbd>Shift</kbd> links</dd></div>
                         <div><dt>Krullen</dt><dd>na je schot <kbd>W</kbd> of <kbd>S</kbd></dd></div>
                     </dl>
+                    <dl class="keys keys--keeper">
+                        <div><dt>Bewegen</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> in je strafschopgebied</dd></div>
+                        <div><dt>Duiken</dt><dd><kbd>Spatie</kbd> met een richting die kant op, zonder naar de bal</dd></div>
+                        <div><dt>Uitkomen</dt><dd><kbd>Q</kbd> ingedrukt: op de bal af</dd></div>
+                        <div><dt>Bal in je handen</dt><dd><kbd>Q</kbd> gooien (richting kiest naar wie), <kbd>Spatie</kbd> uittrappen</dd></div>
+                        <div><dt>Sprinten</dt><dd><kbd>Shift</kbd> links</dd></div>
+                        <div><dt>Doeltrap</dt><dd>klik waar hij moet komen, <kbd>Q</kbd> kort, <kbd>Spatie</kbd> lang</dd></div>
+                    </dl>
                     <p class="keys__note" id="p1-keys-alt" hidden>Tegen de computer werken de pijltjes ook.</p>
                     <p class="touch-help">Links de stick. Rechts <strong>Schiet</strong> (langer = harder; veeg bij het loslaten omhoog voor een hoog schot), <strong>Pass</strong> en <strong>Sprint</strong>. Zonder bal worden ze <strong>Tackle</strong> en <strong>Vraag</strong> (bal vragen). Je speelt de hele wedstrijd met je eigen ster; je teamgenoten speelt de computer. Krullen: duw na je schot de stick omhoog of omlaag.</p>
+                    <p class="touch-help touch-help--keeper">Je bent de keeper; je teamgenoten speelt de computer. Links de stick: bewegen in je strafschopgebied. <strong>Duik</strong> (met de stick die kant op, anders naar de bal), <strong>Uit</strong> ingedrukt: op de bal af. Bal in je handen: <strong>Gooi</strong> of <strong>Trap</strong>. Doeltrap: tik waar hij moet komen.</p>
                 </section>
 
                 <div class="halves__mid">
@@ -285,6 +312,10 @@
             <span class="setpiece__kind" id="setpiece-kind">Hoekschop</span>
             <span class="setpiece__team" id="setpiece-team">SP1</span>
             <span class="setpiece__hint" id="setpiece-hint" hidden></span>
+        </div>
+        <div class="setpiece keeper-tip" id="keeper-tip" role="status" hidden>
+            <span class="setpiece__kind">Jij bent de keeper</span>
+            <span class="setpiece__hint" id="keeper-tip-hint"></span>
         </div>
         <div class="aim-layer" id="aim-layer" hidden></div>
 
@@ -736,18 +767,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=182"></script>
-    <script src="game.screen.js?v=25"></script>
-    <script src="game.stadium.js?v=137"></script>
-    <script src="game.ui.js?v=135"></script>
+    <script src="game.core.js?v=186"></script>
+    <script src="game.screen.js?v=26"></script>
+    <script src="game.stadium.js?v=138"></script>
+    <script src="game.ui.js?v=138"></script>
     <script src="game.wk.js?v=116"></script>
     <script src="stats.config.js?v=116"></script>
     <script src="game.stats.js?v=118"></script>
     <script src="game.players.js?v=1"></script>
-    <script src="game.js?v=145"></script>
+    <script src="game.js?v=152"></script>
     <script src="game.referee.js?v=7"></script>
     <script src="game.pens.js?v=3"></script>
     <script src="game.var.js?v=1"></script>
-    <script src="game.online.js?v=6"></script>
+    <script src="game.online.js?v=7"></script>
 </body>
 </html>

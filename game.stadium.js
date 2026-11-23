@@ -864,6 +864,14 @@ function dressStadium(arena, stadium) {
         new THREE.Plane(new THREE.Vector3(-1, 0, 0), -sideX),
         new THREE.Plane(new THREE.Vector3(0, 0, -1), -farZ),
     ];
+    // Alleen keeper: the camera is behind your goal, looking up the pitch, so
+    // only the column over the pitch goes (the near stand stays), and behind
+    // your goal everything between the camera and the pitch
+    if (STATE.keeperMode && STATE.screen === 'playing') {
+        const own = STATE.p1.team === 1 ? -1 : 1;
+        block[own < 0 ? 1 : 0].constant = -(FIELD_W / 2 + 45);
+        block.push(new THREE.Plane(new THREE.Vector3(0, 0, 1), -farZ));
+    }
     if (!stadium.pitch.own) block.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), 0.3));
     const seen = new Set();
     const photo = new Map();          // lit material -> its unlit replacement (photo scans)

@@ -21,10 +21,10 @@
 // board, the clock small at the top, the home logo in a white disc on the left
 // (the file the catalog names: screenLogo), the away side's disc on the right,
 // the score in square figures with round corners and a long bar between them.
-// screen: 'montjuic' (Estadi Olímpic Lluís Companys) is the pair of screens
-// over the south curve: on the left of the middle one a white clock with the
-// time of day, as on the photos; right of it (all the other screen shows) the
-// match clock, a block in each side's colour with its code and the score.
+// screen: 'montjuic' (Estadi Olímpic Lluís Companys) is the screen over the
+// south curve, as on the photo of a Clásico there: Barça's half blue with its
+// crest, the other half red with Real Madrid's, the scores big by the seam,
+// the minutes of the goals under them and the clock small at the bottom.
 // screen: 'bernabeu' (Santiago Bernabéu) is the 360-degree ring round the
 // roof's opening, on royal blue as on the photos of a Clásico there: on each
 // side the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the
@@ -248,7 +248,7 @@ const STADIUM_SCREEN = (() => {
         [kCanvas, kCtx, kTexture] = make(1024, 256, 256 / KH);
         [eCanvas, eCtx, eTexture] = make(CW2, CH2, 1);
         [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
-        [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
+        [mCanvas, mCtx, mTexture] = make(MCW, MCH, 1);
         [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
         [jCanvas, jCtx, jTexture] = make(1024, 1024, 1024 / JH);
         [xCanvas, xCtx, xTexture] = make(1024, 512, 512 / XH);
@@ -536,54 +536,61 @@ const STADIUM_SCREEN = (() => {
         aTexture.needsUpdate = true;
     }
 
-    // ---- Montjuïc: the two screens over the south curve (1024 x 512) ----
-    // the middle screen (13 x 6.5 m) shows all of it, the one east of it
-    // (8.6 x 6.5 m) only the part right of the clock, from x = 358
-    const MW = 1024, MH = 512, MSPLIT = 358;
+    // ---- Montjuïc: the screen over the south curve (1000 x 690 on a 1024 x 512 canvas; 11 x 7.6 m) ----
+    // as on the photo of a Clásico there: Barça's half blue, the other red,
+    // the crests outside, the two scores big by the seam, under each score
+    // the minutes of that side's goals; the match clock small at the bottom
+    const MW = 1000, MH = 690, MCW = 1024, MCH = 512;
+    const M_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
     let mCanvas = null, mCtx = null, mTexture = null;
-    function montjuicTeams() {
-        if (typeof STATE !== 'undefined' && STATE.screen === 'playing' && typeof KIT !== 'undefined') return campinTeams();
-        return [{ code: 'FCB', color: '#a50044' }, { code: 'CPU', color: '#1c3f94' }];     // Barça against the CPU on the test page
+    let mGoals = [[], []], mPrev = [0, 0];
+    // the minute of each goal, from the clock when a score goes up
+    function montjuicGoals(clock, s1, s2) {
+        const now = [s1, s2];
+        if (s1 + s2 === 0) mGoals = [[], []];
+        // a match lasts STATE.gameDuration seconds (90): played out over 90 minutes
+        const [mm, ss] = clock.split(':').map((v) => parseInt(v, 10) || 0);
+        const dur = (typeof STATE !== 'undefined' && STATE.gameDuration) || 90;
+        const min = Math.max(1, Math.min(120, Math.ceil((mm * 60 + ss) * 90 / dur)));
+        for (let k = 0; k < 2; k++) {
+            if (now[k] > mPrev[k]) for (let i = mPrev[k]; i < now[k]; i++) mGoals[k].push(min);
+            else if (now[k] < mPrev[k]) mGoals[k].length = Math.min(mGoals[k].length, now[k]);
+        }
+        mPrev = now;
     }
     function drawMontjuic(clock, s1, s2) {
-        const c = mCtx, [ta, tb] = montjuicTeams();
-        c.fillStyle = '#0b0c0f'; c.fillRect(0, 0, MW, MH);
-        // the clock: a white face, black marks and hands, the time of day
-        const cx = 178, cy = 222, R = 148;
-        c.fillStyle = '#f3f2ee';
-        c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#141414'; c.lineCap = 'butt';
-        for (let i = 0; i < 60; i++) {
-            const a = i / 60 * Math.PI * 2, big = i % 5 === 0;
-            c.lineWidth = big ? 9 : 3;
-            const r0 = R - (big ? 30 : 14), r1 = R - 6;
-            c.beginPath(); c.moveTo(cx + Math.sin(a) * r0, cy - Math.cos(a) * r0); c.lineTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1); c.stroke();
-        }
-        const now = new Date(), mins = now.getMinutes() + now.getSeconds() / 60, hrs = (now.getHours() % 12) + mins / 60;
-        const hand = (a, len, w) => {
-            c.lineWidth = w; c.lineCap = 'round';
-            c.beginPath(); c.moveTo(cx - Math.sin(a) * 16, cy + Math.cos(a) * 16); c.lineTo(cx + Math.sin(a) * len, cy - Math.cos(a) * len); c.stroke();
+        const c = mCtx, SEAM = 497;
+        c.setTransform(MCW / MW, 0, 0, MCH / MH, 0, 0);
+        c.fillStyle = '#4a66dc'; c.fillRect(0, 0, SEAM, MH);
+        c.fillStyle = '#e65f59'; c.fillRect(SEAM, 0, MW - SEAM, MH);
+        // the LED rows, faint
+        c.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let y = 0; y < MH; y += 6) c.fillRect(0, y, MW, 2);
+        const crest = (im, x, y, box) => {
+            if (!im) return;
+            const k = Math.min(box / im.width, box / im.height);
+            c.drawImage(im, x - im.width * k / 2, y - im.height * k / 2, im.width * k, im.height * k);
         };
-        hand(hrs / 12 * Math.PI * 2, R * 0.52, 16);
-        hand(mins / 60 * Math.PI * 2, R * 0.82, 10);
-        c.fillStyle = '#141414'; c.beginPath(); c.arc(cx, cy, 12, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#e6e6e6'; c.font = `600 30px ${CF}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText('ESTADI OLÍMPIC', cx, 436);
-        // the match: the clock on top, the sides' blocks, the score between them
-        const xm = (MSPLIT + MW) / 2;
-        c.fillStyle = '#ffffff'; c.font = `600 84px ${CF}`;
-        c.fillText(clock, xm, 96);
-        const block = (x, team) => {
-            c.fillStyle = team.color; c.fillRect(x - 68, 200, 136, 136);
-            c.fillStyle = lightness(team.color) > 0.62 ? '#141414' : '#ffffff';
-            c.font = `700 48px ${CF}`; c.fillText(team.code, x, 270);
+        crest(fcbLogo, 153, 160, 175);
+        crest(rmLogo, 845, 160, 160);
+        c.fillStyle = '#f7f6f4'; c.textBaseline = 'middle';
+        c.font = `700 340px ${M_FONT}`; c.textAlign = 'center';
+        c.fillText(String(s1), 390, 160);
+        c.fillText(String(s2), 618, 160);
+        // the goals: one line each, the fourth and later run on the last line
+        const lines = (mins) => {
+            const out = mins.slice(0, 2).map((m) => `GOL ${m}'`);
+            if (mins.length > 2) out.push('GOL ' + mins.slice(2).map((m) => `${m}'`).join(' '));
+            return out;
         };
-        block(MSPLIT + 98, ta);
-        block(MW - 98, tb);
-        c.fillStyle = '#ffffff'; c.font = `700 178px ${CF}`;
-        c.fillText(String(s1), xm - 86, 278);
-        c.fillText(String(s2), xm + 86, 278);
-        c.fillRect(xm - 20, 262, 40, 15);
+        c.font = `700 40px ${M_FONT}`;
+        c.textAlign = 'right';
+        lines(mGoals[0]).forEach((t, i) => c.fillText(t, 440, 358 + i * 84, 400));
+        c.textAlign = 'left';
+        lines(mGoals[1]).forEach((t, i) => c.fillText(t, 560, 358 + i * 84, 400));
+        c.font = `600 46px ${M_FONT}`; c.textAlign = 'center';
+        c.fillText(clock, SEAM, 640);
+        c.setTransform(1, 0, 0, 1, 0, 0);
         mTexture.needsUpdate = true;
     }
 
@@ -910,7 +917,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${!!xAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${mGoals.join('/')}|${!!xAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -940,6 +947,7 @@ const STADIUM_SCREEN = (() => {
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
         if (style === 'bernabeu') { loadBernabeuLogos(); vLast = 0; if (vCtx) stillPicture(); }
         if (style === 'janbreydel') loadJanLogos();
+        if (style === 'montjuic') { loadBernabeuLogos(); mGoals = [[], []]; mPrev = [0, 0]; }
         if (style === 'marien') loadMarienLogos();
         if (node) activeStyle = style;
         use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : texture);
@@ -952,6 +960,7 @@ const STADIUM_SCREEN = (() => {
     // called by the game every frame; cheap unless something changed
     function update(clock, s1, s2) {
         current = { clock, s1, s2 };
+        if (activeStyle === 'montjuic') montjuicGoals(clock, s1, s2);
         redraw();
     }
 

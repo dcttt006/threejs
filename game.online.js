@@ -1022,7 +1022,7 @@ const ONLINE = (() => {
         if (tickNo % (direct() ? SNAP_EVERY_P2P : SNAP_EVERY) === 0) send(snapshot());
     }
     const r2 = (v) => Math.round(v * 100) / 100;
-    const SP_KINDS = ['', 'corner', 'throw', 'free', 'penalty'];
+    const SP_KINDS = ['', 'corner', 'throw', 'free', 'penalty', 'goalkick'];
     function snapshot() {
         const all = [...team1Players, ...team2Players];
         const now = performance.now();
@@ -1227,7 +1227,7 @@ const ONLINE = (() => {
         const sp = b.m.sp;
         if (sp) {
             const kind = SP_KINDS[sp[0]] || 'throw';
-            const own = kind === 'free' || kind === 'penalty';
+            const own = kind === 'free' || kind === 'penalty' || kind === 'goalkick';
             STATE.setPiece = { kind, team: sp[1], phase: sp[2] ? 'ready' : 'out', t: sp[3],
                 spot: { x: sp[4], z: sp[5] }, sx: own ? (sp[1] === 1 ? 1 : -1) : Math.sign(sp[4]) || 1, sz: Math.sign(sp[5]) || 1, mirror: true };
             if (!sp[2] && sp[3] >= SP_OUT_TICKS - SP_CUT_LEAD && !cutShown) { cutShown = true; flashCut(); }

@@ -15,6 +15,7 @@ console.log(`%c[GAME] build: ${GAME_BUILD}`,
 const STATE = {
     screen: 'loading',         // loading | launch | setup | coin | playing | over
     mode: 'duo',               // duo (Hot-Seat) | cpu | online (game.online.js)
+    keeperMode: false,         // Alleen keeper: against the computer, you play only your keeper (game.js)
     onlineRole: null,          // online: 'host' (red, runs the match) or 'guest' (blue, draws it)
     onlineStadium: null,       // online: the host's stadium id
     onlineElapsed: 0,          // online guest: the host's match clock, in seconds
@@ -57,21 +58,21 @@ const LEVELS = {
         label: 'Makkelijk',
         desc: 'Speelt rustig, wint de bal zelden terug en de keeper laat er wat door.',
         run: 0.82, press: 10, steal: 0.012, read: 0.06, pass: 0.006, sprint: 0, lane: 0.06, slide: 0.04,
-        shootFrom: 24, shootChance: 0.014, aim: 0.12, miss: 12, power: [0.05, 0.4],
+        shootFrom: 30, shootChance: 0.024, aim: 0.12, miss: 12, power: [0.05, 0.4],
         keeper: { react: 10, lunge: 0.62, dive: 1.5, shuffle: 0.28 },
     },
     medium: {
         label: 'Gemiddeld',
         desc: 'Een eerlijke wedstrijd: zet druk en schiet als hij de kans krijgt.',
         run: 1, press: 16, steal: 0.025, read: 0.10, pass: 0.014, sprint: 0.6, lane: 0.12, slide: 0.08,
-        shootFrom: 30, shootChance: 0.025, aim: 0.24, miss: 9, power: [0.15, 0.65],
+        shootFrom: 36, shootChance: 0.04, aim: 0.24, miss: 9, power: [0.15, 0.65],
         keeper: { react: 5, lunge: 0.75, dive: 2.1, shuffle: 0.34 },
     },
     hard: {
         label: 'Moeilijk',
         desc: 'Snel, jaagt op de bal, schiet in de hoeken en de keeper houdt veel.',
         run: 1.07, press: 24, steal: 0.045, read: 0.17, pass: 0.024, sprint: 1, lane: 0.18, slide: 0.12,
-        shootFrom: 34, shootChance: 0.04, aim: 0.36, miss: 5, power: [0.4, 0.95],
+        shootFrom: 40, shootChance: 0.06, aim: 0.36, miss: 5, power: [0.4, 0.95],
         keeper: { react: 4, lunge: 0.85, dive: 2.6, shuffle: 0.38 },
     },
 };
@@ -88,7 +89,17 @@ function aiLevel() { return STATE.mode === 'cpu' ? getLevel() : LEVELS.medium; }
 // opponents. They read the game quickly, run, press and win the ball like the
 // hard level (they hardly ever have the ball long: you take it over).
 const MATE_LEVEL = Object.assign({}, LEVELS.hard, { label: 'Teamgenoot', read: 0.25, lane: 0.25 });
+// Alleen keeper: the match is about your goal. The other side plays at the
+// chosen level but shoots more often and from further out; your four play a
+// level below it (easy stays easy), so the ball comes your way often.
+const KEEPER_RIVAL = {}, KEEPER_MATE = {};
+['easy', 'medium', 'hard'].forEach((id, i, all) => {
+    const l = LEVELS[id];
+    KEEPER_RIVAL[id] = Object.assign({}, l, { shootChance: l.shootChance * 2.2, shootFrom: l.shootFrom + 10 });
+    KEEPER_MATE[id] = LEVELS[all[Math.max(0, i - 1)]];
+});
 function levelFor(p) {
+    if (STATE.mode === 'cpu' && STATE.keeperMode) return (p && p.team === STATE.p1.team ? KEEPER_MATE : KEEPER_RIVAL)[STATE.difficulty] || LEVELS.medium;
     return STATE.mode === 'cpu' && p && p.team === STATE.p1.team ? MATE_LEVEL : aiLevel();
 }
 function setLevel(id) {
@@ -379,7 +390,7 @@ const STADIUMS = [
         club: 'FC Barcelona',
         city: 'Barcelona',
         // built from nothing by tools/montjuic_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/montjuic.glb?v=1',
+        file: 'media/models/stadiums/montjuic.glb?v=3',
         capacity: '55.926',
         // measured with the Montjuïc hill behind the east stand (the 'StadiumBackdrop' in the model)
         pitch: { x: 8.80, z: -29.33, w: 61.60, l: 39.89, angle: Math.PI, y: 0.03 },
