@@ -14,8 +14,9 @@
 #     white seats across the first ring of the east stand; white LED ribbons on
 #     the front of the second and the top ring (BIENVENIDOS, WELCOME, ...);
 #     two rows of glazed boxes; the 360-degree screen hanging round the edge of
-#     the roof's opening, leaning to the pitch, with the floodlights under it
-#     (game.screen.js, style 'bernabeu')
+#     the roof's opening, leaning to the pitch, with the floodlights under it;
+#     on each side the clock, the two crests, names and score and the match
+#     live between them, as at a Clásico (game.screen.js, style 'bernabeu')
 #   - the roof: fixed over all the stands, white steel lattice underneath,
 #     floodlights along the edge of the opening; twelve big trusses across the
 #     opening carry the retractable cover, 55 m over the pitch; open, its
@@ -254,11 +255,14 @@ PW, PL = 105.0, 68.0
 LINE = 0.12
 CX, CY = 40.0, 22.0              # the core of the bowl's rounded rectangle; the stands lie round it at r
 R_WALL, WALL_Z = 16.0, 1.2       # the wall in front of the first ring: 3.5 m behind the goal line, 5 m from the touchline
-T1 = dict(r=16.3, z=1.4, rows=24, depth=0.80, rise=0.45)            # to r 35.5, z 11.75
-T2 = dict(r=36.5, z=13.9, rows=14, depth=0.82, rise=0.60)           # to r 48.0, z 21.7
-BOX_R0, BOX_R1, BOX_Z0, BOX_Z1 = 48.0, 50.0, 22.2, 26.4               # the band of glazed boxes
-T3 = dict(r=50.3, z=26.8, rows=9, depth=0.82, rise=0.66)            # to r 57.7, z 32.1
-T4 = dict(r=58.3, z=35.6, rows=13, depth=0.85, rise=0.74)           # to r 69.4, z 44.5
+# five rings as on the photos, steep and stacked, a band of dark glazed boxes
+# with a white edge between the upper ones, the top ring up to under the screen
+T1 = dict(r=16.3, z=1.4, rows=22, depth=0.80, rise=0.46)            # to r 33.9, z 11.1
+T2 = dict(r=34.9, z=12.5, rows=12, depth=0.80, rise=0.56)           # to r 44.5, z 18.7
+T3 = dict(r=45.3, z=21.6, rows=9, depth=0.80, rise=0.62)            # to r 52.5, z 26.6
+T4 = dict(r=53.3, z=29.6, rows=9, depth=0.80, rise=0.66)            # to r 60.5, z 34.9
+T5 = dict(r=61.3, z=38.0, rows=10, depth=0.81, rise=0.72)           # to r 69.4, z 44.5
+BOX_Z0 = 19.1                    # the boxes under the third ring (the lights below them)
 def back_r(t): return t['r'] + t['depth'] * t['rows']
 def top_z(t): return t['z'] + t['rise'] * (t['rows'] - 1)
 SCR_R, SCR_DR, SCR_Z0, SCR_Z1 = 18.0, 2.4, 44.0, 52.8              # the 360 screen: round the edge of the roof's opening, leaning out at the top
@@ -282,30 +286,39 @@ OUTLINE = [(66.9, 107.1), (42.5, 108.4), (19.3, 108.2), (-11.6, 107.6), (-42.8, 
 
 
 # ---------------------------------------------------------------- the bowl's plan: a rounded rectangle
+def corner_r(r):
+    # the corners' radius: 16 m at the wall round the pitch, growing only half
+    # as fast as r above it, so the ends run straight across and turn in tight
+    # corners as on the photos (not a U)
+    return R_WALL + 0.5 * max(0.0, r - R_WALL)
+
+
 def bowl_pts(r):
     # NP points counter-clockwise from the north end of the west side; point i
     # lies on the same line out from the pitch at every r
     pts = []
+    rc = corner_r(r)
+    ex, ey = CX + r - rc, CY + r - rc        # the corners' centres
     for k in range(N_LONG):                               # west side, north to south
         pts.append((CX - 2 * CX * k / N_LONG, CY + r))
     for k in range(N_CORNER):                             # south-west corner
         a = math.pi / 2 + math.pi / 2 * k / N_CORNER
-        pts.append((-CX + r * math.cos(a), CY + r * math.sin(a)))
+        pts.append((-ex + rc * math.cos(a), ey + rc * math.sin(a)))
     for k in range(N_SHORT):                              # south end
         pts.append((-CX - r, CY - 2 * CY * k / N_SHORT))
     for k in range(N_CORNER):
         a = math.pi + math.pi / 2 * k / N_CORNER
-        pts.append((-CX + r * math.cos(a), -CY + r * math.sin(a)))
+        pts.append((-ex + rc * math.cos(a), -ey + rc * math.sin(a)))
     for k in range(N_LONG):                               # east side, south to north
         pts.append((-CX + 2 * CX * k / N_LONG, -CY - r))
     for k in range(N_CORNER):
         a = 1.5 * math.pi + math.pi / 2 * k / N_CORNER
-        pts.append((CX + r * math.cos(a), -CY + r * math.sin(a)))
+        pts.append((ex + rc * math.cos(a), -ey + rc * math.sin(a)))
     for k in range(N_SHORT):                              # north end
         pts.append((CX + r, -CY + 2 * CY * k / N_SHORT))
     for k in range(N_CORNER):
         a = math.pi / 2 * k / N_CORNER
-        pts.append((CX + r * math.cos(a), CY + r * math.sin(a)))
+        pts.append((ex + rc * math.cos(a), ey + rc * math.sin(a)))
     return [Vector((x, y, 0)) for x, y in pts]
 
 
@@ -448,9 +461,9 @@ def skin_tex():
 
 
 def lattice_tex():
-    # under the roof: white steel trusses close together against the dark deck
+    # under the roof: white steel trusses close together against the light grey deck
     w = h = 128
-    t = np.ones((h, w, 3), 'f') * np.array((0.10, 0.11, 0.12), 'f')
+    t = np.ones((h, w, 3), 'f') * np.array((0.12, 0.125, 0.135), 'f')
     yy, xx = np.mgrid[0:h, 0:w]
     steel = np.array((0.82, 0.83, 0.84), 'f')
     t[(xx % 32) < 3] = steel
@@ -461,19 +474,22 @@ def lattice_tex():
 
 
 def boxes_tex():
-    # the glazed boxes between the second and third rings: lit rooms behind glass
+    # the boxes as on the photos: a band of near-black glass, the rooms behind
+    # it dim with a few warm lights and people, mullions every box
     pw, h, n = 64, 96, 16
-    t = np.zeros((h, pw * n, 3), 'f')
-    v = np.linspace(0, 1, h)[:, None]
+    t = np.ones((h, pw * n, 3), 'f') * np.array((0.012, 0.014, 0.02), 'f')
+    v = np.linspace(0, 1, h)
     for k in range(n):
-        warm = np.array((1.0, 0.86, 0.66), 'f') * rng.uniform(0.35, 0.7)
-        pane = warm * (0.55 + 0.45 * v)[..., None] * np.ones((1, pw, 1), 'f')
-        for _ in range(rng.integers(1, 4)):
-            cx, wd = rng.integers(8, pw - 8), rng.integers(4, 9)
-            m = (v[:, 0] > 0.15) & (v[:, 0] < 0.55)
-            pane[m, max(0, cx - wd // 2):cx + wd // 2] *= 0.35
-        pane[:, :2] = 0.05; pane[:3] = 0.05; pane[-3:] = 0.05
-        t[:, k * pw:(k + 1) * pw] = pane
+        x0, x1 = k * pw + 3, (k + 1) * pw - 3
+        room = np.array((0.10, 0.09, 0.08), 'f') * rng.uniform(0.5, 1.3)
+        t[int(h * 0.15):int(h * 0.9), x0:x1] = room
+        for _ in range(rng.integers(1, 3)):                                  # the lamps in the room
+            cx = rng.integers(x0 + 4, x1 - 4)
+            t[int(h * 0.18):int(h * 0.26), cx - 2:cx + 2] = (0.95, 0.85, 0.65)
+        for _ in range(rng.integers(0, 4)):                                  # people at the glass
+            cx, wd = rng.integers(x0 + 3, x1 - 3), rng.integers(3, 5)
+            t[int(h * 0.45):int(h * 0.9), max(x0, cx - wd // 2):cx + wd // 2] = (0.03, 0.03, 0.035)
+        t[:, k * pw:k * pw + 3] = (0.05, 0.05, 0.06)
     return t
 
 
@@ -501,7 +517,7 @@ def foliage_tex():
     return np.clip(np.ones((h, w, 3), 'f') * np.array((0.03, 0.06, 0.025), 'f') * (1 + 0.45 * a)[..., None], 0, 1)
 
 
-NAVY = [(0.020, 0.045, 0.140), (0.017, 0.040, 0.125), (0.024, 0.052, 0.155)]
+NAVY = [(0.014, 0.024, 0.075), (0.012, 0.021, 0.066), (0.017, 0.028, 0.084)]       # dark, greyish navy as on the photos
 seat_cols = [image_material('M_Seat%d' % i, painted('rm_seat%d' % i, seat_tile(c)), 0.6)
              for i, c in enumerate(NAVY + [(0.86, 0.87, 0.89)])]             # 3: the white seats of REAL MADRID
 concrete = principled('M_Concrete', (0.30, 0.30, 0.31), 0.9)
@@ -516,7 +532,7 @@ roof_top_m = principled('M_RoofTop', (0.36, 0.37, 0.39), 0.4, metallic=0.2)
 cover_m = image_material('M_Cover', painted('rm_cover', cover_tex()), 0.5)
 boxes_m = image_material('M_Boxes', painted('rm_boxes', boxes_tex()), 0.2)
 led_purple = principled('M_LEDBand', (0.80, 0.80, 0.86), 0.4, (0.80, 0.80, 0.86), 2.2)     # the white LED ribbons between the rings
-led_board = principled('M_LEDBoard', (0.03, 0.06, 0.30), 0.4, (0.03, 0.06, 0.30), 2.5)
+led_board = principled('M_LEDBoard', (0.06, 0.16, 0.62), 0.4, (0.06, 0.16, 0.62), 2.5)      # bright royal blue, lit, as on the photos
 letters_white = principled('M_Lettering', (0.92, 0.92, 0.94), 0.4, (0.92, 0.92, 0.94), 2.0)
 letters_navy = principled('M_LetteringDark', (0.03, 0.05, 0.24), 0.4, (0.03, 0.05, 0.24), 2.0)
 lamp = principled('M_FloodLight', (1.0, 1.0, 0.97), 0.3, (1.0, 1.0, 0.96), 3.0)
@@ -644,7 +660,7 @@ def letters_on(x, row):
 
 def dark_spot(tier, row, i, u, L):
     # a tunnel mouth half way along every block of the second and the top ring, in its first rows
-    if tier not in ('t2', 't4') or row > 2:
+    if tier == 't1' or row > 2:
         return False
     d = None
     if is_mid(i + 1):
@@ -749,8 +765,9 @@ def build_tier(name, t, base_z, tier):
 t0 = time.time()
 build_tier('T1', T1, WALL_Z, 't1')
 build_tier('T2', T2, top_z(T1) + 0.4, 't2')
-build_tier('T3', T3, BOX_Z1, 't3')
-build_tier('T4', T4, top_z(T3) + 0.4, 't4')
+build_tier('T3', T3, T3['z'] - 0.3, 't3')
+build_tier('T4', T4, T4['z'] - 0.3, 't4')
+build_tier('T5', T5, T5['z'] - 0.3, 't5')
 print('STANDS %.0fs' % (time.time() - t0))
 
 # the fronts between the rings: the wall round the pitch, the LED ribbon on the
@@ -764,21 +781,62 @@ bring(bm, B1, top_z(T1), B1, top_z(T1) + 0.4, 0)
 bring(bm, B1, top_z(T1) + 0.4, T2['r'] - 0.05, top_z(T1) + 0.4, 0, want='up')
 bring(bm, T2['r'] - 0.05, top_z(T1) + 0.4, T2['r'] - 0.05, T2['z'] - 0.3, 2, want='in')          # the LED ribbon
 bring(bm, T2['r'] - 0.05, T2['z'] - 0.3, T2['r'], T2['z'] - 0.3, 0, want='up')
-B2 = back_r(T2)
-bring(bm, B2, top_z(T2), B2, BOX_Z0, 0)
-bring(bm, BOX_R0, BOX_Z0, BOX_R0, BOX_Z1 - 0.5, 3, want='in', u_len=32.0)                          # the boxes' glass
-bring(bm, BOX_R0, BOX_Z1 - 0.5, BOX_R0, BOX_Z1, 0, want='in')
-bring(bm, BOX_R0 - 0.6, BOX_Z1, T3['r'], BOX_Z1, 0, want='up')
-bring(bm, BOX_R0 - 0.6, BOX_Z1 - 0.1, BOX_R0 - 0.6, BOX_Z1, 0, want='in')
-B3 = back_r(T3)
-bring(bm, B3, top_z(T3), B3, top_z(T3) + 0.4, 0)
-bring(bm, B3, top_z(T3) + 0.4, T4['r'] - 0.4, top_z(T3) + 0.4, 0, want='up')
-bring(bm, T4['r'] - 0.4, top_z(T3) + 0.4, T4['r'] - 0.4, top_z(T3) + 1.0, 2, want='in')                 # the second, thin ribbon
-bring(bm, T4['r'] - 0.4, top_z(T3) + 1.0, T4['r'] - 0.4, T4['z'] - 0.3, 3, want='in', u_len=32.0)      # the second row of boxes
-bring(bm, T4['r'] - 0.4, T4['z'] - 0.3, T4['r'], T4['z'] - 0.3, 0, want='up')
-B4 = back_r(T4)
-bring(bm, B4, top_z(T4), B4, ROOF_TOP0 - ROOF_TH0 + 1.0, 1)
-new_obj('Fronts', bm, '02_Bowl', [concrete, steel_white, led_purple, boxes_m])
+B2, B3, B4 = back_r(T2), back_r(T3), back_r(T4)
+for Ta, Tb in ((T2, T3), (T3, T4), (T4, T5)):
+    Ba, ztop = back_r(Ta), top_z(Ta)
+    br = Tb['r'] - 0.35
+    bring(bm, Ba, ztop, Ba, ztop + 0.35, 0)
+    bring(bm, Ba, ztop + 0.35, br, ztop + 0.35, 0, want='up')                                   # the walkway behind the ring
+    bring(bm, br, ztop + 0.35, br, Tb['z'] - 0.75, 3, want='in', u_len=32.0)                      # the boxes: dark glass, lit rooms
+    bring(bm, br - 0.02, Tb['z'] - 0.75, br - 0.02, Tb['z'] - 0.3, 1, want='in')                 # the white edge of the ring above
+    bring(bm, br - 0.02, Tb['z'] - 0.3, Tb['r'], Tb['z'] - 0.3, 0, want='up')
+B5 = back_r(T5)
+bring(bm, B5, top_z(T5), B5, ROOF_TOP0 - ROOF_TH0 + 1.0, 4)
+# the tall concrete walls (stairs and lifts) where each end meets its corners,
+# from the third ring up to the roof, as on the photos of the ends
+def fin(bm, i, th=2.4, nu=12, nv=10):
+    nf0 = len(bm.faces)
+    # a wall of nu x nv quads (the bake colours each vertex: small faces keep
+    # the dark under the seats from spreading over the whole wall)
+    pa, pb = bowl_pts(T3['r'] - 0.4), bowl_pts(B5)
+    A, B = pa[i % NP], pb[i % NP]
+    t = (pa[(i + 1) % NP] - pa[(i - 1) % NP]).normalized() * th / 2
+    zf0, zf1, zb1 = T3['z'] + 0.2, T3['z'] + 2.6, top_z(T5) + 3.2
+    def P(u, v, sgn):                                  # u: front to back, v: bottom to top
+        base = A.lerp(B, u)
+        zb = zf0 + (T3['z'] + (top_z(T5) - T3['z']) * u - zf0) * 0 + (top_z(T5) - T3['z']) * u
+        z0 = zf0 + (top_z(T5) - T3['z']) * u - 1.0      # just under the seats' line
+        z1 = zf1 + (zb1 - zf1) * u
+        return (base + sgn * t).to_3d() + Vector((0, 0, z0 + (z1 - z0) * v))
+    for sgn in (-1, 1):
+        g = [[bm.verts.new(P(u / nu, v / nv, sgn)) for v in range(nv + 1)] for u in range(nu + 1)]
+        for u in range(nu):
+            for v in range(nv):
+                q = [g[u][v], g[u + 1][v], g[u + 1][v + 1], g[u][v + 1]]
+                bm.faces.new(q if sgn > 0 else q[::-1]).material_index = 0
+    top = [[bm.verts.new(P(u / nu, 1, sgn)) for sgn in (-1, 1)] for u in range(nu + 1)]
+    for u in range(nu):                                  # the top and the front edge
+        bm.faces.new([top[u][0], top[u][1], top[u + 1][1], top[u + 1][0]]).material_index = 0
+    fr = [[bm.verts.new(P(0, v / nv, sgn)) for sgn in (-1, 1)] for v in range(nv + 1)]
+    for v in range(nv):
+        bm.faces.new([fr[v][1], fr[v][0], fr[v + 1][0], fr[v + 1][1]]).material_index = 0
+    bm.faces.ensure_lookup_table()
+    mine = [bm.faces[k] for k in range(nf0, len(bm.faces))]
+    c = (A.lerp(B, 0.5)).to_3d() + Vector((0, 0, (T3['z'] + top_z(T5)) / 2))
+    for f in mine:                                        # every face looking away from the wall's middle
+        fc = f.calc_center_median()
+        if f.normal.dot(fc - c) < 0 and abs(f.normal.dot(t.normalized())) > 0.5:
+            f.normal_flip()
+    for f in mine[2 * nu * nv:]:
+        f.normal_update()
+        if f.normal.z < -0.5 or (f.normal.z < 0.5 and f.normal.dot((A - B).to_3d()) < 0):
+            f.normal_flip()
+i0 = 0
+for name, n in SEGS:
+    if name in ('S', 'N'):
+        fin(bm, i0); fin(bm, i0 + n)
+    i0 += n
+new_obj('Fronts', bm, '02_Bowl', [concrete, steel_white, led_purple, boxes_m, concrete_dark])
 for side, (loc, out) in {'E': ((0, -(CY + T2['r'] - 0.09), 0), -math.pi / 2), 'N': ((CX + T2['r'] - 0.09, 0, 0), 0.0),
                          'S': ((-(CX + T2['r'] - 0.09), 0, 0), math.pi), 'W': ((0, CY + T2['r'] - 0.09, 0), math.pi / 2)}.items():
     for k, s_ in enumerate((-30.0, -10.0, 10.0, 30.0) if side in 'EW' else (-12.0, 12.0)):
@@ -828,8 +886,27 @@ new_obj('Dugouts', bm, '02_Bowl', [concrete_dark, glass_dark])
 
 # ================================================================ the 360 screen, round under the roof
 live = principled('M_LiveScreen', (1.0, 1.0, 1.0), 0.4, (0.10, 0.10, 0.14), 2.0)
+# one whole picture on each part, read from the pitch (game.screen.js, 2048 x 512):
+# a long side takes the top half, an end the left of the bottom half (1235 px),
+# a corner the rest of it
 fb = bmesh.new()
-bring(fb, SCR_R, SCR_Z0, SCR_R + SCR_DR, SCR_Z1, 0, want='in', step=4.0, u_len=-64.0)      # the picture repeats every 64 m, reading from the pitch
+sp0, sp1 = bowl_pts(SCR_R), bowl_pts(SCR_R + SCR_DR)
+U_END = 1235.0 / 2048.0
+i = 0
+for part, n in SEGS:
+    for k in range(n):
+        j = (i + 1) % NP
+        f0, f1 = 1 - k / n, 1 - (k + 1) / n                  # against the plan: left to right as seen from the pitch
+        if part in 'WE':
+            u0, u1, v0, v1 = f0, f1, 0.5, 1.0
+        elif part in 'NS':
+            u0, u1, v0, v1 = U_END * f0, U_END * f1, 0.0, 0.5
+        else:
+            u0, u1, v0, v1 = U_END + (1 - U_END) * f0, U_END + (1 - U_END) * f1, 0.0, 0.5
+        A0, A1, B0, B1 = sp0[i], sp0[j], sp1[i], sp1[j]
+        face(fb, [(A0.x, A0.y, SCR_Z0), (A1.x, A1.y, SCR_Z0), (B1.x, B1.y, SCR_Z1), (B0.x, B0.y, SCR_Z1)], -outward(i, sp0), 0,
+             [(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
+        i += 1
 screen_face = new_obj('ScreenFace_0', fb, '02_Bowl', [live])
 bm = bmesh.new()
 bring(bm, SCR_R + 0.7, SCR_Z0 - 0.5, SCR_R + SCR_DR + 0.7, SCR_Z1 + 0.5, 0, want='out', step=6.0)         # the back of the screen
@@ -840,8 +917,23 @@ bring(bm, SCR_R + SCR_DR - 0.02, SCR_Z1, SCR_R + SCR_DR - 0.1, SCR_Z1 + 0.5, 0, 
 bring(bm, SCR_R + 0.4, SCR_Z0 - 1.9, SCR_R + 2.2, SCR_Z0 - 1.9, 1, want='down', step=6.0)                   # the gantry of floodlights under it
 for p in bowl_pts(SCR_R + SCR_DR + 0.4)[::2]:                                 # the hangers up into the roof's trusses
     tube(bm, Vector((p.x, p.y, SCR_Z1 + 0.5)), Vector((p.x, p.y, 56.0)), 0.14, 1, 5)
-for p in bowl_pts(SCR_R + 1.3)[::1]:
-    box(bm, (p.x, p.y), (1, 0), 0.4, (0, 1), 0.4, SCR_Z0 - 2.6, SCR_Z0 - 1.9, 2)
+def ring_samples(r, step):
+    # points every `step` along the bowl's line at r, with the direction out
+    p = bowl_pts(r)
+    out, acc = [], 0.0
+    for i in range(NP):
+        a, b = p[i], p[(i + 1) % NP]
+        L = (b - a).length
+        n = max(1, round(L / step))
+        o = outward(i, p)
+        for k in range(n):
+            out.append((a.lerp(b, (k + 0.5) / n), o))
+    return out
+
+
+for rr, zz in ((SCR_R + 0.9, SCR_Z0 - 2.4), (SCR_R + 1.7, SCR_Z0 - 2.1)):
+    for q, o in ring_samples(rr, 0.85):
+        box(bm, (q.x, q.y), (o.y, -o.x), 0.26, (o.x, o.y), 0.2, zz - 0.45, zz, 2)
 new_obj('Screen_Frame', bm, '02_Bowl', [portal, steel_white, lamp])
 
 # ================================================================ the roof
@@ -871,11 +963,6 @@ for i in range(NR):
     # the edge of the opening, with the floodlights under it
     a, b = INNER[i % NR], INNER[j % NR]
     face(bm, [(a.x, a.y, rz_under(1)), (b.x, b.y, rz_under(1)), (b.x, b.y, rz_top(1)), (a.x, a.y, rz_top(1))], Vector((-a.x, -a.y, 0)), 2)
-for i in range(0, NR, 2):
-    p = INNER[i]
-    d = Vector((p.x, p.y, 0)).normalized()
-    c = p + d * 1.6
-    box(bm, (c.x, c.y), (d.y, -d.x), 0.55, (d.x, d.y), 0.35, rz_under(1) - 0.8, rz_under(1), 3)
 new_obj('Roof', bm, '04_Roof', [lattice, roof_top_m, steel_white, lamp, skin])
 
 # the twelve trusses across the opening that carry the retractable cover
@@ -892,6 +979,17 @@ for x in TR_X:
         tube(bm, Vector((x, ys[k], zb)), Vector((x, ys[k], zt)), 0.14, 0, 4, trim=0.5)
 for y in (-OY + 2.0, 0.0, OY - 2.0):                                         # the rails the cover runs on
     tube(bm, Vector((-OX - 2.0, y, COVER_Z - 0.1)), Vector((OX + 2.0, y, COVER_Z - 0.1)), 0.2, 0, 4)
+for i in range(0, NR, 6):
+    pts = []
+    for t_ in np.linspace(0.04, 1.0, 10):
+        x_, y_, _ = rp(i, t_, 0)
+        pts.append((Vector((x_, y_, rz_under(t_) - 2.6)), Vector((x_, y_, rz_under(t_) - 0.15))))
+    for k in range(len(pts) - 1):
+        (b0, t0__), (b1, t1__) = pts[k], pts[k + 1]
+        tube(bm, b0, b1, 0.16, 0, 4, step=8.0)
+        tube(bm, t0__, t1__, 0.16, 0, 4, step=8.0)
+        tube(bm, b0, t1__, 0.09, 0, 3, trim=0.2, step=8.0)
+        tube(bm, b0, t0__, 0.09, 0, 3, trim=0.2, step=8.0)
 new_obj('Roof_Trusses', bm, '04_Roof', [steel_white])
 
 
@@ -1004,8 +1102,8 @@ for i in range(0, NR, 2):                                                     # 
 for i in range(1, NR, 2):                                                     # and out onto the stands
     p = INNER[i] + Vector((INNER[i].x, INNER[i].y, 0)).normalized() * 3.0
     light(coll, 'SPOT', (p.x, p.y, EDGE_Z), 9000, FLOOD, target=(p.x * 1.7, p.y * 1.7, 18), size=85, blend=0.6)
-for p in bowl_pts(B4 - 4.0)[::2]:                                             # lights under the roof, over the top ring
-    light(coll, 'POINT', (p.x, p.y, rz_under(0.05) - 1.5), 4500, (1.0, 0.95, 0.88))
+for p in bowl_pts(B5 - 4.0)[::2]:                                             # lights under the roof, over the top ring
+    light(coll, 'POINT', (p.x, p.y, top_z(T5) + 2.5), 2600, (1.0, 0.95, 0.88))
 for p in bowl_pts(B2 + 0.5)[::3]:                                             # and over the second ring, from under the boxes
     light(coll, 'POINT', (p.x, p.y, BOX_Z0 - 0.6), 1400, (1.0, 0.93, 0.84))
 light(coll, 'SUN', (0, 0, 120), 1.6, (0.80, 0.86, 1.0), target=(30, 20, 0))

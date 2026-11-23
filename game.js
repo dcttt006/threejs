@@ -1031,6 +1031,8 @@ function animate(now) {
     updateSetPieceUI();
     updateTimer();
     renderer.render(scene, camera);
+    // a stadium screen that shows the match as on television takes this frame (game.screen.js)
+    if (typeof STADIUM_SCREEN !== 'undefined' && STADIUM_SCREEN.frame) STADIUM_SCREEN.frame(renderer.domElement, now);
 }
 
 // Charge feedback on the arrow over the head of the one you play: it grows

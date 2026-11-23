@@ -359,7 +359,7 @@ const STADIUMS = [
         club: 'Real Madrid',
         city: 'Madrid',
         // built from nothing by tools/bernabeu_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/bernabeu.glb?v=2',
+        file: 'media/models/stadiums/bernabeu.glb?v=7',
         capacity: '78.297',
         pitch: { x: -1.74, z: -3.47, w: 72.95, l: 47.24, angle: Math.PI, y: 0 },
         look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },

@@ -26,9 +26,11 @@
 // time of day, as on the photos; right of it (all the other screen shows) the
 // match clock, a block in each side's colour with its code and the score.
 // screen: 'bernabeu' (Santiago Bernabéu) is the 360-degree ring round the
-// roof's opening, one picture every 64 m on royal blue: a lilac panel per side
-// with its colour, code and score, the clock between them, BIENVENIDOS and
-// HALA MADRID at the ends.
+// roof's opening, on royal blue as on the photos of a Clásico there: on each
+// side the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the
+// match in the middle as on television (the match camera's own picture), the
+// score, F.C. BARCELONA and its crest, and the clock again; the corners
+// only the clock (media/hud/realmadrid.png, media/hud/fcbarcelona.png).
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -238,7 +240,6 @@ const STADIUM_SCREEN = (() => {
         [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
         [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
         [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
-        bTexture.wrapS = THREE.RepeatWrapping;         // the ring repeats the picture all the way round
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -572,37 +573,161 @@ const STADIUM_SCREEN = (() => {
         mTexture.needsUpdate = true;
     }
 
-    // ---- Bernabéu: the 360 ring, 64 x 8 m a picture (2048 x 256) ----
-    const BW = 2048, BH = 256;
-    let bCanvas = null, bCtx = null, bTexture = null;
-    function bernabeuTeams() {
-        if (typeof STATE !== 'undefined' && STATE.screen === 'playing' && typeof KIT !== 'undefined') return campinTeams();
-        return [{ code: 'RMA', color: '#f4f4f6' }, { code: 'CPU', color: '#1c3f94' }];
+    // ---- Bernabéu: the 360 ring round the roof's opening (2048 x 512) ----
+    // As on the photos of a Clásico there: on each side, read from the pitch,
+    // the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the match
+    // as on television in the middle, the score, F.C. BARCELONA and its crest,
+    // the clock again. The top half is a long side (80 m of screen), the
+    // bottom half an end (its left 1235 px, 44 m) and a corner (the rest).
+    // The television picture is the match camera's own frame, taken twice a
+    // second (frame(), called by the game right after it draws); before a
+    // match a still of the pitch from the camera's side.
+    const BW = 2048, BH = 512, B_END = 1235;
+    let bCanvas = null, bCtx = null, bTexture = null, rmLogo = null, fcbLogo = null;
+    let vCanvas = null, vCtx = null, vLast = 0;
+    const VW = 512, VH = 288;
+    function loadBernabeuLogos() {
+        if (typeof Image === 'undefined' || rmLogo) return;
+        const load = (src, set) => { const im = new Image(); im.onload = () => { set(im); last = ''; redraw(); }; im.src = src; };
+        load('media/hud/realmadrid.png', (im) => { rmLogo = im; });
+        load('media/hud/fcbarcelona.png', (im) => { fcbLogo = im; });
+    }
+    // the colours and letters as measured on the photos (img/7.png, 8.png):
+    // the panels almost black navy with a bright blue glow from the top, the
+    // clock's panel running from navy to a light blue at its inner edge with a
+    // thin white slanting line; narrow upright bold capitals
+    const B_DEEP = '#020430', B_NAVY = '#03034f', B_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
+    let bFont = false;
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+        Promise.all([document.fonts.load(`700 80px "Barlow Condensed"`), document.fonts.load(`600 80px "Barlow Condensed"`)])
+            .then(() => { bFont = true; last = ''; redraw(); }).catch(() => {});
+    }
+    // a crest fitted into a box of w x h, centred on (cx, cy)
+    function crestAt(c, img, cx, cy, w, h) {
+        if (!img) return;
+        const k = Math.min(w / img.width, h / img.height);
+        c.drawImage(img, cx - img.width * k / 2, cy - img.height * k / 2, img.width * k, img.height * k);
+    }
+    // a team's panel: near-black navy, lit from the top by a blue glow, a
+    // touch of violet at the edge by the television picture (inner: +1 right, -1 left)
+    function teamField(c, x, y, w, h, inner) {
+        c.fillStyle = B_NAVY; c.fillRect(x, y, w, h);
+        c.save();
+        c.beginPath(); c.rect(x, y, w, h); c.clip();
+        let g = c.createRadialGradient(x + w * 0.5, y - h * 0.15, 0, x + w * 0.5, y - h * 0.15, w * 0.62);
+        g.addColorStop(0, 'rgba(46,96,245,0.95)'); g.addColorStop(0.45, 'rgba(26,58,205,0.55)'); g.addColorStop(1, 'rgba(3,3,79,0)');
+        c.fillStyle = g; c.fillRect(x, y, w, h);
+        const ex = inner > 0 ? x + w : x;
+        g = c.createRadialGradient(ex, y + h * 0.75, 0, ex, y + h * 0.75, h * 1.1);
+        g.addColorStop(0, 'rgba(110,64,150,0.55)'); g.addColorStop(1, 'rgba(110,64,150,0)');
+        c.fillStyle = g; c.fillRect(x, y, w, h);
+        c.restore();
+    }
+    // the clock's panel: navy at its outer end to light blue at its inner edge,
+    // a thin white line slanting across near that edge (inner: +1 right, -1 left)
+    function clockField(c, x, y, w, h, inner) {
+        const g = c.createLinearGradient(inner > 0 ? x : x + w, y + h, inner > 0 ? x + w : x, y);
+        g.addColorStop(0, '#010358'); g.addColorStop(0.55, '#1a3fc8'); g.addColorStop(0.85, '#4e80e6'); g.addColorStop(1, '#9db9f8');
+        c.fillStyle = g; c.fillRect(x, y, w, h);
+        c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2.5;
+        const lx = inner > 0 ? x + w * 0.80 : x + w * 0.20;
+        c.beginPath(); c.moveTo(lx - inner * h * 0.18, y); c.lineTo(lx + inner * h * 0.18, y + h); c.stroke();
+    }
+    // the still before a match: the stands and the pitch seen from the camera's side
+    function stillPicture() {
+        const c = vCtx;
+        const sky = c.createLinearGradient(0, 0, 0, VH * 0.42);
+        sky.addColorStop(0, '#0d1424'); sky.addColorStop(1, '#1e2b4a');
+        c.fillStyle = sky; c.fillRect(0, 0, VW, VH * 0.42);
+        let r = 7;
+        const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+        for (let k = 0; k < 900; k++) {                    // the crowd
+            c.fillStyle = rnd() < 0.5 ? 'rgba(230,230,240,0.55)' : 'rgba(120,130,170,0.5)';
+            c.fillRect(rnd() * VW, VH * 0.06 + rnd() * VH * 0.34, 2, 2);
+        }
+        c.fillStyle = '#e8e8f0'; c.fillRect(0, VH * 0.40, VW, 4);
+        const top = VH * 0.42;
+        for (let k = 0; k < 12; k++) {                     // the stripes, wider towards the camera
+            c.fillStyle = k % 2 ? '#3d8f3a' : '#35823a';
+            const x0 = k / 12, x1 = (k + 1) / 12;
+            c.beginPath();
+            c.moveTo(VW * (0.12 + 0.76 * x0), top); c.lineTo(VW * (0.12 + 0.76 * x1), top);
+            c.lineTo(VW * (-0.35 + 1.7 * x1), VH); c.lineTo(VW * (-0.35 + 1.7 * x0), VH); c.closePath(); c.fill();
+        }
+        c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(VW * 0.12, top + 6); c.lineTo(VW * 0.88, top + 6); c.stroke();
+        c.beginPath(); c.moveTo(VW / 2, top + 6); c.lineTo(VW / 2, VH); c.stroke();
+        c.beginPath(); c.ellipse(VW / 2, VH * 0.70, VW * 0.13, VH * 0.11, 0, 0, Math.PI * 2); c.stroke();
+    }
+    function ensureVideo() {
+        if (vCanvas || typeof document === 'undefined') return;
+        vCanvas = document.createElement('canvas');
+        vCanvas.width = VW; vCanvas.height = VH;
+        vCtx = vCanvas.getContext('2d');
+        stillPicture();
+    }
+    // the picture in its frame
+    function videoAt(c, x, y, w, h) {
+        c.fillStyle = '#05091f'; c.fillRect(x - 5, y - 5, w + 10, h + 10);
+        if (vCanvas) c.drawImage(vCanvas, x, y, w, h);
     }
     function drawBernabeu(clock, s1, s2) {
-        // royal blue as on the photos, a lilac panel per side with its name,
-        // the score and the clock in the middle, BIENVENIDOS at the ends
-        const c = bCtx, [ta, tb] = bernabeuTeams();
-        c.fillStyle = '#1631b4'; c.fillRect(0, 0, BW, BH);
-        c.fillStyle = '#0c1a78'; c.fillRect(0, 0, BW, 14); c.fillRect(0, BH - 14, BW, 14);
+        const c = bCtx;
+        ensureVideo();
+        c.fillStyle = B_DEEP; c.fillRect(0, 0, BW, BH);
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillStyle = '#ffffff'; c.font = `700 58px ${CF}`;
-        c.fillText('BIENVENIDOS', 245, BH / 2 + 4);
-        c.fillText('HALA MADRID', BW - 245, BH / 2 + 4);
-        const xm = BW / 2;
-        const panel = (x, team) => {
-            c.fillStyle = '#c9c3f2'; c.fillRect(x - 230, 34, 460, 188);
-            c.fillStyle = team.color; c.fillRect(x - 210, 58, 120, 140);
-            c.fillStyle = lightness(team.color) > 0.62 ? '#0c1a78' : '#ffffff';
-            c.font = `700 50px ${CF}`; c.fillText(team.code, x - 150, 130);
-            c.fillStyle = '#0c1a78'; c.font = `700 150px ${CF}`;
-            c.fillText(String(team.score), x + 90, 136);
+        const text = (str, x, y, size, maxW = 1e4, weight = 700) => {
+            c.font = `${weight} ${size}px ${B_FONT}`;
+            const w = c.measureText(str).width;
+            if (w > maxW) c.font = `${weight} ${Math.floor(size * maxW / w)}px ${B_FONT}`;
+            c.fillStyle = '#ffffff'; c.fillText(str, x, y);
         };
-        panel(xm - 300, Object.assign({ score: s1 }, ta));
-        panel(xm + 300, Object.assign({ score: s2 }, tb));
-        c.fillStyle = '#ffffff'; c.font = `700 64px ${CF}`;
-        c.fillText(clock, xm, BH / 2 + 4);
+        const GAP = 6;                                   // the dark seams between the panels
+        // one side of the ring: [clock][crest name score][television][score name crest][clock]
+        const side = (y0, h, L, video, names) => {
+            const mid = y0 + h / 2;
+            const half = (sgn, logo, name, score) => {
+                const X = (x, w) => sgn > 0 ? x : L.total - x - w;      // a box, mirrored on the right
+                const P = (x) => sgn > 0 ? x : L.total - x;               // a point, mirrored
+                clockField(c, X(0, L.clock), y0, L.clock, h, sgn);
+                text(clock, P(L.clock * 0.42), mid + 2, L.clockSize, L.clock - 70, 600);
+                const tx = L.clock + GAP;
+                teamField(c, X(tx, L.team), y0, L.team, h, sgn);
+                crestAt(c, logo, P(tx + L.crestX), mid, L.crestW, h * 0.86);
+                if (names) text(name, P(tx + L.nameX), mid + 2, 58, L.nameW);
+                text(String(score), P(tx + L.team - L.scoreR), mid + 6, L.scoreSize, 130);
+            };
+            half(1, rmLogo, 'REAL MADRID C.F.', s1);
+            half(-1, fcbLogo, 'F.C. BARCELONA', s2);
+            const vx = L.clock + L.team + 2 * GAP;
+            teamField(c, vx, y0, L.total - 2 * vx, h, 1);
+            videoAt(c, (L.total - video.w) / 2, y0 + (h - video.h) / 2, video.w, video.h);
+        };
+        // a long side: 2048 px, the top half
+        side(8, 240, { total: BW, clock: 205, clockSize: 84, team: 640, crestX: 118, crestW: 200, nameX: 380, nameW: 250, scoreR: 62, scoreSize: 180 },
+             { w: 330, h: 186 }, true);
+        // an end: 1235 px, the bottom half, no names
+        side(264, 240, { total: B_END, clock: 170, clockSize: 66, team: 312, crestX: 100, crestW: 175, nameX: 0, nameW: 0, scoreR: 58, scoreSize: 160 },
+             { w: 246, h: 150 }, false);
+        // a corner: the clock on its light blue, as at the ends of the screen on the photos
+        clockField(c, B_END + GAP, 264, BW - B_END - GAP, 240, 1);
+        text(clock, (B_END + GAP + BW) / 2 - 20, 388, 96, BW - B_END - 160, 600);
         bTexture.needsUpdate = true;
+    }
+    // called by the game right after it draws the match: twice a second the
+    // frame goes onto the screen as its television picture
+    function frame(src, now) {
+        if (activeStyle !== 'bernabeu' || !bCtx || !src || !src.width) return;
+        if (now - vLast < 500) return;
+        vLast = now;
+        ensureVideo();
+        const sw = src.width, sh = src.height, want = VW / VH;
+        let cw = sw, ch = sw / want;
+        if (ch > sh) { ch = sh; cw = sh * want; }
+        try {
+            vCtx.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, VW, VH);
+        } catch (_) { return; }
+        drawBernabeu(current.clock, current.s1, current.s2);
     }
 
     function drawKuip(clock, s1, s2) {
@@ -666,10 +791,11 @@ const STADIUM_SCREEN = (() => {
     }
 
     let current = { clock: '00:00', s1: 0, s2: 0 };
+    let activeStyle = null;                        // the style of the screens on the model in use
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -695,6 +821,8 @@ const STADIUM_SCREEN = (() => {
         });
         if (style === 'kuip') loadKuipLogo(logo);
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
+        if (style === 'bernabeu') { loadBernabeuLogos(); vLast = 0; if (vCtx) stillPicture(); }
+        if (node) activeStyle = style;
         use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : texture);
         use(band, rTexture);
         last = '';
@@ -708,5 +836,5 @@ const STADIUM_SCREEN = (() => {
         redraw();
     }
 
-    return { attach, update };
+    return { attach, update, frame };
 })();
