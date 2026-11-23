@@ -273,6 +273,18 @@ const STADIUMS = [
         view: { lookZ: -8 },
     },
     {
+        id: 'jan-breydel',
+        name: 'Jan Breydelstadion',
+        club: 'Club Brugge · Cercle Brugge',
+        city: 'Brugge',
+        // built from scratch by tools/jan_breydel_build.py
+        file: 'media/models/stadiums/jan_breydel.glb?v=3',
+        capacity: '29.062',
+        // the model's own pitch: 105 x 68 m round the origin, its grass at 0.22 m
+        pitch: { x: 0, z: 0, w: 105, l: 68, angle: 0, y: 0.22 },
+        view: { lookZ: -10 },
+    },
+    {
         id: 'metlife',
         name: 'MetLife Stadium',
         club: 'New York New Jersey',
@@ -377,7 +389,7 @@ const LEAGUES = [
     { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['bernabeu', 'camp-nou', 'montjuic', 'wanda-metropolitano'] },
     { id: 'premier',    name: 'Premier League',   land: 'Engeland',         flag: 'gb-eng', stadiums: ['old-trafford', 'anfield', 'emirates', 'etihad'] },
     { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip'] },
-    { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park'] },
+    { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park', 'jan-breydel'] },
     { id: 'efl',        name: 'EFL',              land: 'Engeland',         flag: 'gb-eng', stadiums: ['home-park', 'cheltenham'] },
     { id: 'bundesliga2', name: '2. Bundesliga',   land: 'Duitsland',        flag: 'de',     stadiums: ['olympiastadion'] },
     { id: 'argentina',  name: 'Liga Profesional', land: 'Argentinië',       flag: 'ar',     stadiums: ['la-bombonera'] },
