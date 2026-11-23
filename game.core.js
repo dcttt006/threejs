@@ -295,15 +295,17 @@ const STADIUMS = [
         club: 'Royale Union Saint-Gilloise',
         city: 'Vorst · Brussel',
         // built from nothing by tools/marien_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/joseph_marien.glb?v=5',
+        file: 'media/models/stadiums/joseph_marien.glb?v=7',
         capacity: '9.400',
         // measured with the Duden Park and the town round it (the 'StadiumBackdrop' in the model)
-        pitch: { x: 0.10, z: -0.07, w: 43.28, l: 28.03, angle: Math.PI, y: 0.05 },
+        pitch: { x: 0.22, z: -0.23, w: 43.24, l: 28.00, angle: Math.PI, y: 0.05 },
         // a June evening: the low sun baked into the model, drawn unlit at
         // twice the stored light under a day sky (overhead, horizon)
         look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // the scoreboard over the north-east end (game.screen.js)
+        screen: 'marien',
         // Stadion kiezen looks from the park's side; turned round it shows the
-        // park stand's seats and the main stand's roof from the town's side
+        // terrace, the ends and the main stand's roof from the town's side
         rotateY: Math.PI,
         view: { lookZ: -10 },
     },

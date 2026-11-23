@@ -36,6 +36,11 @@
 // every 8 seconds, and under them a blue bar: Club Brugge's badge, its score,
 // an arrow, the clock, an arrow, the other score and Cercle's badge
 // (media/hud/clubbrugge.png, cerclebrugge.png).
+// screen: 'marien' (Stade Joseph Marien) is the scoreboard over the north-east
+// end, as on the photo from the seats under it: almost black, the scores
+// either side of the clock along the top, Union's crest on the left and the
+// other side's on the right with VS between, a teal stripe down the left edge
+// and a blue one by each crest (media/hud/union.png, clubbrugge.png).
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -246,6 +251,8 @@ const STADIUM_SCREEN = (() => {
         [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
         [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
         [jCanvas, jCtx, jTexture] = make(1024, 1024, 1024 / JH);
+        [xCanvas, xCtx, xTexture] = make(1024, 512, 512 / XH);
+        xCtx.setTransform(1024 / XW, 0, 0, 512 / XH, 0, 0);
         jCtx.setTransform(1024 / JW, 0, 0, 1024 / JH, 0, 0);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
@@ -650,6 +657,37 @@ const STADIUM_SCREEN = (() => {
         jTexture.needsUpdate = true;
     }
 
+    // ---- Joseph Marien: the scoreboard over the north-east end (1000 x 612 on a 1024 x 512 canvas; 8 x 4.9 m) ----
+    const XW = 1000, XH = 612;
+    let xCanvas = null, xCtx = null, xTexture = null, usgLogo = null, xAwayLogo = null;
+    function loadMarienLogos() {
+        if (typeof Image === 'undefined' || usgLogo) return;
+        const load = (src, set) => { const im = new Image(); im.onload = () => { set(im); last = ''; redraw(); }; im.src = src; };
+        load('media/hud/union.png', (im) => { usgLogo = im; });
+        load('media/hud/clubbrugge.png', (im) => { xAwayLogo = im; });
+    }
+    function drawMarien(clock, s1, s2) {
+        const c = xCtx;
+        c.fillStyle = '#0b0c0f'; c.fillRect(0, 0, XW, XH);
+        c.fillStyle = '#1b8f88'; c.fillRect(0, 128, 58, XH - 128);
+        c.fillStyle = '#2140b0'; c.fillRect(276, 172, 76, XH - 172); c.fillRect(812, 172, 76, XH - 172);
+        const crest = (img, cx, cy, h) => {
+            if (!img) return;
+            const k = h / img.height;
+            c.drawImage(img, cx - img.width * k / 2, cy - h / 2, img.width * k, h);
+        };
+        crest(usgLogo, 262, 382, 250);
+        crest(xAwayLogo, 730, 380, 236);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#b9a76a'; c.font = `600 46px ${J_FONT}`;
+        c.fillText('VS', 505, 364);
+        c.fillStyle = '#ffffff'; c.font = `600 86px ${J_FONT}`;
+        c.fillText(String(s1), 284, 86);
+        c.fillText(clock, 462, 86);
+        c.fillText(String(s2), 650, 86);
+        xTexture.needsUpdate = true;
+    }
+
     // ---- Bernabéu: the 360 ring round the roof's opening (2048 x 512) ----
     // As on the photos of a Clásico there: on each side, read from the pitch,
     // the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the match
@@ -872,7 +910,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${!!xAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -884,6 +922,7 @@ const STADIUM_SCREEN = (() => {
         drawMontjuic(current.clock, current.s1, current.s2);
         drawBernabeu(current.clock, current.s1, current.s2);
         drawJanBreydel(current.clock, current.s1, current.s2);
+        drawMarien(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -901,8 +940,9 @@ const STADIUM_SCREEN = (() => {
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
         if (style === 'bernabeu') { loadBernabeuLogos(); vLast = 0; if (vCtx) stillPicture(); }
         if (style === 'janbreydel') loadJanLogos();
+        if (style === 'marien') loadMarienLogos();
         if (node) activeStyle = style;
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();
