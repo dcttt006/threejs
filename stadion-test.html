@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="nl">
 <head>
@@ -246,7 +247,9 @@ async function watch() {
         else if (s !== stamp) { stamp = s; load(false); }
     } catch (_) { /* server stopped: keep showing what we have */ }
 }
-setInterval(watch, 2000);
+// only with ?watch in the address: some servers (Live Server) answer every
+// check differently, and the page would keep reloading
+if (new URLSearchParams(location.search).has('watch')) setInterval(watch, 2000);
 
 function resize() {
     renderer.setSize(innerWidth, innerHeight);

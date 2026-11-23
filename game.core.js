@@ -277,11 +277,16 @@ const STADIUMS = [
         name: 'Jan Breydelstadion',
         club: 'Club Brugge · Cercle Brugge',
         city: 'Brugge',
-        // built from scratch by tools/jan_breydel_build.py
-        file: 'media/models/stadiums/jan_breydel.glb?v=3',
+        // built from nothing by tools/jan_breydel_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/jan_breydel.glb?v=12',
         capacity: '29.062',
-        // the model's own pitch: 105 x 68 m round the origin, its grass at 0.22 m
-        pitch: { x: 0, z: 0, w: 105, l: 68, angle: 0, y: 0.22 },
+        // measured with the Olympiapark round it (the 'StadiumBackdrop' in the model)
+        pitch: { x: 0.00, z: 0.00, w: 43.31, l: 28.05, angle: Math.PI, y: 0.06 },
+        // an October afternoon: the low sun baked into the model, drawn unlit
+        // at twice the stored light under a day sky (overhead, horizon)
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // the scoreboard in the open south-west corner: adverts, under them the badges, the score and the clock (game.screen.js)
+        screen: 'janbreydel',
         view: { lookZ: -10 },
     },
     {
@@ -582,6 +587,14 @@ function navigateToFromPopState(target) {
 
 // ----------- screen flow -----------
 const QUICK_MODE = location.pathname.endsWith('play.html');
+// play.html?stadion=jan-breydel: straight into a match in that stadium (for
+// this session only, like a pick in Stadion kiezen)
+if (QUICK_MODE) {
+    const wanted = new URLSearchParams(location.search).get('stadion');
+    if (wanted && STADIUMS.some(s => s.id === wanted)) {
+        try { sessionStorage.setItem(STADIUM_STORAGE_KEY, wanted); } catch (_) {}
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     if (QUICK_MODE) {

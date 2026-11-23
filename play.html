@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Pitch Royale</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500;1,600;1,700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@900&family=Barlow+Semi+Condensed:wght@700&family=Montserrat:wght@500;600;700&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=142">
+</head>
+<body>
+    <!-- shared icons -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="icon-back" viewBox="0 0 24 24">
+            <path d="M20 12H5M11 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>
+        </symbol>
+        <symbol id="icon-shirt" viewBox="0 0 64 56">
+            <path d="M22 4 10 8 2 20l10 7 4-5v30h32V22l4 5 10-7-8-12-12-4c-2 5-6 7-10 7s-8-2-10-7z"/>
+        </symbol>
+    </svg>
+
+    <!-- ============ SPLASH ============ -->
+    <div id="loading-screen" class="screen menu active">
+        <div class="splash__name">Pitch Royale</div>
+    </div>
+
+    <!-- ============ START ============ -->
+    <!-- night blue, the name in white and yellow, slanted menu, the pitch in perspective -->
+    <div id="launch-screen" class="screen home">
+        <!-- a phone held upright: say before kick-off that the match is played on its side -->
+        <p class="home__rotate" role="note">
+            <span class="home__rotate-phone" aria-hidden="true"></span>
+            <span><strong>Speel liggend:</strong> draai je telefoon een kwartslag</span>
+        </p>
+        <div class="home__decor" aria-hidden="true">
+        <span class="home__stripe home__stripe--top"></span>
+        <span class="home__stripe home__stripe--bottom"></span>
+
+        <svg class="home__pitch" viewBox="0 0 1050 680">
+            <g fill="none" stroke="currentColor" stroke-width="4">
+                <rect x="2" y="2" width="1046" height="676"/>
+                <line x1="525" y1="2" x2="525" y2="678"/>
+                <circle cx="525" cy="340" r="91.5"/>
+                <rect x="2" y="138.5" width="165" height="403"/>
+                <rect x="2" y="248.5" width="55" height="183"/>
+                <path d="M167 266.9a91.5 91.5 0 0 1 0 146.2"/>
+                <rect x="883" y="138.5" width="165" height="403"/>
+                <rect x="993" y="248.5" width="55" height="183"/>
+                <path d="M883 266.9a91.5 91.5 0 0 0 0 146.2"/>
+                <path d="M2 30a28 28 0 0 0 28-28M1020 2a28 28 0 0 0 28 28M2 650a28 28 0 0 1 28 28M1020 678a28 28 0 0 1 28-28"/>
+            </g>
+            <g fill="currentColor">
+                <circle cx="525" cy="340" r="8"/>
+                <circle cx="112" cy="340" r="6"/>
+                <circle cx="938" cy="340" r="6"/>
+            </g>
+        </svg>
+        </div>
+
+        <main class="home__main">
+            <h1 class="home__title"><span>Pitch</span> <span class="home__title-gold">Royale</span></h1>
+            <p class="home__tag">90 seconden. Meeste goals wint.</p>
+
+            <div class="home__menu">
+                <button id="launch-cta" class="home__btn home__btn--gold" type="button">
+                    <span class="home__btn-label">2 spelers</span>
+                    <span class="home__btn-meta">Eén toetsenbord</span>
+                </button>
+                <button id="launch-online" class="home__btn" type="button">
+                    <span class="home__btn-label">Online</span>
+                    <span class="home__btn-meta">Tegen een vriend</span>
+                </button>
+                <button id="launch-cpu" class="home__btn" type="button">
+                    <span class="home__btn-label">Tegen de computer</span>
+                    <span class="home__btn-meta" id="launch-cpu-level">Gemiddeld</span>
+                </button>
+                <button id="launch-wk" class="home__btn" type="button">
+                    <span class="home__btn-label">WK 2026</span>
+                    <span class="home__btn-meta">48 landen</span>
+                </button>
+                <button id="launch-var" class="home__btn" type="button">
+                    <span class="home__btn-label">Jij bent de VAR</span>
+                    <span class="home__btn-meta" id="launch-var-meta">Minigame</span>
+                </button>
+            </div>
+
+            <div class="home__links">
+                <button id="launch-star-pick" class="home__stadium" type="button">
+                    <span class="home__stadium-label">Speler kiezen</span>
+                    <span class="home__stadium-name" id="launch-star-name">Lionel Messi</span>
+                </button>
+                <button id="launch-stadium-pick" class="home__stadium" type="button">
+                    <span class="home__stadium-label">Stadion kiezen</span>
+                    <span class="home__stadium-name" id="launch-stadium-name">Lotto Park</span>
+                </button>
+                <button id="launch-settings" class="home__stadium" type="button">
+                    <span class="home__stadium-label">Instellingen</span>
+                    <span class="home__stadium-name" id="launch-settings-name">Camera: Uitzending</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- shown only while statistics are on (game.stats.js) -->
+        <p class="home__note" id="stats-note" hidden>Deze game houdt anoniem bij hoe er gespeeld wordt: apparaat, gekozen namen en uitslagen. Geen IP-adressen of accounts.</p>
+    </div>
+
+    <!-- ============ SETUP ============ -->
+    <div id="setup-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <div class="page__head">
+                <h1 class="title">Opstelling</h1>
+                <div class="seg" role="tablist" aria-label="Spelmodus">
+                    <button class="seg__btn mode-tab active" type="button" data-mode="duo" role="tab" aria-selected="true">2 spelers</button>
+                    <button class="seg__btn mode-tab" type="button" data-mode="cpu" role="tab" aria-selected="false">Tegen de computer</button>
+                </div>
+            </div>
+
+            <div class="halves">
+                <section class="team-card" id="card-p1" data-team="red">
+                    <div class="team-card__head">
+                        <svg class="shirt" aria-hidden="true"><use href="#icon-shirt"/></svg>
+                        <div>
+                            <div class="team-card__side">Thuis</div>
+                            <div class="team-card__color">Rood</div>
+                        </div>
+                    </div>
+                    <label class="field" for="p1-name">
+                        <span class="field__label">Naam speler 1</span>
+                        <input id="p1-name" class="field__input" type="text" maxlength="14" placeholder="Speler 1" autocomplete="off" spellcheck="false">
+                    </label>
+                    <dl class="keys">
+                        <div><dt>Bewegen</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dd></div>
+                        <div><dt>Schieten</dt><dd><kbd>Spatie</kbd> langer = harder</dd></div>
+                        <div><dt>Hoog schot</dt><dd><kbd>W</kbd> + <kbd>Spatie</kbd> samen</dd></div>
+                        <div><dt>Passen</dt><dd><kbd>Q</kbd></dd></div>
+                        <div><dt>Zonder bal</dt><dd><kbd>Spatie</kbd> tackle, <kbd>Q</kbd> bal vragen. Je speelt de hele wedstrijd met je eigen ster (online: <kbd>Q</kbd> wisselt)</dd></div>
+                        <div><dt>Sprinten</dt><dd><kbd>Shift</kbd> links</dd></div>
+                        <div><dt>Krullen</dt><dd>na je schot <kbd>W</kbd> of <kbd>S</kbd></dd></div>
+                    </dl>
+                    <p class="keys__note" id="p1-keys-alt" hidden>Tegen de computer werken de pijltjes ook.</p>
+                    <p class="touch-help">Links de stick. Rechts <strong>Schiet</strong> (langer = harder; veeg bij het loslaten omhoog voor een hoog schot), <strong>Pass</strong> en <strong>Sprint</strong>. Zonder bal worden ze <strong>Tackle</strong> en <strong>Vraag</strong> (bal vragen). Je speelt de hele wedstrijd met je eigen ster; je teamgenoten speelt de computer. Krullen: duw na je schot de stick omhoog of omlaag.</p>
+                </section>
+
+                <div class="halves__mid">
+                    <button id="swap-teams" class="swap" type="button" aria-label="Wissel van kleur">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"/>
+                        </svg>
+                        Wissel
+                    </button>
+                </div>
+
+                <section class="team-card" id="card-p2" data-team="blue">
+                    <div class="team-card__head">
+                        <svg class="shirt" aria-hidden="true"><use href="#icon-shirt"/></svg>
+                        <div>
+                            <div class="team-card__side">Uit</div>
+                            <div class="team-card__color">Blauw</div>
+                        </div>
+                    </div>
+                    <div id="p2-human">
+                        <label class="field" for="p2-name">
+                            <span class="field__label">Naam speler 2</span>
+                            <input id="p2-name" class="field__input" type="text" maxlength="14" placeholder="Speler 2" autocomplete="off" spellcheck="false">
+                        </label>
+                        <dl class="keys">
+                            <div><dt>Bewegen</dt><dd><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></dd></div>
+                            <div><dt>Schieten</dt><dd><kbd>Enter</kbd> langer = harder</dd></div>
+                            <div><dt>Hoog schot</dt><dd><kbd>↑</kbd> + <kbd>Enter</kbd> samen</dd></div>
+                            <div><dt>Passen</dt><dd><kbd>Shift</kbd> rechts</dd></div>
+                            <div><dt>Zonder bal</dt><dd><kbd>Enter</kbd> tackle, <kbd>Shift</kbd> wisselen naar wie het dichtst bij de bal is</dd></div>
+                            <div><dt>Sprinten</dt><dd><kbd>Alt</kbd> rechts of <kbd>/</kbd></dd></div>
+                            <div><dt>Krullen</dt><dd>na je schot <kbd>↑</kbd> of <kbd>↓</kbd></dd></div>
+                        </dl>
+                    </div>
+                    <div class="team-card__cpu" id="p2-cpu" hidden>
+                        <p class="team-card__cpu-name">Computer</p>
+                        <p class="team-card__cpu-line">Kies hoe sterk hij speelt.</p>
+                        <!-- filled from LEVELS in game.core.js by renderLevels() -->
+                        <div class="level" id="level-list" role="radiogroup" aria-label="Niveau van de computer"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="page__foot">
+                <button id="to-coin" class="btn" type="button">Naar de toss</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ TOSS ============ -->
+    <div id="coin-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page page--center">
+            <h1 class="title">De toss</h1>
+            <p class="lead"><strong id="coin-caller-name">Speler 1</strong> kiest: kop of munt?</p>
+
+            <div class="toss">
+                <button id="pick-heads" class="pick-btn pick-btn--heads" type="button">
+                    <span class="pick-btn__coin" aria-hidden="true"></span>Kop
+                </button>
+
+                <div class="toss__circle">
+                    <div class="coin-arena">
+                        <div class="coin-shadow"></div>
+                        <div class="coin" id="coin3d">
+                            <div class="coin__face coin__face--heads">Kop</div>
+                            <div class="coin__face coin__face--tails">Munt</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="pick-tails" class="pick-btn pick-btn--tails" type="button">
+                    <span class="pick-btn__coin" aria-hidden="true"></span>Munt
+                </button>
+            </div>
+
+            <div id="coin-result" class="coin-result" aria-live="polite">
+                <span class="coin-result__line"></span>
+                <span class="coin-result__text"></span>
+            </div>
+
+            <div class="toss__cta">
+                <button id="kickoff-btn" class="btn" type="button" hidden>Aftrappen</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ MATCH ============ -->
+    <div id="game-screen" class="screen">
+        <!-- TV scoreboard: our mark, the clock, then the three-letter codes and the score -->
+        <div class="scorebug">
+            <div class="scorebug__mark" aria-hidden="true">
+                <img src="media/hud/ball.png?v=2" alt="" width="30" height="30">
+            </div>
+            <div class="scorebug__clock" id="hud-timer">00:00</div>
+            <div class="scorebug__main">
+                <div class="scorebug__team scorebug__team--red">
+                    <span class="scorebug__name" id="hud-p1-name">SP1</span>
+                </div>
+                <div class="scorebug__score" aria-label="Stand">
+                    <span id="hud-s1">0</span>
+                    <span class="scorebug__sep" aria-hidden="true"></span>
+                    <span id="hud-s2">0</span>
+                </div>
+                <div class="scorebug__team scorebug__team--blue">
+                    <span class="scorebug__name" id="hud-p2-name">SP2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- WK knockout level at full time (game.wk.js) -->
+        <div class="wk-banner" id="wk-banner" role="status" hidden>
+            <span class="wk-banner__title">Verlenging</span>
+            <span class="wk-banner__sub">30 seconden · daarna strafschoppen</span>
+        </div>
+
+        <!-- while the stadium model downloads; the match is already on (buildStadium) -->
+        <div class="stadium-loading" id="stadium-loading" role="status" hidden>
+            Stadion laden <span id="stadium-loading-pct"></span>
+        </div>
+
+        <!-- a corner or a throw-in (game.js: set pieces): what it is and for whom, and
+             for whoever takes it how; the layer catches the click or tap on the pitch -->
+        <div class="setpiece" id="setpiece" role="status" hidden>
+            <span class="setpiece__kind" id="setpiece-kind">Hoekschop</span>
+            <span class="setpiece__team" id="setpiece-team">SP1</span>
+            <span class="setpiece__hint" id="setpiece-hint" hidden></span>
+        </div>
+        <div class="aim-layer" id="aim-layer" hidden></div>
+
+        <!-- the referee's call (game.referee.js): offside, a foul, a card -->
+        <div class="ref-call" id="ref-call" role="status" hidden>
+            <span class="ref-call__card" id="ref-call-card" hidden></span>
+            <span class="ref-call__kind" id="ref-call-kind">Buitenspel</span>
+            <span class="ref-call__team" id="ref-call-team">SP1</span>
+            <span class="ref-call__sub" id="ref-call-sub"></span>
+        </div>
+        <!-- the VAR at work, the replay's bars, and its decision -->
+        <div class="replay" id="replay" aria-hidden="true" hidden>
+            <span class="replay__tag">Herhaling</span>
+        </div>
+        <div class="var-box" id="var-box" role="status" hidden>
+            <span class="var-box__mark">VAR</span>
+            <span class="var-box__state" id="var-state">Check</span>
+            <span class="var-box__subject" id="var-subject">Mogelijke strafschop</span>
+        </div>
+        <div class="var-decision" id="var-decision" role="status" hidden>
+            <div class="var-decision__bar">
+                <span class="var-decision__tag">VAR</span>
+                <span class="var-decision__text" id="var-decision-text">Strafschop</span>
+            </div>
+            <div class="var-decision__sub" id="var-decision-sub"></div>
+        </div>
+        <!-- the screen dips for a moment while the players are put in place for it -->
+        <div class="cut" id="cut" hidden></div>
+
+        <!-- key legends, filled in by paintHud() -->
+        <div class="hud-keys hud-keys--left" id="hud-keys-p1"></div>
+        <div class="hud-keys hud-keys--right" id="hud-keys-p2"></div>
+
+        <div class="kickoff-overlay" id="kickoff-overlay" hidden>
+            <div class="kickoff-board">
+                <div class="kickoff-overlay__lbl">Aftrap</div>
+                <div class="kickoff-overlay__num" id="kickoff-num">3</div>
+            </div>
+        </div>
+
+        <!-- a goal: the word in the scorer's colour, then the new score in the scoreboard style -->
+        <div class="goal-flash" id="goal-flash" hidden>
+            <div class="goal-flash__text">Goal</div>
+            <div class="goal-flash__bar">
+                <span class="goal-flash__code goal-flash__code--red" id="goal-flash-red">SP1</span>
+                <span class="goal-flash__score"><span id="goal-flash-s1">1</span><span class="scorebug__sep" aria-hidden="true"></span><span id="goal-flash-s2">0</span></span>
+                <span class="goal-flash__code goal-flash__code--blue" id="goal-flash-blue">SP2</span>
+            </div>
+            <div class="goal-flash__sub" id="goal-flash-sub">Speler 1</div>
+        </div>
+
+        <button id="pause-btn" class="pause-btn" type="button" title="Pauze (P of Esc)" aria-label="Pauze">
+            <span></span><span></span>
+        </button>
+
+        <div id="pause-overlay" class="pause-overlay" hidden>
+            <div class="pause-overlay__panel paper">
+                <div class="pause-overlay__title">Pauze</div>
+                <div class="pause-overlay__sub">Druk op <kbd>P</kbd> of <kbd>Esc</kbd> om verder te spelen.</div>
+                <button id="pause-resume" class="btn" type="button">Verder spelen</button>
+                <button id="pause-leave" class="btn btn--line" type="button" hidden>Wedstrijd verlaten</button>
+                <button id="pause-quit" class="btn btn--line" type="button">Afsluiten</button>
+            </div>
+        </div>
+
+        <!-- touch controls, only on phones and tablets (html.is-touch, game.ui.js):
+             a stick on the left that appears where your thumb lands, two buttons on the right -->
+        <div class="touch" id="touch-controls">
+            <div class="touch__zone" id="touch-zone">
+                <div class="stick" id="touch-stick"><div class="stick__knob" id="touch-knob"></div></div>
+            </div>
+            <button class="touch__btn touch__btn--pass" id="touch-pass" type="button" tabindex="-1">Pass</button>
+            <button class="touch__btn touch__btn--shoot" id="touch-shoot" type="button" tabindex="-1">Schiet</button>
+            <button class="touch__btn touch__btn--sprint" id="touch-sprint" type="button" tabindex="-1">Sprint</button>
+        </div>
+
+        <!-- a phone held upright: the pitch needs the width -->
+        <div class="rotate-hint">
+            <div class="rotate-hint__phone" aria-hidden="true"></div>
+            <p class="rotate-hint__text">Draai je telefoon</p>
+            <p class="rotate-hint__lead">De wedstrijd wordt liggend gespeeld. Hij staat op pauze tot je je telefoon een kwartslag draait.</p>
+            <p class="rotate-hint__sub">Draait het beeld niet mee? Zet de rotatievergrendeling uit: veeg vanaf de rand omlaag en tik op het slotje of op "Automatisch draaien".</p>
+        </div>
+    </div>
+
+    <!-- ============ WK 2026: PICK YOUR COUNTRY ============ -->
+    <div id="wk-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">WK 2026</span>
+        </header>
+
+        <main class="page wk">
+            <div class="wk__head">
+                <img class="wk-emblem" alt="WK 2026" hidden>
+                <h1 class="title">Kies je land</h1>
+                <p class="wk__lead">Het WK in Canada, Mexico en de Verenigde Staten: de 48 landen in de groepen van de loting. Jij speelt de wedstrijden van jouw land, de rest wordt gespeeld zonder jou.</p>
+            </div>
+
+            <div class="wk-hero" id="wk-hero"></div>
+
+            <div class="wk__resume" id="wk-resume" hidden>
+                <p class="wk__resume-text" id="wk-resume-text"></p>
+                <button id="wk-resume-go" class="btn" type="button">Verder spelen</button>
+            </div>
+
+            <div class="wk__level">
+                <p class="wk__level-label" id="wk-level-label">Niveau van de tegenstanders</p>
+                <div class="seg" id="wk-level" role="radiogroup" aria-labelledby="wk-level-label">
+                    <button class="seg__btn" type="button" role="radio" data-level="easy">Makkelijk</button>
+                    <button class="seg__btn" type="button" role="radio" data-level="medium">Gemiddeld</button>
+                    <button class="seg__btn" type="button" role="radio" data-level="hard">Moeilijk</button>
+                </div>
+            </div>
+
+            <!-- twelve groups, filled from WK_GROUPS by wkRenderPick() -->
+            <div class="wk-groups" id="wk-groups"></div>
+
+            <!-- stays at the bottom of the screen while you scroll through the groups -->
+            <div class="wk__foot">
+                <button id="wk-start" class="btn" type="button" disabled>Kies je land</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ WK 2026: THE TOURNAMENT ============ -->
+    <div id="wk-hub-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" id="wk-hub-back">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Menu
+            </button>
+            <span class="topbar__brand">WK 2026</span>
+        </header>
+
+        <main class="page wkhub">
+            <div class="wkhub__head">
+                <img class="wk-emblem wk-emblem--small" alt="WK 2026" hidden>
+                <img class="flag flag--head" id="wk-hub-flag" src="media/flags/nl.svg" alt="" width="60" height="40">
+                <div>
+                    <h1 class="title" id="wk-hub-team">Nederland</h1>
+                    <p class="wkhub__sub" id="wk-hub-sub">Groep F</p>
+                </div>
+            </div>
+
+            <ol class="wk-path" id="wk-path" aria-label="Het toernooi"></ol>
+
+            <div class="wkhub__grid">
+                <section class="wk-panel">
+                    <h2 class="wk-panel__title" id="wk-table-title">Groep F</h2>
+                    <table class="wk-table" id="wk-table"></table>
+                    <ul class="wk-fixtures" id="wk-fixtures"></ul>
+                </section>
+                <section class="wk-panel wk-next" id="wk-next" aria-live="polite"></section>
+            </div>
+
+            <details class="wk-all">
+                <summary>Alle groepen</summary>
+                <div class="wk-all__grid" id="wk-all"></div>
+            </details>
+        </main>
+    </div>
+
+    <!-- ============ ONLINE: log in, friends, a code, waiting (game.online.js) ============ -->
+    <div id="online-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" id="online-back">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg><span>Terug</span>
+            </button>
+            <div class="o-me" id="online-me" hidden>
+                <span>Ingelogd als</span><strong id="online-me-name"></strong>
+                <button type="button" class="o-me__out" id="online-logout">Uitloggen</button>
+            </div>
+            <span class="topbar__brand" id="online-brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <!-- log in or make an account: a username and a password, no email -->
+            <section class="o-view o-center" id="online-login">
+                <h1 class="title">Online spelen</h1>
+                <div class="seg o-seg" role="tablist" aria-label="Inloggen of account maken">
+                    <button class="seg__btn active" type="button" role="tab" aria-selected="true" data-auth="in">Inloggen</button>
+                    <button class="seg__btn" type="button" role="tab" aria-selected="false" data-auth="up">Account maken</button>
+                </div>
+                <form class="o-form" id="online-auth-form" novalidate>
+                    <label class="field" for="online-user">
+                        <span class="field__label">Gebruikersnaam</span>
+                        <input id="online-user" class="field__input" type="text" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="bijvoorbeeld spits9">
+                    </label>
+                    <label class="field" for="online-pass">
+                        <span class="field__label">Wachtwoord</span>
+                        <input id="online-pass" class="field__input" type="password" autocomplete="current-password" placeholder="minstens 6 tekens">
+                    </label>
+                    <p class="o-msg" id="online-auth-msg" role="alert" hidden></p>
+                    <button class="btn" type="submit" id="online-auth-go">Inloggen</button>
+                    <p class="o-hint">Je hebt alleen een gebruikersnaam en een wachtwoord nodig. Geen e-mail.</p>
+                </form>
+            </section>
+
+            <!-- friends, as a league table with your results against each other -->
+            <section class="o-view o-page" id="online-friends" hidden>
+                <div class="o-head">
+                    <h1 class="title">Vrienden</h1>
+                    <form class="o-add" id="online-add-form">
+                        <input id="online-add" class="field__input" type="text" maxlength="16" placeholder="Gebruikersnaam" aria-label="Gebruikersnaam van je vriend" autocomplete="off" autocapitalize="none" spellcheck="false">
+                        <button class="btn" type="submit">Verzoek sturen</button>
+                    </form>
+                </div>
+                <p class="o-msg" id="online-add-msg" role="status" hidden></p>
+                <div class="o-box o-box--gold" id="online-requests" hidden></div>
+                <div class="o-box" id="online-list"></div>
+                <div class="o-foot">
+                    <button class="btn btn--line" type="button" id="online-to-code">Spelen met een code <span class="btn__meta">zonder vriendschap</span></button>
+                </div>
+            </section>
+
+            <!-- make a code, or type the one you got -->
+            <section class="o-view o-center" id="online-code" hidden>
+                <h1 class="title">Spelen met een code</h1>
+                <p class="lead">Maak een code en stuur hem naar je vriend, of typ de code die je kreeg.</p>
+                <div class="o-form">
+                    <button class="btn" type="button" id="online-make">Code maken</button>
+                    <div class="o-or">of</div>
+                    <label class="field" for="online-code-in">
+                        <span class="field__label">Code van je vriend</span>
+                        <input id="online-code-in" class="field__input o-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000" autocomplete="off">
+                    </label>
+                    <p class="o-msg" id="online-code-msg" role="status" hidden></p>
+                    <button class="btn btn--line" type="button" id="online-join" disabled>Meedoen</button>
+                </div>
+            </section>
+
+            <!-- what do you play: a match or a shoot-out -->
+            <section class="o-view o-center" id="online-pick" hidden>
+                <h1 class="title">Wat spelen jullie?</h1>
+                <p class="lead" id="online-pick-lead"></p>
+                <div class="o-kinds">
+                    <button class="btn btn--line" type="button" data-kind="match">Wedstrijd <span class="btn__meta">90 seconden</span></button>
+                    <button class="btn btn--line" type="button" data-kind="pens">Strafschoppen <span class="btn__meta">Normaal</span></button>
+                    <button class="btn btn--line" type="button" data-kind="wkpens">Strafschoppen WK <span class="btn__meta">MetLife · kies je land</span></button>
+                </div>
+            </section>
+
+            <!-- a World Cup shoot-out: both pick a country -->
+            <section class="o-view o-page" id="online-land" hidden>
+                <h1 class="title">Kies je land</h1>
+                <p class="lead" id="online-land-lead" aria-live="polite"></p>
+                <div class="o-lands" id="online-land-grid" role="group" aria-label="Landen"></div>
+            </section>
+
+            <!-- waiting for the other one -->
+            <section class="o-view o-center" id="online-wait" hidden>
+                <h1 class="title" id="online-wait-title">Wachten op je vriend</h1>
+                <div class="o-vs">
+                    <div class="o-team o-team--red" id="online-wait-red"></div>
+                    <b>tegen</b>
+                    <div class="o-team o-team--blue o-team--wait" id="online-wait-blue">…</div>
+                </div>
+                <p class="lead" id="online-wait-lead" aria-live="polite"></p>
+                <div class="o-code" id="online-wait-code" aria-label="Code"></div>
+                <button class="btn btn--line" type="button" id="online-copy">Code kopiëren</button>
+            </section>
+        </main>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <!-- the match camera, one for a laptop and one for a phone (game.ui.js: bindSettings) -->
+    <div id="settings-screen" class="screen menu">
+        <header class="topbar">
+            <button class="back" type="button" data-back>
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <div class="page__head">
+                <h1 class="title">Instellingen</h1>
+                <div class="seg" role="tablist" aria-label="Apparaat">
+                    <button class="seg__btn set-device" type="button" data-device="laptop" role="tab">Laptop</button>
+                    <button class="seg__btn set-device" type="button" data-device="phone" role="tab">Telefoon</button>
+                </div>
+            </div>
+
+            <div class="set">
+                <section class="set__views">
+                    <h2 class="set__head">Camera</h2>
+                    <div class="set__list" id="set-views" role="radiogroup" aria-label="Camera"></div>
+                </section>
+
+                <section class="set__tune">
+                    <!-- the chosen stadium as the match camera sees it (game.ui.js: SETTINGS_PREVIEW) -->
+                    <div class="set__preview" id="set-preview">
+                        <span class="set__preview-wait" id="set-preview-wait">Stadion laden…</span>
+                    </div>
+                    <label class="set__slider" for="set-height">
+                        <span class="set__slider-top"><span>Hoogte</span><output id="set-height-out">5</output></span>
+                        <input id="set-height" type="range" min="0" max="10" step="1" value="5">
+                    </label>
+                    <label class="set__slider" for="set-zoom">
+                        <span class="set__slider-top"><span>Zoom</span><output id="set-zoom-out">5</output></span>
+                        <input id="set-zoom" type="range" min="0" max="10" step="1" value="5">
+                    </label>
+                    <p class="set__note" id="set-note">Geldt voor deze laptop. De telefoon heeft zijn eigen camera.</p>
+                    <button class="btn btn--line" id="set-reset" type="button">Standaard</button>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ STADIUM PICKER ============ -->
+    <div id="stadium-screen" class="screen menu">
+        <header class="topbar">
+            <button id="stadium-back" class="back" type="button">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <h1 class="title" id="stadium-title">Competitie kiezen</h1>
+            <p class="league-sub" id="stadium-sub" hidden></p>
+
+            <!-- step 1: the competitions (game.stadium.js: renderLeagueTiles) -->
+            <div class="leagues" id="stadium-leagues" role="group" aria-label="Competities"></div>
+
+            <!-- step 2: the stadiums of one competition, the others in a strip on the left -->
+            <div class="stadium stadium--league" id="stadium-pick" hidden>
+                <nav class="league-strip" id="stadium-strip" aria-label="Andere competitie"></nav>
+                <div class="stadium__view">
+                    <!-- STADIUM_PREVIEW mounts its canvas in here -->
+                    <div class="viewer" id="stadium-viewer">
+                        <p class="viewer__msg viewer__msg--loading">Stadion laden</p>
+                        <p class="viewer__msg viewer__msg--failed">Dit stadion kon niet worden geladen</p>
+                    </div>
+                    <p class="viewer__hint no-touch">Sleep om te draaien, scroll om te zoomen</p>
+                    <p class="viewer__hint touch-only">Sleep om te draaien, knijp om te zoomen</p>
+                    <div class="caption">
+                        <h2 class="caption__name" id="stadium-name">Lotto Park</h2>
+                        <p class="caption__sub">
+                            <span id="stadium-club">RSC Anderlecht · Brussel</span>
+                            <span class="caption__cap" id="stadium-cap">22.500 plaatsen</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="stadium__side">
+                    <div class="stadium-list__head" aria-hidden="true">
+                        <span>#</span><span>Stadion</span><span></span><span>Plaatsen</span>
+                    </div>
+                    <div class="stadium-list stadium-list--league" id="stadium-list" role="group" aria-label="Stadions"></div>
+                    <div class="stadium__foot">
+                        <!-- a stadium with a retractable roof: open or closed (game.stadium.js: renderRoofButtons) -->
+                        <div class="seg roof-seg" id="stadium-roof" role="radiogroup" aria-label="Dak" hidden>
+                            <button class="seg__btn" type="button" role="radio" data-roof="open">Dak open</button>
+                            <button class="seg__btn" type="button" role="radio" data-roof="closed">Dak dicht</button>
+                        </div>
+                        <button id="stadium-confirm" class="btn" type="button">Dit stadion kiezen</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ PICK YOUR STAR (game.players.js) ============ -->
+    <div id="star-screen" class="screen menu">
+        <header class="topbar">
+            <button id="star-back" class="back" type="button">
+                <svg aria-hidden="true"><use href="#icon-back"/></svg>Terug
+            </button>
+            <span class="topbar__brand">Pitch Royale</span>
+        </header>
+
+        <main class="page">
+            <h1 class="title">Speler kiezen</h1>
+
+            <div class="stadium star">
+                <div class="stadium__view">
+                    <div class="star__num" id="star-num" aria-hidden="true">10</div>
+                    <div class="viewer" id="star-viewer"></div>
+                    <p class="viewer__hint">Sleep om hem rond te draaien</p>
+                    <div class="star__stats star__stats--over" id="star-stats-over"></div>
+                    <div class="caption">
+                        <h2 class="caption__name" id="star-name">Lionel Messi</h2>
+                        <p class="caption__sub">
+                            <span class="star__land" id="star-land">Argentinië</span>
+                            <span class="caption__cap" id="star-cap">Rugnummer 10</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="stadium__side">
+                    <div class="stadium-list__head" aria-hidden="true">
+                        <span>#</span><span>Speler</span><span></span><span>Land</span>
+                    </div>
+                    <div class="stadium-list" id="star-list" role="group" aria-label="Spelers"></div>
+                    <div class="star__stats" id="star-stats"></div>
+                    <div class="stadium__foot">
+                        <button id="star-confirm" class="btn" type="button">Deze speler kiezen</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ============ FULL TIME ============ -->
+    <div id="over-screen" class="screen">
+        <main class="page page--center">
+            <h1 class="title">Eindstand</h1>
+            <div class="final">
+                <div class="final__team final__team--red">
+                    <span class="final__name" id="over-p1-name">Speler 1</span>
+                </div>
+                <div class="final__score">
+                    <span id="over-s1">0</span>
+                    <span aria-hidden="true">–</span>
+                    <span id="over-s2">0</span>
+                </div>
+                <div class="final__team final__team--blue">
+                    <span class="final__name" id="over-p2-name">Speler 2</span>
+                </div>
+            </div>
+            <p class="final__verdict" id="over-winner">Gelijkspel</p>
+            <!-- possession, shots (on target) and passes, filled by renderMatchStats() in game.js -->
+            <div class="match-stats" id="over-stats" role="group" aria-label="Wedstrijdstatistieken"></div>
+            <div class="actions">
+                <button id="play-again" class="btn" type="button">Revanche</button>
+                <button id="back-home" class="btn btn--line" type="button">Naar het menu</button>
+                <button id="wk-continue" class="btn" type="button" hidden>Verder</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- a friend challenges you, wherever you are in the menus (game.online.js) -->
+    <div class="o-modal-bg" id="online-invite" role="dialog" aria-modal="true" aria-labelledby="online-invite-title" hidden>
+        <div class="o-modal">
+            <p class="o-h">Uitdaging</p>
+            <p class="o-big" id="online-invite-title"></p>
+            <p class="o-note" id="online-invite-sub"></p>
+            <div class="o-modal__btns">
+                <button class="o-sbtn" type="button" id="online-invite-yes">Accepteren</button>
+                <button class="o-sbtn o-sbtn--slate" type="button" id="online-invite-no">Weigeren</button>
+            </div>
+            <div class="o-modal__time"><i id="online-invite-time"></i></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="game.core.js?v=175"></script>
+    <script src="game.screen.js?v=24"></script>
+    <script src="game.stadium.js?v=137"></script>
+    <script src="game.ui.js?v=135"></script>
+    <script src="game.wk.js?v=116"></script>
+    <script src="stats.config.js?v=116"></script>
+    <script src="game.stats.js?v=118"></script>
+    <script src="game.players.js?v=1"></script>
+    <script src="game.js?v=145"></script>
+    <script src="game.referee.js?v=7"></script>
+    <script src="game.pens.js?v=3"></script>
+    <script src="game.var.js?v=1"></script>
+    <script src="game.online.js?v=6"></script>
+</body>
+</html>

@@ -31,6 +31,11 @@
 // match in the middle as on television (the match camera's own picture), the
 // score, F.C. BARCELONA and its crest, and the clock again; the corners
 // only the clock (media/hud/realmadrid.png, media/hud/fcbarcelona.png).
+// screen: 'janbreydel' (Jan Breydelstadion) is the scoreboard in the open
+// south-west corner, as on the photos: adverts over most of it, changing
+// every 8 seconds, and under them a blue bar: Club Brugge's badge, its score,
+// an arrow, the clock, an arrow, the other score and Cercle's badge
+// (media/hud/clubbrugge.png, cerclebrugge.png).
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -240,6 +245,8 @@ const STADIUM_SCREEN = (() => {
         [aCanvas, aCtx, aTexture] = make(1024, 512, 512 / AH);
         [mCanvas, mCtx, mTexture] = make(MW, MH, 1);
         [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
+        [jCanvas, jCtx, jTexture] = make(1024, 1024, 1024 / JH);
+        jCtx.setTransform(1024 / JW, 0, 0, 1024 / JH, 0, 0);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
     }
 
@@ -573,6 +580,76 @@ const STADIUM_SCREEN = (() => {
         mTexture.needsUpdate = true;
     }
 
+    // ---- Jan Breydel: the scoreboard in the south-west corner (1000 x 680 on a 1024 x 1024 canvas; 10 x 6.8 m) ----
+    const JW = 1000, JH = 680, J_BAR = 560, J_FONT = '"Barlow Condensed", "Arial Narrow", sans-serif';
+    const J_SERIF = 'Georgia, "Times New Roman", serif';
+    let jCanvas = null, jCtx = null, jTexture = null, cbLogo = null, ceLogo = null;
+    function loadJanLogos() {
+        if (typeof Image === 'undefined' || cbLogo) return;
+        const load = (src, set) => { const im = new Image(); im.onload = () => { set(im); last = ''; redraw(); }; im.src = src; };
+        load('media/hud/clubbrugge.png', (im) => { cbLogo = im; });
+        load('media/hud/cerclebrugge.png', (im) => { ceLogo = im; });
+    }
+    function janAd() { return Math.floor(Date.now() / 8000) % 4; }
+    // the adverts: plain panels in the style of the photos (a wine merchant's
+    // red with white serif capitals), with the club's and the city's words
+    function janAdvert(c, k) {
+        const H = J_BAR;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        if (k === 0) {
+            c.fillStyle = '#d23a32'; c.fillRect(0, 0, JW, H);
+            c.fillStyle = '#fbeee6';
+            c.font = `400 52px ${J_SERIF}`; c.fillText('VAN', JW / 2, 120);
+            c.font = `400 150px ${J_SERIF}`; c.fillText('BRUGGE', JW / 2, 245);
+            c.font = `400 44px ${J_SERIF}`; c.fillText('SINDS 1891', JW / 2, 360);
+            c.strokeStyle = '#fbeee6'; c.lineWidth = 6;
+            c.beginPath(); c.arc(JW / 2, 455, 34, 0, Math.PI * 2); c.stroke();
+            c.beginPath(); c.moveTo(JW / 2 - 90, 455); c.lineTo(JW / 2 - 40, 455); c.moveTo(JW / 2 + 40, 455); c.lineTo(JW / 2 + 90, 455); c.stroke();
+        } else if (k === 1) {
+            c.fillStyle = '#0d0d10'; c.fillRect(0, 0, JW, H);
+            c.fillStyle = '#1d5cc0';
+            for (let i = -4; i < 12; i++) { c.beginPath(); c.moveTo(i * 120, H); c.lineTo(i * 120 + 60, H); c.lineTo(i * 120 + 60 + H * 0.6, 0); c.lineTo(i * 120 + H * 0.6, 0); c.closePath(); c.fill(); }
+            c.fillStyle = 'rgba(10,10,14,0.82)'; c.fillRect(0, 150, JW, 260);
+            c.fillStyle = '#ffffff'; c.font = `700 170px ${J_FONT}`; c.fillText('NO SWEAT NO GLORY', JW / 2, 285, JW - 80);
+        } else if (k === 2) {
+            c.fillStyle = '#f1f0ec'; c.fillRect(0, 0, JW, H);
+            c.fillStyle = '#0d4fa8'; c.font = `700 150px ${J_FONT}`; c.fillText('JAN BREYDEL', JW / 2, 220);
+            c.fillStyle = '#16181c'; c.font = `600 74px ${J_FONT}`; c.fillText('STADION · BRUGGE', JW / 2, 345);
+            c.fillStyle = '#0d4fa8'; c.fillRect(0, H - 40, JW, 40);
+        } else {
+            c.fillStyle = '#0a7a48'; c.fillRect(0, 0, JW, H);
+            c.fillStyle = '#0b0b0d'; c.fillRect(0, 0, JW, 60); c.fillRect(0, H - 60, JW, 60);
+            c.fillStyle = '#ffffff'; c.font = `700 160px ${J_FONT}`; c.fillText('CERCLE BRUGGE', JW / 2, 285, JW - 80);
+        }
+    }
+    function drawJanBreydel(clock, s1, s2) {
+        const c = jCtx;
+        janAdvert(c, janAd());
+        // the bar: deep blue, lighter round the clock, white figures, arrows pointing at the clock
+        const y0 = J_BAR, h = JH - J_BAR, ym = y0 + h / 2;
+        const g = c.createLinearGradient(0, 0, JW, 0);
+        g.addColorStop(0, '#0f2a9a'); g.addColorStop(0.5, '#2a56d8'); g.addColorStop(1, '#0f2a9a');
+        c.fillStyle = g; c.fillRect(0, y0, JW, h);
+        c.fillStyle = '#081a70'; c.fillRect(0, y0, JW, 4);
+        const badge = (img, cx, size) => {
+            if (!img) return;
+            const k = Math.min(size / img.width, size / img.height);
+            c.drawImage(img, cx - img.width * k / 2, ym - img.height * k / 2, img.width * k, img.height * k);
+        };
+        badge(cbLogo, 60, 104);
+        badge(ceLogo, JW - 60, 96);
+        c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `700 104px ${J_FONT}`;
+        c.fillText(String(s1), 250, ym + 4);
+        c.fillText(String(s2), JW - 250, ym + 4);
+        c.fillStyle = '#5fa0ff';
+        c.beginPath(); c.moveTo(330, y0 + 22); c.lineTo(372, ym); c.lineTo(330, y0 + h - 22); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(JW - 330, y0 + 22); c.lineTo(JW - 372, ym); c.lineTo(JW - 330, y0 + h - 22); c.closePath(); c.fill();
+        c.fillStyle = '#ffffff'; c.font = `700 84px ${J_FONT}`;
+        c.fillText(clock, JW / 2, ym + 3);
+        jTexture.needsUpdate = true;
+    }
+
     // ---- Bernabéu: the 360 ring round the roof's opening (2048 x 512) ----
     // As on the photos of a Clásico there: on each side, read from the pitch,
     // the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the match
@@ -795,7 +872,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -806,6 +883,7 @@ const STADIUM_SCREEN = (() => {
         drawArena(current.clock, current.s1, current.s2);
         drawMontjuic(current.clock, current.s1, current.s2);
         drawBernabeu(current.clock, current.s1, current.s2);
+        drawJanBreydel(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -822,8 +900,9 @@ const STADIUM_SCREEN = (() => {
         if (style === 'kuip') loadKuipLogo(logo);
         if (style === 'arena') { loadArenaLogo(logo); loadArenaAway(); }
         if (style === 'bernabeu') { loadBernabeuLogos(); vLast = 0; if (vCtx) stillPicture(); }
+        if (style === 'janbreydel') loadJanLogos();
         if (node) activeStyle = style;
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();
