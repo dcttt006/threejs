@@ -290,6 +290,24 @@ const STADIUMS = [
         view: { lookZ: -10 },
     },
     {
+        id: 'joseph-marien',
+        name: 'Stade Joseph Marien',
+        club: 'Royale Union Saint-Gilloise',
+        city: 'Vorst · Brussel',
+        // built from nothing by tools/marien_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/joseph_marien.glb?v=5',
+        capacity: '9.400',
+        // measured with the Duden Park and the town round it (the 'StadiumBackdrop' in the model)
+        pitch: { x: 0.10, z: -0.07, w: 43.28, l: 28.03, angle: Math.PI, y: 0.05 },
+        // a June evening: the low sun baked into the model, drawn unlit at
+        // twice the stored light under a day sky (overhead, horizon)
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // Stadion kiezen looks from the park's side; turned round it shows the
+        // park stand's seats and the main stand's roof from the town's side
+        rotateY: Math.PI,
+        view: { lookZ: -10 },
+    },
+    {
         id: 'metlife',
         name: 'MetLife Stadium',
         club: 'New York New Jersey',
@@ -394,7 +412,7 @@ const LEAGUES = [
     { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['bernabeu', 'camp-nou', 'montjuic', 'wanda-metropolitano'] },
     { id: 'premier',    name: 'Premier League',   land: 'Engeland',         flag: 'gb-eng', stadiums: ['old-trafford', 'anfield', 'emirates', 'etihad'] },
     { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip'] },
-    { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park', 'jan-breydel'] },
+    { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park', 'jan-breydel', 'joseph-marien'] },
     { id: 'efl',        name: 'EFL',              land: 'Engeland',         flag: 'gb-eng', stadiums: ['home-park', 'cheltenham'] },
     { id: 'bundesliga2', name: '2. Bundesliga',   land: 'Duitsland',        flag: 'de',     stadiums: ['olympiastadion'] },
     { id: 'argentina',  name: 'Liga Profesional', land: 'Argentinië',       flag: 'ar',     stadiums: ['la-bombonera'] },

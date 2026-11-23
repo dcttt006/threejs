@@ -173,7 +173,14 @@ async function readCatalog() {
     const wanted = new URLSearchParams(location.search).get('stadion') || 'lotto-park';
     pick.value = list.some(s => s.id === wanted) ? wanted : (list[0] && list[0].id);
 }
-pick.onchange = () => { stamp = null; load(true); };
+pick.onchange = () => {
+    // the choice goes into the address, so a reload (Live Server reloads on
+    // every change in the folder) stays on this stadium
+    const q = new URLSearchParams(location.search);
+    q.set('stadion', pick.value);
+    history.replaceState(null, '', location.pathname + '?' + q.toString());
+    stamp = null; load(true);
+};
 
 let model = null, stamp = null, busy = false;
 function current() { return list.find(s => s.id === pick.value); }

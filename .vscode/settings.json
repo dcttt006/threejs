@@ -1,4 +1,17 @@
 {
     "claudeCode.useTerminal": true,
-    "git.path": "C:\\Users\\Gebruiker\\AppData\\Local\\GitHubDesktop\\app-3.6.11\\resources\\app\\git\\cmd\\git.exe"
+    "git.path": "C:\\Users\\Gebruiker\\AppData\\Local\\GitHubDesktop\\app-3.6.11\\resources\\app\\git\\cmd\\git.exe",
+    "liveServer.settings.ignoreFiles": [
+        ".vscode/**",
+        ".git/**",
+        "**/.DS_Store",
+        "**/*.icloud",
+        "img/**",
+        "tools/**",
+        "media/**",
+        "**/*.glb",
+        "**/*.png",
+        "**/*.jpg",
+        "**/*.blend"
+    ]
 }
