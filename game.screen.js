@@ -41,6 +41,13 @@
 // either side of the clock along the top, Union's crest on the left and the
 // other side's on the right with VS between, a teal stripe down the left edge
 // and a blue one by each crest (media/hud/union.png, clubbrugge.png).
+// screen: 'philips' (Philips Stadion) is each of the four screens at the ends
+// of the long stands, as on the photo of a match there: orange-red, a bar
+// along the top (a white box with the club's words, a black one with PSV and
+// the clock in a white box), PSV's crest in a white disc on the left, the
+// score big in white across the middle with a thin light line slanting
+// through the board, the other side's crest in a white disc on the right
+// (img/psvlogo.svg, img/logo3.png).
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -252,6 +259,8 @@ const STADIUM_SCREEN = (() => {
         [bCanvas, bCtx, bTexture] = make(BW, BH, 1);
         [jCanvas, jCtx, jTexture] = make(1024, 1024, 1024 / JH);
         [xCanvas, xCtx, xTexture] = make(1024, 512, 512 / XH);
+        [pCanvas, pCtx, pTexture] = make(1024, 512, 512 / PH_);
+        pCtx.setTransform(1024 / PW_, 0, 0, 512 / PH_, 0, 0);
         xCtx.setTransform(1024 / XW, 0, 0, 512 / XH, 0, 0);
         jCtx.setTransform(1024 / JW, 0, 0, 1024 / JH, 0, 0);
         kCtx.setTransform(1024 / KW, 0, 0, 256 / KH, 0, 0);
@@ -695,6 +704,59 @@ const STADIUM_SCREEN = (() => {
         xTexture.needsUpdate = true;
     }
 
+    // ---- Philips Stadion: the four screens (1000 x 562 on a 1024 x 512 canvas; 8 x 4.5 m) ----
+    const PW_ = 1000, PH_ = 562;
+    let pCanvas = null, pCtx = null, pTexture = null, psvLogo = null, pAwayLogo = null;
+    function loadPhilipsLogos() {
+        if (typeof Image === 'undefined' || psvLogo) return;
+        const load = (src, set) => { const im = new Image(); im.onload = () => { set(im); last = ''; redraw(); }; im.src = src; };
+        load('img/psvlogo.svg', (im) => { psvLogo = im; });
+        load('img/logo3.png', (im) => { pAwayLogo = im; });
+    }
+    function drawPhilips(clock, s1, s2) {
+        const c = pCtx;
+        // the board: orange-red, a shade lighter left of the slanting line
+        c.fillStyle = '#ea573b'; c.fillRect(0, 0, PW_, PH_);
+        c.fillStyle = '#ee6a50';
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(548, 0); c.lineTo(548, 112); c.lineTo(424, PH_); c.lineTo(0, PH_); c.closePath(); c.fill();
+        c.strokeStyle = '#f6a690'; c.lineWidth = 4;
+        c.beginPath(); c.moveTo(520, 112); c.lineTo(548, 112); c.lineTo(424, PH_); c.stroke();
+        // the bar along the top: the club's words, PSV, the clock
+        c.fillStyle = '#f7f5f2'; c.fillRect(26, 32, 450, 80);
+        c.fillStyle = '#26222b'; c.fillRect(476, 32, 176, 80);
+        c.fillStyle = '#f7f5f2'; c.fillRect(652, 32, 196, 80);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#4a4450'; c.font = `600 30px ${J_FONT}`;
+        c.fillText('VOOR DE SUPPORTERS,', 251, 56, 420);
+        c.fillText('DE CLUB EN DE STAD', 251, 89, 420);
+        c.fillStyle = '#f7f5f2'; c.font = `700 44px ${J_SERIF}`;
+        c.fillText('PSV', 564, 74, 160);
+        c.fillStyle = '#2b2831'; c.font = `800 64px ${J_FONT}`;
+        c.fillText(clock, 750, 74, 180);
+        // the crests in white discs
+        const disc = (img, cx, cy, r) => {
+            c.fillStyle = '#f7f5f2';
+            c.beginPath(); c.ellipse(cx, cy, r * 1.08, r, 0, 0, Math.PI * 2); c.fill();
+            if (!img) return;
+            const k = Math.min(r * 1.6 / img.width, r * 1.6 / img.height);
+            c.drawImage(img, cx - img.width * k / 2, cy - img.height * k / 2, img.width * k, img.height * k);
+        };
+        // PSV's own logo carries its white oval (img/psvlogo.svg)
+        if (psvLogo) {
+            const w = psvLogo.naturalWidth || psvLogo.width || 741, h = psvLogo.naturalHeight || psvLogo.height || 604;
+            const k = Math.min(200 / w, 190 / h);
+            c.drawImage(psvLogo, 146 - w * k / 2, 286 - h * k / 2, w * k, h * k);
+        }
+        disc(pAwayLogo, 846, 296, 74);
+        // the score: heavy white figures, leaning a little, a bar between them
+        c.fillStyle = '#ffffff';
+        c.font = `italic 900 250px ${J_FONT}`;
+        c.fillText(String(s1), 356, 308);
+        c.fillText(String(s2), 640, 308);
+        c.beginPath(); c.moveTo(474, 280); c.lineTo(530, 280); c.lineTo(524, 306); c.lineTo(468, 306); c.closePath(); c.fill();
+        pTexture.needsUpdate = true;
+    }
+
     // ---- Bernabéu: the 360 ring round the roof's opening (2048 x 512) ----
     // As on the photos of a Clásico there: on each side, read from the pitch,
     // the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the match
@@ -917,7 +979,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${mGoals.join('/')}|${!!xAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${mGoals.join('/')}|${!!xAwayLogo}|${!!psvLogo}|${!!pAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -930,6 +992,7 @@ const STADIUM_SCREEN = (() => {
         drawBernabeu(current.clock, current.s1, current.s2);
         drawJanBreydel(current.clock, current.s1, current.s2);
         drawMarien(current.clock, current.s1, current.s2);
+        drawPhilips(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -949,8 +1012,9 @@ const STADIUM_SCREEN = (() => {
         if (style === 'janbreydel') loadJanLogos();
         if (style === 'montjuic') { loadBernabeuLogos(); mGoals = [[], []]; mPrev = [0, 0]; }
         if (style === 'marien') loadMarienLogos();
+        if (style === 'philips') loadPhilipsLogos();
         if (node) activeStyle = style;
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : style === 'philips' ? pTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();

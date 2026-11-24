@@ -353,6 +353,23 @@ const STADIUMS = [
         view: { lookZ: -12 },
     },
     {
+        id: 'philips-stadion',
+        name: 'Philips Stadion',
+        club: 'PSV',
+        city: 'Eindhoven',
+        // built from nothing by tools/philips_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/philips_stadion.glb?v=2',
+        capacity: '35.119',
+        // measured with Philipsdorp, the railway and the town round it (the 'StadiumBackdrop' in the model)
+        pitch: { x: 0.00, z: 0.00, w: 43.31, l: 28.05, angle: Math.PI, y: 0.05 },
+        // a June afternoon: the sun behind the main stand baked into the
+        // model, drawn unlit at twice the stored light under a day sky (overhead, horizon)
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // the four LED screens at the ends of both long stands (game.screen.js)
+        screen: 'philips',
+        view: { lookZ: -12 },
+    },
+    {
         id: 'el-campin',
         name: 'El Campín',
         club: 'Millonarios · Santa Fe',
@@ -424,7 +441,7 @@ const STADIUMS = [
 const LEAGUES = [
     { id: 'laliga',     name: 'La Liga',          land: 'Spanje',           flag: 'es',     stadiums: ['bernabeu', 'camp-nou', 'montjuic', 'wanda-metropolitano'] },
     { id: 'premier',    name: 'Premier League',   land: 'Engeland',         flag: 'gb-eng', stadiums: ['old-trafford', 'anfield', 'emirates', 'etihad'] },
-    { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip'] },
+    { id: 'eredivisie', name: 'Eredivisie',       land: 'Nederland',        flag: 'nl',     stadiums: ['johan-cruijff-arena', 'de-kuip', 'philips-stadion'] },
     { id: 'proleague',  name: 'Pro League',       land: 'België',           flag: 'be',     stadiums: ['lotto-park', 'jan-breydel', 'joseph-marien'] },
     { id: 'efl',        name: 'EFL',              land: 'Engeland',         flag: 'gb-eng', stadiums: ['home-park', 'cheltenham'] },
     { id: 'bundesliga2', name: '2. Bundesliga',   land: 'Duitsland',        flag: 'de',     stadiums: ['olympiastadion'] },
