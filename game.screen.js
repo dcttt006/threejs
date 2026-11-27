@@ -48,6 +48,12 @@
 // score big in white across the middle with a thin light line slanting
 // through the board, the other side's crest in a white disc on the right
 // (img/psvlogo.svg, img/logo3.png).
+// screen: 'centenario' (Estadio Centenario) is the LED screen on its table over
+// the Colombes, as on the photo of the Libertadores final there: a dark board
+// with a warm red and orange haze and golden arcs down both edges, along the
+// top MONUMENTO AL FÚTBOL MUNDIAL - ESTADIO CENTENARIO, the golden cup in the
+// middle, the home crest left and the other right, the score '1 x 1' between
+// them and the clock under it (media/hud/boca.png, media/hud/millonarios.png).
 // =====================================================
 
 const STADIUM_SCREEN = (() => {
@@ -260,6 +266,8 @@ const STADIUM_SCREEN = (() => {
         [jCanvas, jCtx, jTexture] = make(1024, 1024, 1024 / JH);
         [xCanvas, xCtx, xTexture] = make(1024, 512, 512 / XH);
         [pCanvas, pCtx, pTexture] = make(1024, 512, 512 / PH_);
+        [cCanvas, cCtx, cTexture] = make(1024, 512, 512 / CH_);
+        cCtx.setTransform(1024 / CW_, 0, 0, 512 / CH_, 0, 0);
         pCtx.setTransform(1024 / PW_, 0, 0, 512 / PH_, 0, 0);
         xCtx.setTransform(1024 / XW, 0, 0, 512 / XH, 0, 0);
         jCtx.setTransform(1024 / JW, 0, 0, 1024 / JH, 0, 0);
@@ -757,6 +765,78 @@ const STADIUM_SCREEN = (() => {
         pTexture.needsUpdate = true;
     }
 
+    // ---- Estadio Centenario: the screen over the Colombes (1000 x 538 on a 1024 x 512 canvas; 12.48 x 6.72 m) ----
+    const CW_ = 1000, CH_ = 538;
+    const C_FONT = '"Montserrat", "Barlow", "Arial", sans-serif';
+    let cCanvas = null, cCtx = null, cTexture = null, cHome = null, cAway = null;
+    function loadCentenarioLogos() {
+        if (typeof Image === 'undefined' || cHome) return;
+        const load = (src, set) => { const im = new Image(); im.onload = () => { set(im); last = ''; redraw(); }; im.src = src; };
+        load('media/hud/boca.png', (im) => { cHome = im; });
+        load('media/hud/millonarios.png', (im) => { cAway = im; });
+    }
+    function drawCentenario(clock, s1, s2) {
+        const c = cCtx;
+        c.fillStyle = '#170f0f'; c.fillRect(0, 0, CW_, CH_);
+        // the haze: big soft patches of dark red and burnt orange, overlapping
+        const blob = (x, y, r, col) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        c.globalAlpha = 0.28;
+        blob(660, 170, 300, '#6a1e16'); blob(260, 460, 320, '#5a1a14'); blob(860, 470, 260, '#7a3416');
+        blob(130, 150, 230, '#6e3a1a'); blob(500, 330, 220, '#4a1612'); blob(380, 120, 200, '#5a2416');
+        c.globalAlpha = 0.18;
+        blob(720, 480, 180, '#b0561f'); blob(200, 260, 160, '#a04a1c'); blob(560, 90, 150, '#a2441e'); blob(900, 260, 140, '#8a3418');
+        c.globalAlpha = 1;
+        // the golden arcs down both edges, outside the crests
+        const arcs = (cx, dir) => {
+            [[20, '#c98a3c'], [8, '#f2c472']].forEach(([w, col], i) => {
+                c.strokeStyle = col; c.lineWidth = w;
+                for (let k = 0; k < 2; k++) {
+                    c.beginPath();
+                    c.ellipse(cx + dir * (k * 34 + i * 5), 300, 70 + k * 22, 250, 0, dir > 0 ? Math.PI * 0.6 : -Math.PI * 0.4, dir > 0 ? Math.PI * 1.4 : Math.PI * 0.4);
+                    c.stroke();
+                }
+            });
+        };
+        arcs(70, -1);
+        arcs(930, 1);
+        // the bar along the top
+        c.fillStyle = '#2a2a2d'; c.fillRect(0, 0, CW_, 46);
+        c.fillStyle = '#f2f2f0'; c.font = `700 29px ${C_FONT}`; c.textAlign = 'left'; c.textBaseline = 'middle';
+        c.fillText('MONUMENTO AL FÚTBOL MUNDIAL - ESTADIO CENTENARIO', 12, 24, CW_ - 24);
+        // the golden cup and its name
+        c.save(); c.translate(500, 104);
+        c.fillStyle = '#d9a24a';
+        c.beginPath();
+        c.moveTo(-22, -34); c.lineTo(22, -34); c.lineTo(16, -6); c.quadraticCurveTo(10, 8, 5, 12);
+        c.lineTo(9, 30); c.lineTo(-9, 30); c.lineTo(-5, 12); c.quadraticCurveTo(-10, 8, -16, -6); c.closePath(); c.fill();
+        c.fillStyle = '#8a5a20'; for (let k = -2; k <= 2; k++) c.fillRect(k * 7 - 1.5, -30, 3, 28);
+        c.restore();
+        c.fillStyle = '#f2f2f0'; c.textAlign = 'center';
+        c.font = `600 11px ${C_FONT}`; c.fillText('CONMEBOL', 500, 146);
+        c.font = `800 20px ${C_FONT}`; c.fillText('LIBERTADORES', 500, 164);
+        // the faded crest of the visitors in the top corner, as on the photo
+        if (cAway) {
+            c.globalAlpha = 0.14;
+            const k = 150 / cAway.height;
+            c.drawImage(cAway, 860 - cAway.width * k / 2, 85, cAway.width * k, 150);
+            c.globalAlpha = 1;
+        }
+        const crest = (img, cx, cy, h) => {
+            if (!img) return;
+            const k = h / img.height;
+            c.drawImage(img, cx - img.width * k / 2, cy - h / 2, img.width * k, h);
+        };
+        crest(cHome, 245, 312, 196);
+        crest(cAway, 745, 312, 190);
+        // the score and the clock
+        c.fillStyle = '#ffffff'; c.font = `700 104px ${C_FONT}`; c.textAlign = 'center';
+        c.fillText(String(s1), 418, 318);
+        c.fillText(String(s2), 582, 318);
+        c.fillStyle = '#e2ad55'; c.font = `700 52px ${C_FONT}`; c.fillText('x', 500, 322);
+        c.fillStyle = '#ffffff'; c.font = `700 74px ${C_FONT}`; c.fillText(clock, 500, 446);
+        cTexture.needsUpdate = true;
+    }
+
     // ---- Bernabéu: the 360 ring round the roof's opening (2048 x 512) ----
     // As on the photos of a Clásico there: on each side, read from the pitch,
     // the clock, Real Madrid's crest, REAL MADRID C.F. and its score, the match
@@ -979,7 +1059,7 @@ const STADIUM_SCREEN = (() => {
     function redraw() {
         if (!canvas) return;
         const teams = wkTeams();
-        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${mGoals.join('/')}|${!!xAwayLogo}|${!!psvLogo}|${!!pAwayLogo}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
+        const key = `${wkHeading()}|${new Date().getMinutes()}|${current.clock}|${current.s1}|${current.s2}|${!!logo}|${fontReady}|${kuipFont}|${!!kuipLogo}|${campinFont}|${!!arenaLogo}|${!!arenaAway}|${!!rmLogo}|${!!fcbLogo}|${bFont}|${!!cbLogo}|${!!ceLogo}|${janAd()}|${!!usgLogo}|${mGoals.join('/')}|${!!xAwayLogo}|${!!psvLogo}|${!!pAwayLogo}|${!!cHome}|${!!cAway}|${campinTeams().map(t => t.code + t.color).join()}|${teams.map(t => t.code + t.color + !!flagImage(t.flag)).join()}`;
         if (key === last) return;
         last = key;
         draw(current.clock, current.s1, current.s2);
@@ -993,6 +1073,7 @@ const STADIUM_SCREEN = (() => {
         drawJanBreydel(current.clock, current.s1, current.s2);
         drawMarien(current.clock, current.s1, current.s2);
         drawPhilips(current.clock, current.s1, current.s2);
+        drawCentenario(current.clock, current.s1, current.s2);
     }
 
     // put the screen on a loaded model; returns true if it has screens
@@ -1013,8 +1094,9 @@ const STADIUM_SCREEN = (() => {
         if (style === 'montjuic') { loadBernabeuLogos(); mGoals = [[], []]; mPrev = [0, 0]; }
         if (style === 'marien') loadMarienLogos();
         if (style === 'philips') loadPhilipsLogos();
+        if (style === 'centenario') loadCentenarioLogos();
         if (node) activeStyle = style;
-        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : style === 'philips' ? pTexture : texture);
+        use(node, style === 'wk' ? wTexture : style === 'kuip' ? kTexture : style === 'campin' ? eTexture : style === 'arena' ? aTexture : style === 'montjuic' ? mTexture : style === 'bernabeu' ? bTexture : style === 'janbreydel' ? jTexture : style === 'marien' ? xTexture : style === 'philips' ? pTexture : style === 'centenario' ? cTexture : texture);
         use(band, rTexture);
         last = '';
         redraw();

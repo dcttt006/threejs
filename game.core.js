@@ -370,6 +370,23 @@ const STADIUMS = [
         view: { lookZ: -12 },
     },
     {
+        id: 'centenario',
+        name: 'Estadio Centenario',
+        club: 'Uruguay · Peñarol · Nacional',
+        city: 'Montevideo',
+        // built from nothing by tools/centenario_build.py; ?v=: raise it with every new export
+        file: 'media/models/stadiums/centenario.glb?v=1',
+        capacity: '60.235',
+        // measured with Parque Batlle and the Hospital de Clínicas round it (the 'StadiumBackdrop' in the model)
+        pitch: { x: -1.05, z: -7.52, w: 40.84, l: 26.45, angle: Math.PI, y: 0.02 },
+        // an autumn afternoon: the low sun behind the América baked into the
+        // model, drawn unlit at twice the stored light under a day sky (overhead, horizon)
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x3b7dd8, 0xbcd6f0] },
+        // the LED screen on its table over the Colombes (game.screen.js)
+        screen: 'centenario',
+        view: { lookZ: -12 },
+    },
+    {
         id: 'el-campin',
         name: 'El Campín',
         club: 'Millonarios · Santa Fe',
@@ -447,6 +464,7 @@ const LEAGUES = [
     { id: 'bundesliga2', name: '2. Bundesliga',   land: 'Duitsland',        flag: 'de',     stadiums: ['olympiastadion'] },
     { id: 'argentina',  name: 'Liga Profesional', land: 'Argentinië',       flag: 'ar',     stadiums: ['la-bombonera'] },
     { id: 'colombia',   name: 'Liga BetPlay',     land: 'Colombia',         flag: 'co',     stadiums: ['el-campin'] },
+    { id: 'uruguay',    name: 'Liga AUF',         land: 'Uruguay',          flag: 'uy',     stadiums: ['centenario'] },
     { id: 'russia',     name: 'Premjer-Liga',     land: 'Rusland',          flag: 'ru',     stadiums: ['otkritie-arena'] },
     { id: 'kleague',    name: 'K League 1',       land: 'Zuid-Korea',       flag: 'kr',     stadiums: ['jeju'] },
     { id: 'wk2026',     name: 'WK 2026',          land: 'Verenigde Staten', flag: 'us',     stadiums: ['metlife'] },
