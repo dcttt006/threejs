@@ -358,7 +358,7 @@ const STADIUMS = [
         club: 'PSV',
         city: 'Eindhoven',
         // built from nothing by tools/philips_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/philips_stadion.glb?v=2',
+        file: 'media/models/stadiums/philips_stadion.glb?v=3',
         capacity: '35.119',
         // measured with Philipsdorp, the railway and the town round it (the 'StadiumBackdrop' in the model)
         pitch: { x: 0.00, z: 0.00, w: 43.31, l: 28.05, angle: Math.PI, y: 0.05 },

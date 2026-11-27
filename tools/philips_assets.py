@@ -12,6 +12,7 @@
 #   tools/philips/crest.png    the club's logo (img/psvlogo.svg, rasterised
 #                              to tools/philips/psvlogo.png), also media/hud/psv.png
 #   tools/philips/sign.png     'philips stadion' over the main entrance
+#   tools/philips/sign_board.png  the same in white on the blue board over the dugouts
 #   tools/philips/facade.png   the white panels of the outside, a band of
 #                              windows a floor
 #   tools/philips/shops.png    the ground floor of the main stand: glass,
@@ -251,6 +252,21 @@ for a in (0.3, 2.4, 4.4):
 d.text((134, 70), 'philips stadion', font=f, fill=navy, anchor='lm')
 im.save(os.path.join(OUT, 'sign.png'))
 print('sign.png', im.size)
+
+# the same words in white on the blue board over the dugouts, hung on the
+# lounges' glass behind the first ring (8.png; 10.5 x 1.45 m)
+BW_, BH_ = 1024, 141
+im = Image.new('RGB', (BW_, BH_), (24, 78, 150))
+d = ImageDraw.Draw(im)
+d.rectangle([0, 0, BW_ - 1, 5], fill=(18, 58, 116)); d.rectangle([0, BH_ - 6, BW_ - 1, BH_ - 1], fill=(18, 58, 116))
+f2 = ImageFont.truetype(SUP + 'Arial Rounded Bold.ttf' if os.path.exists(SUP + 'Arial Rounded Bold.ttf') else MONT, 96)
+wht = (246, 246, 244)
+d.ellipse([70, 22, 166, 118], outline=wht, width=10)
+for a in (0.3, 2.4, 4.4):
+    d.line([(118 + 48 * math.cos(a), 70 + 48 * math.sin(a)), (118 + 17 * math.cos(a + 1), 70 + 17 * math.sin(a + 1))], fill=wht, width=9)
+d.text((196, 72), 'philips stadion', font=f2, fill=wht, anchor='lm')
+im.save(os.path.join(OUT, 'sign_board.png'))
+print('sign_board.png', im.size)
 
 
 # ---------------------------------------------------------------- the outside: white panels, windows

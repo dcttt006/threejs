@@ -13,8 +13,10 @@
 #     places; the main stand (Zuidtribune) on Frederiklaan, the north stand on
 #     the railway, the ends east (Oost, the home fans, its first ring safe
 #     standing) and west; the four open corners closed in 2000-2002 (Toon van
-#     Aken) with the corner pods: the corners' second rings in shells of
-#     louvres, a dome on each, hung from two white pylons by cables
+#     Aken) with the corner pods: the corners' second rings in bowls of dark
+#     louvres, tucked in at the offices' roof and widest high up, a low dome
+#     of pale bronze-grey sheeting on each, hung by cables from two pylons:
+#     faceted blades along the corner's diagonal, widest at a knee 15 m up
 #   - the plan is OpenStreetMap's (way 270383267, the stadium; 185034347, the
 #     pitch; data © OpenStreetMap contributors, ODbL), turned 36.96 degrees
 #     so the pitch lies on the axes: the inner edge of the stands 14.2 m
@@ -26,21 +28,30 @@
 #     the second ring a red LED band, the second ring up to the roof; red
 #     seats everywhere; PHILIPS in cream seats with a black shadow in the
 #     north stand's second ring, OOST in white in the east end's first ring,
-#     PSV behind the dugouts in the main stand's first ring
-#   - the dugouts in the main stand's first rows either side of the tunnel
-#     (1913 on its red sides), the four LED screens of 8 x 4.5 m at the ends
-#     of both long stands' second rings (game.screen.js, style 'philips': the
-#     orange-red board with the clock in a white box, the crests and the
-#     score), the away section in the north-west corner behind fences and a
-#     net, its footbridge from the station Eindhoven Stadion
+#     PSV twice in the main stand's first ring, either side of the dugouts
+#   - the dugouts in the main stand's first four rows either side of the
+#     tunnel (1913 on its red sides, glass on them), padded car seats in red
+#     and white stripes, a row more on wheeled frames on the turf in front,
+#     the blue board 'philips stadion' on the lounges' glass over them (8.png);
+#     the four LED screens of 8 x 4.5 m at the ends of both long stands'
+#     second rings (game.screen.js, style 'philips': the orange-red board with
+#     the clock in a white box, the crests and the score)
+#   - the away section: the upper tier of the north-west corner (fan
+#     guides), a tall screen of glass between steel posts along its front
+#     with the visitors' banners on it, glass partitions up both sides, a
+#     black net on white poles up to the roof (6.png, the photo from in it);
+#     the away fans' own covered footbridge from the platform of Eindhoven Stadion
 #   - the roofs: over the north stand white trusses on top of pale sheeting
-#     and down its back, the main stand's roof of glass on white trusses, the
-#     ends white; a deep white girder along every front with clusters of
-#     floodlights on it; eight white pylons, two at each pod
+#     and down its back, crossed between them, grey grilles behind; the main
+#     stand's roof of glass on white trusses, the ends white; under every roof
+#     fish-bellied trusses, purlins and black loudspeakers; a deep white girder
+#     along every front with clusters of floodlights on it
 #   - outside: a base of white offices round the whole ground, a band of
 #     windows a floor, red columns at the ground floor; the main stand's
-#     front with 'philips stadion', a red band and flags, the red steel
-#     crosses on its back; the north side's colonnade and red stair towers;
+#     front with 'philips stadion', a red band and flags; over it the
+#     second ring's back under the roof's white skirt on V struts, the red
+#     steel frames (two posts, two rails) before its glass; the north side's
+#     colonnade and red stair towers;
 #     round it Frederiklaan, Philipsdorp's gabled houses, the railway and the
 #     station's platform, the towers of the Hartje
 # No sponsors: the boards carry the club's, the stadium's and the city's own
@@ -432,13 +443,18 @@ def roof_under(d): return roof_top(d) - 0.35
 def pod_s(t): return math.sin(math.pi * max(0.0, min(1.0, t)))
 
 
-POD_TOP_Z = 31.4
-POD_PROFILE = [(12.5, 30.0), (14.5, 33.4), (17.0, 35.9), (20.0, 37.6), (23.0, 38.5), (26.0, 38.4), (28.4, 37.6), (29.9, 36.4), (30.9, 35.1), (POD_TOP_Z, 33.5)]
+POD_TOP_Z = 31.8
+POD_RIM_D = 37.0                              # where the dome meets the rim, in the corner's middle
+# the shell's profile in the corner's middle, (z, d): a bowl tucked in at the
+# offices' roof, widest high up, rolling over into the low dome (the photos
+# from the train and the crossroads)
+POD_PROFILE = [(12.5, 30.0), (14.2, 32.4), (16.6, 35.2), (19.6, 37.9), (22.8, 40.0), (25.9, 41.2), (28.4, 41.4),
+               (30.1, 40.6), (31.2, 39.2), (POD_TOP_Z, POD_RIM_D)]
 
 
 def pod_top(t):
     s = pod_s(t)
-    return roof_top(ROOF_D1) * (1 - s) + POD_TOP_Z * s, ROOF_D1 * (1 - s) + 33.5 * s
+    return roof_top(ROOF_D1) * (1 - s) + POD_TOP_Z * s, ROOF_D1 * (1 - s) + POD_RIM_D * s
 
 
 def pod_point(t, j):
@@ -528,10 +544,10 @@ def roof_under_tex():
 def glass_roof_tex():
     # the main stand's glass roof from above: grey-blue panes, white glazing bars (u: 6 m, v: 6 m)
     w, h = 192, 192
-    t = np.ones((h, w, 3), 'f') * np.array((0.16, 0.19, 0.22), 'f')
+    t = np.ones((h, w, 3), 'f') * np.array((0.27, 0.31, 0.35), 'f')       # the sky in it
     t *= (1 + 0.15 * vnoise(h, w, 48, 48))[..., None]
-    t[:, (np.arange(w) % 48) < 3] = (0.70, 0.71, 0.70)
-    t[(np.arange(h) % 96) < 3, :] = (0.70, 0.71, 0.70)
+    t[:, (np.arange(w) % 48) < 4] = (0.72, 0.73, 0.72)
+    t[(np.arange(h) % 96) < 4, :] = (0.72, 0.73, 0.72)
     return t
 
 
@@ -541,6 +557,16 @@ def sheet_tex():
     t = np.ones((h, w, 3), 'f') * np.array((0.64, 0.64, 0.61), 'f')
     t[:, (np.arange(w) % 12) < 2] *= 0.86
     t *= (1 + 0.04 * vnoise(h, w, 16, 16))[..., None]
+    return t
+
+
+def grille_tex():
+    # the north stand's back: grey grilles in panels of 1.5 m, horizontal slats (u: 6 m, v: 4 m)
+    w, h = 192, 128
+    t = np.ones((h, w, 3), 'f') * np.array((0.34, 0.35, 0.355), 'f')
+    t[(np.arange(h) % 6) < 2] *= 0.62
+    t[:, (np.arange(w) % 48) < 3] = (0.50, 0.51, 0.51)
+    t[:4] = (0.50, 0.51, 0.51)
     return t
 
 
@@ -579,7 +605,7 @@ concrete_light = principled('M_ConcreteLight', (0.52, 0.52, 0.50), 0.85)
 white_paint = principled('M_WhitePaint', (0.80, 0.80, 0.78), 0.7)
 truss_white = principled('M_TrussWhite', (0.80, 0.80, 0.78), 0.5)
 roof_white = principled('M_RoofWhite', (0.76, 0.76, 0.73), 0.7)
-pod_metal = principled('M_PodMetal', (0.62, 0.60, 0.55), 0.5)
+pod_metal = principled('M_PodMetal', (0.40, 0.375, 0.32), 0.5)          # the domes: pale bronze-grey sheeting
 pylon_mat = principled('M_Pylon', (0.74, 0.75, 0.76), 0.4)
 cable_mat = principled('M_Cable', (0.10, 0.10, 0.11), 0.5)
 steel_dark = principled('M_SteelDark', (0.042, 0.044, 0.048), 0.6)
@@ -599,6 +625,7 @@ _gu = glass_roof_tex() * 0.0 + np.array((0.62, 0.66, 0.70), 'f')
 _gu[:, (np.arange(192) % 48) < 3] = (0.80, 0.80, 0.78); _gu[(np.arange(192) % 96) < 3, :] = (0.80, 0.80, 0.78)
 glass_under = image_material('M_GlassUnder', painted('ps_glassunder', _gu), 0.3)        # the glass from under it: the sky through it
 sheet_mat = image_material('M_Sheet', painted('ps_sheet', sheet_tex()), 0.6)
+grille_mat = image_material('M_Grille', painted('ps_grille', grille_tex()), 0.6)
 graffiti = image_material('M_Graffiti', painted('ps_graffiti', graffiti_tex()), 0.8)
 boards_mat = image_material('M_Boards', load_asset('boards.png'), 0.6)
 band_mat = image_material('M_Band', load_asset('band.png'), 0.6)
@@ -733,27 +760,27 @@ def mask_of(name):
 M_PHILIPS, M_OOST, M_PSV = mask_of('philips.png'), mask_of('oost.png'), mask_of('psv.png')
 SEC_LONG = (2 * HX) / 9                    # the long sides' sections between the stairs: 13.49 m
 SEC_END = (2 * HY) / 6                     # the ends': 11.98 m
+PSV_W = M_PSV.shape[1] * SEC_LONG / 27
 LETTERS = {
-    # side, tier: (mask, top row, the start of the word along the stand, a seat's width in the mask, the direction read from the pitch)
-    ('N', 'up'): (M_PHILIPS, 15, 3.5 * SEC_LONG, SEC_LONG / 27, Vector((-1, 0, 0))),
-    ('E', 'low'): (M_OOST, 11, CY0 - 2 * SEC_END, SEC_END / 24, Vector((0, 1, 0))),
-    ('S', 'low'): (M_PSV, 12, -1.5 * SEC_LONG, SEC_LONG / 27, Vector((1, 0, 0))),
+    # side, tier: [(mask, top row, the start of the word along the stand, a seat's width in the mask, the direction read from the pitch)]
+    ('N', 'up'): [(M_PHILIPS, 15, 3.5 * SEC_LONG, SEC_LONG / 27, Vector((-1, 0, 0)))],
+    ('E', 'low'): [(M_OOST, 11, CY0 - 2 * SEC_END, SEC_END / 24, Vector((0, 1, 0)))],
+    # the main stand: PSV twice, either side of the dugouts, plain red behind them (the panorama on Commons, 8.png)
+    ('S', 'low'): [(M_PSV, 12, -13.6 - PSV_W, SEC_LONG / 27, Vector((1, 0, 0))),
+                   (M_PSV, 12, 13.6, SEC_LONG / 27, Vector((1, 0, 0)))],
 }
 
 
 def letter_at(side, tier, row, p):
-    spec = LETTERS.get((side, tier))
-    if not spec:
-        return 0
-    m, top, start, sw, dirn = spec
-    r = top - row
-    if not 0 <= r < m.shape[0]:
-        return 0
-    along = (p.x * dirn.x + p.y * dirn.y) - (start * (dirn.x + dirn.y))
-    c = int(math.floor(along / sw))
-    if not 0 <= c < m.shape[1]:
-        return 0
-    return int(m[r, c])
+    for m, top, start, sw, dirn in LETTERS.get((side, tier), ()):
+        r = top - row
+        if not 0 <= r < m.shape[0]:
+            continue
+        along = (p.x * dirn.x + p.y * dirn.y) - (start * (dirn.x + dirn.y))
+        c = int(math.floor(along / sw))
+        if 0 <= c < m.shape[1]:
+            return int(m[r, c])
+    return 0
 
 
 def dugout(side, tier, row, p):
@@ -967,6 +994,59 @@ face(bm, [(-2.1, YS + 6.1, 0.0), (2.1, YS + 6.1, 0.0), (2.1, YS + 6.1, LOW_ROWS[
 face(bm, [(-2.1, YS, 0.01), (2.1, YS, 0.01), (2.1, YS + 6.1, 0.01), (-2.1, YS + 6.1, 0.01)], UPV, 2)
 new_obj('Tunnel', bm, '02_Bowl', [tunnel_mat, portal, concrete_dark])
 
+# the dugouts as on 8.png: the benches are the main stand's first four rows
+# either side of the tunnel, padded car seats in red with white stripes; in
+# front of them on the turf a row more of the same seats on wheeled steel
+# frames; glass partitions on the tunnel's red sides and at the outer ends;
+# over them on the lounges' glass the blue board 'philips stadion'
+glass_px = np.zeros((4, 4, 4), 'f'); glass_px[..., :3] = (0.62, 0.68, 0.70); glass_px[..., 3] = 0.28
+gimg = D.images.new('ps_glass', 4, 4, alpha=True); gimg.pixels.foreach_set(glass_px.ravel())
+gimg.filepath_raw = TEX_DIR + '/ps_glass.png'; gimg.file_format = 'PNG'; gimg.save(); gimg.pack()
+clear_glass = alpha_material('M_ClearGlass', gimg, 0.1)
+bm, gl = bmesh.new(), bmesh.new()
+plain_red = principled('M_SeatBack', (0.40, 0.012, 0.016), 0.6)
+yr = YS - 1.25                               # the wheeled row: the front of its seats
+for sx in (-1, 1):
+    xs_ = [sx * (2.9 + 0.68 * k) for k in range(int((13.3 - 2.9) / 0.68) + 1)]
+    for x_ in xs_:
+        pa = [Vector((x_ - 0.28, yr, 0.16)), Vector((x_ + 0.28, yr, 0.16))]
+        pb = [Vector((x_ - 0.28, yr + 0.8, 0.16)), Vector((x_ + 0.28, yr + 0.8, 0.16))]
+        seat_geo(bm, pa, pb, Vector((0, 1, 0)), 0, 0, 1, cush=0.5, top=1.22, fwd=0.12)
+        # its shell: sides, the back of the backrest
+        for ex in (-0.28, 0.28):
+            face(bm, [(x_ + ex, yr + 0.1, 0.42), (x_ + ex, yr + 0.62, 0.42), (x_ + ex, yr + 0.66, 1.38), (x_ + ex, yr + 0.6, 0.66)],
+                 Vector((ex, 0, 0)), 1)
+        face(bm, [(x_ - 0.28, yr + 0.67, 0.42), (x_ + 0.28, yr + 0.67, 0.42), (x_ + 0.28, yr + 0.68, 1.38), (x_ - 0.28, yr + 0.68, 1.38)],
+             Vector((0, 1, 0)), 1)
+        face(bm, [(x_ - 0.28, yr + 0.1, 0.40), (x_ + 0.28, yr + 0.1, 0.40), (x_ + 0.28, yr + 0.1, 0.66), (x_ - 0.28, yr + 0.1, 0.66)],
+             Vector((0, -1, 0)), 1)
+    # the frame: two rails, legs, wheels
+    x0_, x1_ = min(xs_) - 0.35, max(xs_) + 0.35
+    for yy in (yr + 0.15, yr + 0.62):
+        tube(bm, Vector((x0_, yy, 0.18)), Vector((x1_, yy, 0.18)), 0.03, 2, 6, step=3.0)
+        for x_ in np.arange(x0_, x1_ + 0.01, (x1_ - x0_) / 5):
+            tube(bm, Vector((float(x_), yy, 0.05)), Vector((float(x_), yy, 0.18)), 0.025, 2, 5)
+            box(bm, (float(x_), yy), (1, 0), 0.03, (0, 1), 0.05, 0.0, 0.1, 3)
+    # the glass on the tunnel's red side, stepping with the rows
+    xg = sx * 2.1
+    for k in range(1, 8):
+        d0, d1, z = LOW_ROWS[k][0], LOW_ROWS[k][1], LOW_ROWS[k][2]
+        face(gl, [(xg, YS + d0, z), (xg, YS + d1, z), (xg, YS + d1, z + 1.05), (xg, YS + d0, z + 1.05)], Vector((sx, 0, 0)), 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
+        tube(bm, Vector((xg, YS + d0, z + 1.05)), Vector((xg, YS + d1, z + 1.05)), 0.03, 2, 6)
+        tube(bm, Vector((xg, YS + d0, z)), Vector((xg, YS + d0, z + 1.05)), 0.025, 2, 5)
+    # at the benches' outer ends
+    xo = sx * 13.6
+    for k in range(1, 6):
+        d0, d1, z = LOW_ROWS[k][0], LOW_ROWS[k][1], LOW_ROWS[k][2]
+        face(gl, [(xo, YS + d0, z), (xo, YS + d1, z), (xo, YS + d1, z + 1.0), (xo, YS + d0, z + 1.0)], Vector((-sx, 0, 0)), 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
+        tube(bm, Vector((xo, YS + d0, z + 1.0)), Vector((xo, YS + d1, z + 1.0)), 0.03, 2, 6)
+new_obj('Dugouts', bm, '03_Seats', [seat_cols[DUG], plain_red, galv, steel_dark])
+new_obj('Dugout_Glass', gl, '02_Bowl', [clear_glass])
+bm = bmesh.new()
+yg = YS + GLASS_D - 0.06
+face(bm, [(-3.4, yg, 10.85), (-13.9, yg, 10.85), (-13.9, yg, 12.3), (-3.4, yg, 12.3)], Vector((0, -1, 0)), 0, [(1, 0), (0, 0), (0, 1), (1, 1)])
+new_obj('Dugout_Sign', bm, '02_Bowl', [image_material('M_SignBoard', load_asset('sign_board.png'), 0.6)])
+
 # ---------------------------------------------------------------- the four screens, at the ends of both long stands' second rings
 # a black box on the second ring, its face the live screen (game.screen.js,
 # style 'philips'), seen from the pitch the left edge of each picture on the left
@@ -994,46 +1074,71 @@ new_obj('Screen_Frames', bm, '04_Roof', [steel_dark, steel_grey])
 screen_face = new_obj('ScreenFace_0', fb, '04_Roof', [live])
 
 # ---------------------------------------------------------------- the away section: the north-west corner's second ring
-# tall fences up both its sides and along its front, a dark net from the
-# front of the second ring up to the roof's girder (as on the photo from it)
+# (fan guides: the upper tier of the north-west corner, steep, its own
+# entrance from the platform of Eindhoven Stadion; the photos from in it and
+# 6.png): along its front a tall screen of glass between steel posts, the
+# fans' banners hung on it; glass partitions stepping up both sides along the
+# stairs to the home seats; a black net from the screen up to the roof's girder
 i_aw0, i_aw1 = SIDE_RANGE['cNW']
-bm = bmesh.new()
-
-
-def fence(pa, pb, za, zb, h=2.6, every=2.2, mesh=True):
-    L = (pb - pa).length
-    n = max(1, math.ceil(L / every))
-    for k in range(n + 1):
-        q = pa.lerp(pb, k / n); zq = za + (zb - za) * k / n
-        tube(bm, Vector((q.x, q.y, zq)), Vector((q.x, q.y, zq + h)), 0.05, 0, 5)
-    for hh in (0.9, h):
-        tube(bm, Vector((pa.x, pa.y, za + hh)), Vector((pb.x, pb.y, zb + hh)), 0.04, 0, 5, step=3.0)
-    if mesh:
-        m = max(1, int(L / 0.3))
-        for k in range(m):
-            q = pa.lerp(pb, (k + 0.5) / m); zq = za + (zb - za) * (k + 0.5) / m
-            tube(bm, Vector((q.x, q.y, zq + 0.1)), Vector((q.x, q.y, zq + h)), 0.012, 0, 3, step=4.0)
-
-
+AW_H = 2.4                                   # the screen along the front
+bm, gl = bmesh.new(), bmesh.new()
+for i in range(i_aw0, i_aw1):
+    a_, b_ = P(i, 0, BAL_D + 0.12), P(i, 1, BAL_D + 0.12)
+    face(gl, [(a_.x, a_.y, FASCIA_Z1), (b_.x, b_.y, FASCIA_Z1), (b_.x, b_.y, FASCIA_Z1 + AW_H), (a_.x, a_.y, FASCIA_Z1 + AW_H)],
+         -NODES[i][1], 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
+    for f_ in (0.0, 0.5):
+        q_ = a_.lerp(b_, f_)
+        tube(bm, Vector((q_.x, q_.y, FASCIA_Z1)), Vector((q_.x, q_.y, FASCIA_Z1 + AW_H + 0.1)), 0.08, 0, 6)
+    for zz in (FASCIA_Z1 + 0.05, FASCIA_Z1 + 1.15, FASCIA_Z1 + AW_H):
+        tube(bm, Vector((a_.x, a_.y, zz)), Vector((b_.x, b_.y, zz)), 0.07, 0, 6)
+pe = P(i_aw1 - 1, 1, BAL_D + 0.12)
+tube(bm, Vector((pe.x, pe.y, FASCIA_Z1)), Vector((pe.x, pe.y, FASCIA_Z1 + AW_H + 0.1)), 0.08, 0, 6)
+# the net's white poles at both ends of the section, from the screen up to the roof
+for i in (i_aw0, i_aw1):
+    q_ = P(i, 0, BAL_D + 0.3)
+    tube(bm, Vector((q_.x, q_.y, FASCIA_Z1)), Vector((q_.x, q_.y, GIRDER_Z0 - 0.2)), 0.16, 1, 8, step=3.0)
+# the visitors' banners hung over the screen: plain cloth, stripes and halves
+BAN = np.ones((64, 3 * 192, 3), 'f')
+BAN[:, 0:192] = (0.80, 0.80, 0.78)                  # white and navy stripes
+for c_ in range(0, 192, 48):
+    BAN[:, c_:c_ + 24] = (0.04, 0.08, 0.30)
+BAN[:, 192:288] = (0.03, 0.03, 0.035); BAN[:, 288:384] = (0.80, 0.80, 0.78)        # black and white halves
+BAN[:, 384:576] = (0.10, 0.35, 0.70); BAN[20:44, 384:576] = (0.80, 0.80, 0.78)    # sky blue, a white band
+banner_mat = image_material('M_Banners', painted('ps_banners', BAN), 0.9)
+bn = bmesh.new()
+for k, (i0_, n_) in enumerate(((i_aw0 + 2, 2), (i_aw0 + 5, 2), (i_aw0 + 8, 2))):
+    pa, pb = P(i0_, 0, BAL_D + 0.02), P(i0_ + n_ - 1, 1, BAL_D + 0.02)
+    o_ = -(NODES[i0_][1] + NODES[i0_ + n_][1]).normalized() * 0.04
+    pa, pb = pa + o_, pb + o_
+    zt_, zb_ = FASCIA_Z1 + AW_H - 0.1, FASCIA_Z1 + 0.6
+    face(bn, [(pa.x, pa.y, zb_), (pb.x, pb.y, zb_), (pb.x, pb.y, zt_), (pa.x, pa.y, zt_)], o_, 0,
+         [(k / 3 + 0.004, 0), ((k + 1) / 3 - 0.004, 0), ((k + 1) / 3 - 0.004, 1), (k / 3 + 0.004, 1)])
+new_obj('Away_Banners', bn, '02_Bowl', [banner_mat])
 for i in (i_aw0, i_aw1):
     for k in range(len(UP_ROWS) - 1):
         d0, d1, z, _ = UP_ROWS[k]
-        fence(P(i, 0, d0), P(i, 0, d1), z, z, h=2.6, every=0.8, mesh=False)
-new_obj('Away_Fences', bm, '02_Bowl', [galv])
+        pa, pb = P(i, 0, d0), P(i, 0, d1)
+        nrm_ = Vector((-(pb - pa).y, (pb - pa).x, 0))
+        face(gl, [(pa.x, pa.y, z), (pb.x, pb.y, z), (pb.x, pb.y, z + AW_H), (pa.x, pa.y, z + AW_H)], nrm_, 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
+        tube(bm, Vector((pa.x, pa.y, z)), Vector((pa.x, pa.y, z + AW_H + 0.05)), 0.045, 0, 5)
+        tube(bm, Vector((pa.x, pa.y, z + AW_H)), Vector((pb.x, pb.y, z + AW_H)), 0.035, 0, 5)
+new_obj('Away_Fences', bm, '02_Bowl', [steel_grey, white_paint])
+new_obj('Away_Glass', gl, '02_Bowl', [clear_glass])
 NET2 = 64
-dn = np.zeros((NET2, NET2, 4), 'f'); dn[..., :3] = 0.03
+dn = np.zeros((NET2, NET2, 4), 'f'); dn[..., :3] = 0.03; dn[..., 3] = 0.16
 dl = (np.arange(NET2) % 16) < 2
-dn[dl, :, 3] = 0.9; dn[:, dl, 3] = 0.9
+dn[dl, :, 3] = 0.95; dn[:, dl, 3] = 0.95
 dimg = D.images.new('ps_awaynet', NET2, NET2, alpha=True)
 dimg.pixels.foreach_set(dn.ravel())
 dimg.filepath_raw = TEX_DIR + '/ps_awaynet.png'; dimg.file_format = 'PNG'; dimg.save(); dimg.pack()
 away_net = alpha_material('M_AwayNet', dimg, 0.9)
 bm = bmesh.new()
 for i in range(i_aw0, i_aw1):
-    a_, b_ = P(i, 0, BAL_D + 0.1), P(i, 1, BAL_D + 0.1)
+    a_, b_ = P(i, 0, BAL_D + 0.2), P(i, 1, BAL_D + 0.2)
     L = (b_ - a_).length
+    z_lo = FASCIA_Z1 + AW_H
     for zz in range(4):
-        za, zb = FASCIA_Z1 + (GIRDER_Z0 - FASCIA_Z1) * zz / 4, FASCIA_Z1 + (GIRDER_Z0 - FASCIA_Z1) * (zz + 1) / 4
+        za, zb = z_lo + (GIRDER_Z0 - z_lo) * zz / 4, z_lo + (GIRDER_Z0 - z_lo) * (zz + 1) / 4
         face(bm, [(a_.x, a_.y, za), (b_.x, b_.y, za), (b_.x, b_.y, zb), (a_.x, a_.y, zb)], -NODES[i][1], 0,
              [(0, za / 0.5), (L / 0.5, za / 0.5), (L / 0.5, zb / 0.5), (0, zb / 0.5)])
 new_obj('Away_Net', bm, '02_Bowl', [away_net])
@@ -1133,10 +1238,20 @@ for i in range(i0, i1 + 1):
     truss(bm, [to3(q) for q in N_TOP], [to3(q) for q in N_BOT], 0.2, 0.1)
     if i < i1:
         nb_ = NODES[i + 1][0]
-        for q in (N_TOP[0], N_TOP[7], N_TOP[10]):
-            tube(bm, to3(q), Vector((nb_.x + out.x * q[0], nb_.y + out.y * q[0], q[1])), 0.09, 0, 5, step=3.5)
-for side in ('S', 'E', 'W'):
+        to3b = lambda dz: Vector((nb_.x + out.x * dz[0], nb_.y + out.y * dz[0], dz[1]))
+        for q in (N_TOP[0], N_TOP[7], N_TOP[10], N_TOP[13], N_TOP[16]):
+            tube(bm, to3(q), to3b(q), 0.09, 0, 5, step=3.5)
+        # the crossed bracing between the trusses down the back (the photos from the railway)
+        for k in range(10, 17, 3):
+            tube(bm, to3(N_TOP[k]), to3b(N_TOP[k + 3 if k + 3 < len(N_TOP) else -1]), 0.07, 0, 4, step=3.5)
+            tube(bm, to3(N_TOP[k + 3 if k + 3 < len(N_TOP) else -1]), to3b(N_TOP[k]), 0.07, 0, 4, step=3.5)
+# under every roof the fish-bellied trusses across it, purlin trusses along
+# it between them, the black loudspeakers hanging in a row (the photos from
+# the second rings: Commons, Bodø-Glimt 2022)
+spk = bmesh.new()
+for side in ('S', 'E', 'W', 'N'):
     i0, i1 = SIDE_RANGE[side]
+    prev = None
     for i in range(i0, i1 + 1):
         if side != 'S' and (i - i0) % 2:
             continue
@@ -1144,8 +1259,22 @@ for side in ('S', 'E', 'W'):
         to3 = lambda dz: Vector((base_.x + out.x * dz[0], base_.y + out.y * dz[0], dz[1]))
         top_ = lerp_path([(GIRDER_D, roof_under(GIRDER_D) - 0.1), (BACK_D, roof_under(BACK_D) - 0.1)], 10)
         bot_ = [(d_, roof_under(d_) - 0.1 - 2.4 * math.sin(math.pi * (d_ - GIRDER_D) / (BACK_D - GIRDER_D))) for d_, _ in top_]
-        truss(bm, [to3(q) for q in top_], [to3(q) for q in bot_], 0.11, 0.06)
+        cur = ([to3(q) for q in top_], [to3(q) for q in bot_])
+        truss(bm, cur[0], cur[1], 0.11 if side != 'N' else 0.14, 0.06 if side != 'N' else 0.08)
+        if prev and side != 'S':
+            # the purlin trusses: bottom chords along the stand, braced up to the next truss's top
+            for k in (3, 5, 7):
+                tube(bm, prev[1][k], cur[1][k], 0.09, 0, 5, step=3.5)
+                tube(bm, prev[1][k], cur[0][k], 0.05, 0, 4, step=3.5)
+            if (i - i0) % 4 == 2:
+                # a loudspeaker column under the front of the roof
+                pm = (prev[1][2] + cur[1][2]) / 2
+                tg = (cur[1][2] - prev[1][2]).normalized()
+                obox(spk, pm - UPV * 1.6, tg, out, UPV, 0.4, 0.45, 1.2, 0)
+                tube(spk, pm - UPV * 0.4, pm, 0.03, 0, 4)
+        prev = cur
 new_obj('Roof_Trusses', bm, '04_Roof', [truss_white])
+new_obj('Speakers', spk, '04_Roof', [steel_dark])
 
 # the floodlights: clusters on top of the girder, aimed at the pitch
 bm = bmesh.new()
@@ -1214,8 +1343,11 @@ new_obj('Pods', bm, '05_Outside', [louvres, pod_metal, steel_dark])
 
 # ================================================================ the pylons and their cables
 # two at each pod, where it meets the straight stands, just outside the
-# offices (OSM), 46 m tall: a tapering white blade with a sharp edge outward,
-# leaning out a little; two cables from the top down to the pod's rim
+# offices (OSM), 46 m tall: a faceted blade of white-grey panels, its broad
+# side along the corner's diagonal; narrow at its foot, widest at the knee
+# 15 m up where its outer edge breaks back, tapering to a chisel top cut
+# down towards the stadium; leaning out a little; two cables from the top
+# down to the pod's rim (the photos from Frederiklaan and the train)
 def outline_dist(x, y):
     best = 1e9
     n = len(OUTLINE)
@@ -1236,39 +1368,66 @@ for c_side in CORNERS:
         while inside_poly(P(i, 0, d).x, P(i, 0, d).y, OUTLINE) or outline_dist(P(i, 0, d).x, P(i, 0, d).y) < 2.2:
             d += 0.5
         PYLONS.append((P(i, 0, d), nrm, c_side, t_end))
+# the blade's profile in its own plane: (z, inner edge, outer edge), metres
+# out from its foot along the diagonal; its thickness across
+BLADE = [(0.0, 0.0, 4.4), (15.0, 0.6, 7.6), (PYLON_H, 1.4, 4.6)]
+BLADE_T = [(0.0, 2.3), (15.0, 2.1), (PYLON_H, 1.1)]
+TOP_DROP = 4.2                                  # the chisel top: its inner edge this much lower
+
+
+def blade_at(z):
+    for (za, ia, oa), (zb, ib, ob) in zip(BLADE, BLADE[1:]):
+        if z <= zb + 1e-9:
+            f_ = (z - za) / (zb - za)
+            return ia + (ib - ia) * f_, oa + (ob - oa) * f_
+    return BLADE[-1][1], BLADE[-1][2]
+
+
+def blade_t(z):
+    for (za, ta), (zb, tb) in zip(BLADE_T, BLADE_T[1:]):
+        if z <= zb + 1e-9:
+            return ta + (tb - ta) * (z - za) / (zb - za)
+    return BLADE_T[-1][1]
+
+
 bm, cb = bmesh.new(), bmesh.new()
 for base_, nrm, c_side, t_end in PYLONS:
-    tg = Vector((-nrm.y, nrm.x, 0))
-    lean = nrm * 2.2
-    n_seg = 12
-    rings_ = []
-    for k in range(n_seg + 1):
-        f_ = k / n_seg
-        z = PYLON_H * f_
-        w_ = 2.1 * (1 - f_) + 0.45 * f_           # half the width along the stand
-        dp = 2.8 * (1 - f_) + 0.7 * f_             # the depth, edge outward
-        c = base_ + lean * f_ ** 1.6 + Vector((0, 0, z))
-        rings_.append([c + nrm * dp * 0.6, c - nrm * dp * 0.4 + tg * w_, c - nrm * dp * 0.4 - tg * w_])
-    ctr = lambda r: (r[0] + r[1] + r[2]) / 3
-    for k in range(n_seg):
-        for j in range(3):
-            q = [rings_[k][j], rings_[k][(j + 1) % 3], rings_[k + 1][(j + 1) % 3], rings_[k + 1][j]]
-            out_ = (q[0] + q[1] + q[2] + q[3]) / 4 - (ctr(rings_[k]) + ctr(rings_[k + 1])) / 2
-            face(bm, q, out_, 0)
-    tip = base_ + lean + Vector((0, 0, PYLON_H + 2.5))
-    for j in range(3):
-        q = [rings_[-1][j], rings_[-1][(j + 1) % 3], tip]
-        face(bm, q, (q[0] + q[1]) / 2 - ctr(rings_[-1]) + UPV * 0.3, 0)
-    face(bm, rings_[0], -UPV, 0)
-    # the cables to the rim of the pod
     i0, i1 = SIDE_RANGE[c_side]
-    top = base_ + lean * 0.98 + Vector((0, 0, PYLON_H - 1.5))
+    mid = i0 + (i1 - i0) // 2
+    diag = NODES[mid][1].copy()                 # the corner's diagonal, outward
+    acr = Vector((-diag.y, diag.x, 0))
+    lean = nrm * 2.2
+    zs = [0.0, 5.0, 10.0, 15.0, 22.0, 29.0, 36.0, PYLON_H - TOP_DROP, PYLON_H]
+    secs = []
+    for z in zs:
+        f_ = z / PYLON_H
+        ri, ro = blade_at(z)
+        th = blade_t(z) / 2
+        c = base_ + lean * f_ ** 1.6
+        zi = min(z, PYLON_H - TOP_DROP)             # the inner edge stops lower: the chisel top
+        rm = (ri + ro) / 2
+        zm = min(z, PYLON_H - TOP_DROP / 2)
+        secs.append([c + diag * ri + Vector((0, 0, zi)), c + diag * rm + acr * th + Vector((0, 0, zm)),
+                     c + diag * ro + Vector((0, 0, z)), c + diag * rm - acr * th + Vector((0, 0, zm))])
+    for k in range(len(secs) - 1):
+        a_, b_ = secs[k], secs[k + 1]
+        cen = (sum(a_, Vector()) + sum(b_, Vector())) / 8
+        for j in range(4):
+            q = [a_[j], a_[(j + 1) % 4], b_[(j + 1) % 4], b_[j]]
+            if (q[0] - q[3]).length < 1e-4 and (q[1] - q[2]).length < 1e-4:
+                continue
+            face(bm, q, (q[0] + q[1] + q[2] + q[3]) / 4 - cen, 0)
+    top_s = secs[-1]
+    face(bm, top_s, UPV + diag * 0.3, 0)
+    face(bm, secs[0], -UPV, 0)
+    # the cables to the rim of the pod, from just under the chisel
+    top = base_ + lean * 0.95 + diag * 2.6 + Vector((0, 0, PYLON_H - TOP_DROP - 1.0))
     for tc in ((0.16, 0.30) if t_end == 0.0 else (0.84, 0.70)):
         pos = tc * (i1 - i0)
         ii = i0 + min(i1 - i0 - 1, int(pos))
         zt, dt = pod_top(tc)
         rp = P(ii, pos - int(pos), dt - 0.6)
-        tube(cb, top, Vector((rp.x, rp.y, zt + 0.1)), 0.06, 0, 5, step=4.0)
+        tube(cb, top, Vector((rp.x, rp.y, zt + 0.1)), 0.09, 0, 5, step=4.0)
 new_obj('Pylons', bm, '05_Outside', [pylon_mat])
 new_obj('Cables', cb, '05_Outside', [cable_mat])
 
@@ -1316,9 +1475,14 @@ new_obj('Pitchside', bm, '02_Bowl', [steel_dark, steel_grey])
 # windows a floor, from the offices' roof up to the eave
 bm = bmesh.new()
 OUT_D = BACK_D + 0.2
-ring(bm, OUT_D, BASE_H, OUT_D, roof_under(OUT_D) - 0.4, 0, want='out', zstep=3.6, u_len=12.0, v=(0, (roof_under(OUT_D) - 0.4 - BASE_H) / 3.6), keep=is_straight)
+ring(bm, OUT_D, BASE_H, OUT_D, roof_under(OUT_D) - 0.4, 0, want='out', zstep=3.6, u_len=12.0, v=(0, (roof_under(OUT_D) - 0.4 - BASE_H) / 3.6),
+     keep=lambda i: is_straight(i) and INFO[i][0] != 'N')
 ring(bm, OUT_D, BASE_H + 3.0, OUT_D, roof_under(OUT_D) - 0.4, 1, want='out', zstep=3.0, keep=is_corner)
-new_obj('Back_Walls', bm, '05_Outside', [facade_mat, concrete_dark])
+# the north stand's back behind its trusses: grey grilles, a red line at their foot (the photos from the railway)
+ring(bm, OUT_D, BASE_H, OUT_D, roof_under(OUT_D) - 0.4, 2, want='out', zstep=4.0, u_len=6.0, v=(0, (roof_under(OUT_D) - 0.4 - BASE_H) / 4.0),
+     keep=lambda i: INFO[i][0] == 'N')
+ring(bm, OUT_D + 0.05, BASE_H + 0.9, OUT_D + 0.05, BASE_H + 1.3, 3, want='out', keep=lambda i: INFO[i][0] == 'N')
+new_obj('Back_Walls', bm, '05_Outside', [facade_mat, concrete_dark, grille_mat, red_steel])
 
 # the offices round the ground (the stadium's outline in OSM): the ground
 # floor's glass between red columns, white panels and windows over it; the
@@ -1385,21 +1549,56 @@ for k in range(n_o):
     outv = Vector((c_[1] - a_[1], -(c_[0] - a_[0]), 0)) * (1 if sarea > 0 else -1)
     o = outv.normalized() * 0.08
     face(bm, [(a_[0] + o.x, a_[1] + o.y, 10.9), (c_[0] + o.x, c_[1] + o.y, 10.9), (c_[0] + o.x, c_[1] + o.y, 11.9), (a_[0] + o.x, a_[1] + o.y, 11.9)], outv, 0)
+# the east end over the street: the same red band and 'philips stadion' (the photos from the crossroads)
+face(bm, [(-104.78, 33.6, 10.9), (-104.78, -17.2, 10.9), (-104.78, -17.2, 11.9), (-104.78, 33.6, 11.9)], Vector((-1, 0, 0)), 0)
 new_obj('Main_Band', bm, '05_Outside', [red_steel])
 y_sign = max(p[1] for p in OUTLINE if -47.0 < p[0] < -4.0) + 0.12
 bm = bmesh.new()
 face(bm, [(-17.0, y_sign, 8.1), (-33.0, y_sign, 8.1), (-33.0, y_sign, 10.3), (-17.0, y_sign, 10.3)], Vector((0, 1, 0)), 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
+face(bm, [(-104.86, 16.0, 8.2), (-104.86, 0.0, 8.2), (-104.86, 0.0, 10.4), (-104.86, 16.0, 10.4)], Vector((-1, 0, 0)), 0, [(0, 0), (1, 0), (1, 1), (0, 1)])
 new_obj('Main_Sign', bm, '05_Outside', [sign_mat])
+# the second ring's back over Frederiklaan: the roof's white skirt slanting
+# down and out over the upper floors on white struts, and in front of their
+# glass the red steel frames, two posts crossed by two rails whose ends turn
+# down (Philips Stadion Frederiklaan / 2018, Commons)
+yb = YS + OUT_D
+ys0 = YS + ROOF_D1                          # the skirt hangs from the eave
+SK_OUT, SK_DROP = 4.6, 3.6                  # the skirt: how far out, how far down
+z_sk = roof_top(ROOF_D1)
+xs_main = (XE + RC + 4.0, XW - RC - 4.0)
 bm = bmesh.new()
-yb = YS + OUT_D + 1.3
+n_sk = 40
+for k in range(n_sk):
+    xa = xs_main[0] + (xs_main[1] - xs_main[0]) * k / n_sk
+    xb = xs_main[0] + (xs_main[1] - xs_main[0]) * (k + 1) / n_sk
+    top_ = [(xa, ys0, z_sk), (xb, ys0, z_sk), (xb, ys0 + SK_OUT, z_sk - SK_DROP), (xa, ys0 + SK_OUT, z_sk - SK_DROP)]
+    face(bm, top_, Vector((0, SK_DROP, SK_OUT)), 0)
+    face(bm, [(x_, y_, z_ - 0.35) for x_, y_, z_ in top_][::-1], Vector((0, -SK_DROP, -SK_OUT)), 0)
+    face(bm, [(xa, ys0 + SK_OUT, z_sk - SK_DROP - 0.35), (xb, ys0 + SK_OUT, z_sk - SK_DROP - 0.35),
+              (xb, ys0 + SK_OUT, z_sk - SK_DROP), (xa, ys0 + SK_OUT, z_sk - SK_DROP)], Vector((0, 1, 0)), 0)
+for x_e in xs_main:
+    sgn = 1 if x_e > 0 else -1
+    face(bm, [(x_e, ys0, z_sk - 0.35), (x_e, ys0 + SK_OUT, z_sk - SK_DROP - 0.35), (x_e, ys0 + SK_OUT, z_sk - SK_DROP), (x_e, ys0, z_sk)],
+         Vector((sgn, 0, 0)), 0)
+# the struts: a V in every bay of 6 m, from the wall up to the skirt's edge
+for x_ in np.arange(xs_main[0] + 3.0, xs_main[1] - 2.0, 6.0):
+    foot = Vector((float(x_), yb + 0.3, z_sk - 9.5))
+    for dx in (-1.6, 1.6):
+        tube(bm, foot, Vector((float(x_) + dx, ys0 + SK_OUT - 0.3, z_sk - SK_DROP - 0.4)), 0.22, 0, 8, step=3.0)
+    tube(bm, Vector((float(x_), yb + 0.2, z_sk - 0.9)), Vector((float(x_), ys0 + SK_OUT - 0.3, z_sk - SK_DROP - 0.4)), 0.18, 0, 6)
+new_obj('Main_Skirt', bm, '05_Outside', [fascia_white])
+bm = bmesh.new()
+yf = yb + 1.4
 for x_ in (34.0, 22.0, 10.0, -2.0, -14.0, -26.0, -38.0):
-    tube(bm, Vector((x_, yb, BASE_H)), Vector((x_, yb, 26.4)), 0.32, 0, 8, step=3.0)
-    for s in (-1, 1):
-        tube(bm, Vector((x_ - 3.2 * s, yb, BASE_H + 0.8)), Vector((x_ + 3.2 * s, yb, 25.6)), 0.24, 0, 8, step=3.0)
-    tube(bm, Vector((x_ - 3.2, yb, 19.2)), Vector((x_ + 3.2, yb, 19.2)), 0.2, 0, 8)
-    for zz in (BASE_H + 1.0, 25.4):
-        tube(bm, Vector((x_, yb, zz)), Vector((x_, YS + OUT_D, zz)), 0.18, 0, 6)
-new_obj('Main_Crosses', bm, '05_Outside', [red_steel])
+    for dx in (-0.85, 0.85):
+        tube(bm, Vector((x_ + dx, yf, BASE_H + 0.7)), Vector((x_ + dx, yf, z_sk - 4.0)), 0.36, 0, 10, step=3.0)
+    for zz in (16.8, 20.9):
+        tube(bm, Vector((x_ - 3.4, yf + 0.15, zz)), Vector((x_ + 3.4, yf + 0.15, zz)), 0.32, 0, 10, step=3.0)
+        for sx in (-3.4, 3.4):
+            tube(bm, Vector((x_ + sx, yf + 0.15, zz)), Vector((x_ + sx, yf + 0.15, zz - 1.5)), 0.32, 0, 10)
+    for zz in (BASE_H + 1.2, z_sk - 4.6):
+        tube(bm, Vector((x_, yf, zz)), Vector((x_, yb, zz)), 0.18, 0, 6)
+new_obj('Main_Frames', bm, '05_Outside', [red_steel])
 bm = bmesh.new()
 WIND = Vector((0.55, -0.83, 0)).normalized()
 SIDEW = Vector((-WIND.y, WIND.x, 0))
@@ -1430,7 +1629,7 @@ for n_, x_ in enumerate(np.arange(x_min + 3.0, x_max - 3.0, 6.0)):
             face(bm, pts[::-1], -SIDEW, 1, uvs[::-1])
 new_obj('Flags', bm, '05_Outside', [white_paint, flags_mat])
 
-# the footbridge from the station's platform to the away section (OSM)
+# the footbridge from the station's platform to the away section (OSM), covered: the away fans' own way in
 bm = bmesh.new()
 br = next((r for r in OSM['roads'] if r.get('bridge') and r['type'] == 'footway' and len(r['pts']) >= 3 and r['pts'][-1][1] > -70), None)
 if br:
@@ -1456,7 +1655,29 @@ if br:
         for k in range(int(dv.length / 10.0) + 1):
             p = a_.lerp(b_, k / max(1, int(dv.length / 10.0)))
             box(bm, p, dv, 0.35, sd, 0.35, 0.0, BZ - 0.8, 2)
-new_obj('Footbridge', bm, '05_Outside', [concrete_light, galv, white_paint])
+        # covered: a tube of tan corrugated sheeting on steel hoops over the
+        # deck, open in a band at the sides (the photos from the train)
+        dn_ = dv.normalized()
+        sn = sd.normalized()
+        R_T = 2.05
+        n_ = max(1, math.ceil(dv.length / 2.5))
+        arc_ = [math.radians(a) for a in range(10, 171, 16)]
+        for k in range(n_):
+            p0, p1 = a_.lerp(b_, k / n_), a_.lerp(b_, (k + 1) / n_)
+            for a0_, a1_ in zip(arc_, arc_[1:]):
+                q = lambda pp, aa: pp + sn * (R_T * math.cos(aa)) + Vector((0, 0, BZ + 0.9 + R_T * 0.8 * math.sin(aa)))
+                quad = [q(p0, a0_), q(p1, a0_), q(p1, a1_), q(p0, a1_)]
+                cen_ = (p0 + p1) / 2 + Vector((0, 0, BZ + 0.9))
+                face(bm, quad, (quad[0] + quad[2]) / 2 - cen_, 3)
+                face(bm, quad[::-1], cen_ - (quad[0] + quad[2]) / 2, 3)
+        for k in range(n_ + 1):
+            pp = a_.lerp(b_, k / n_)
+            pts_ = [pp + sn * (R_T * math.cos(math.radians(a))) + Vector((0, 0, BZ + 0.9 + R_T * 0.8 * math.sin(math.radians(a)))) for a in range(0, 181, 20)]
+            for u_, v_ in zip(pts_, pts_[1:]):
+                tube(bm, u_, v_, 0.06, 1, 5)
+            for s_ in (-1, 1):
+                tube(bm, pp + sn * s_ * R_T + Vector((0, 0, BZ)), pp + sn * s_ * R_T + Vector((0, 0, BZ + 0.9)), 0.06, 1, 5)
+new_obj('Footbridge', bm, '05_Outside', [concrete_light, galv, white_paint, principled('M_TubeSheet', (0.44, 0.39, 0.31), 0.6)])
 
 
 # ================================================================ outside: the stadium's own ground, the railway, trees
@@ -1504,8 +1725,20 @@ for g in OSM['platforms']:
         pass
     # the shelter: a long low vault on posts near the footbridge
     xs_ = sorted(pts, key=lambda p: p[0])
-    mid_line = [(x_, sum(p[1] for p in pts if abs(p[0] - x_) < 8) / max(1, sum(1 for p in pts if abs(p[0] - x_) < 8))) for x_ in np.arange(20.0, 125.0, 5.0)]
-    for (xa, ya), (xb, yb) in zip(mid_line, mid_line[1:]):
+    # its middle line: halfway between the platform's edges at every x (where
+    # the platform has no edge there, no shelter: it once fell to y = 0, in the west end)
+    mid_line = []
+    for x_ in np.arange(20.0, 125.0, 5.0):
+        ys_ = [a_[1] + (c_[1] - a_[1]) * (x_ - a_[0]) / (c_[0] - a_[0]) for a_, c_ in zip(pts, pts[1:] + pts[:1])
+               if abs(c_[0] - a_[0]) > 1e-6 and min(a_[0], c_[0]) <= x_ <= max(a_[0], c_[0])]
+        if len(ys_) >= 2:
+            mid_line.append((float(x_), (min(ys_) + max(ys_)) / 2))
+        else:
+            mid_line.append(None)
+    for q0_, q1_ in zip(mid_line, mid_line[1:]):
+        if q0_ is None or q1_ is None:
+            continue
+        (xa, ya), (xb, yb) = q0_, q1_
         for k in range(6):
             a0, a1 = math.pi * k / 6, math.pi * (k + 1) / 6
             za, zb = 3.4 + 0.9 * math.sin(a0), 3.4 + 0.9 * math.sin(a1)
@@ -1815,7 +2048,13 @@ if QUICK:
         'train': ((55.0, -135.0, 4.0), (78.0, -62.0, 20.0), 62),          # from the train at the station: the north-west pod
         'corner': ((-135.0, 95.0, 1.7), (-85.0, 55.0, 20.0), 62),
         'photo8': ((9.0, 36.5, 1.6), (-6.0, 47.0, 4.0), 60),               # 8.png: the dugouts and the tunnel
-        'away': ((40.0, 10.0, 12.0), (75.0, -55.0, 20.0), 50),             # the away section in the north-west corner        # the south-east corner from the crossroads
+        'away': ((10.0, 30.0, 16.0), (64.0, -46.0, 20.0), 46),             # 6.png: the away section from the main stand
+        'walk': ((110.0, -128.0, 7.0), (78.0, -70.0, 10.0), 60),
+        'east': ((-155.0, 35.0, 1.7), (-80.0, -5.0, 17.0), 62),           # the east end from the street: 'philips stadion' on its red band (Commons)
+        'west': ((150.0, -10.0, 1.7), (75.0, 10.0, 15.0), 62),           # the away fans' covered footbridge from the platform
+        'fred': ((0.0, 93.0, 1.7), (62.0, 66.0, 21.0), 66),             # Frederiklaan: the main stand's front and the south-west pod
+        'mainback': ((-70.0, 132.0, 2.0), (-5.0, 76.0, 19.0), 58),        # the main stand's back from the east: the skirt and the red frames
+        'under': ((0.0, 30.0, 6.0), (0.0, -40.0, 27.0), 72),              # the north roof from below
     }
     for nm in (which or list(shots)):
         loc, tgt, fov = shots[nm]
@@ -1980,6 +2219,10 @@ tiles_ = ((np.floor(X / 0.6) + np.floor(Y / 0.6)) % 2 == 0)[..., None]
 alb *= np.where(tiles_, 1.0, 0.94)
 infield = (np.abs(X) < BOARD_X) & (np.abs(Y) < BOARD_Y)
 alb = np.where(infield[..., None], grass_albedo(X, Y, H, W), alb)
+# the technical area in front of the dugouts: artificial turf from the boards to the stand (8.png)
+turf = (np.abs(X) < 15.5) & (Y > BOARD_Y - 0.2) & (Y < YS + 0.1)
+tcol = np.array((0.045, 0.15, 0.04), 'f') * (1 + 0.06 * rng.normal(0, 1, (H, W)).astype('f'))[..., None]
+alb = np.where(turf[..., None], tcol, alb)
 floor_img = finish('ps_floor', alb, floor_light, H, W)
 del alb, X, Y
 floor.data.materials.clear(); floor.data.materials.append(image_material('M_Floor', floor_img, 0.9))
@@ -2011,9 +2254,12 @@ SELF_LIT = {'M_Pitch', 'M_Floor'}
 FIXED_LIGHT = {'M_GlassUnder': 0.62}       # the main stand's glass roof from under it: lit through it, not by the bake
 
 
-def bake_light(obj, samples=96):
+def bake_light(obj, samples=96, fill=0.0):
     # the sun into the vertex colours, at the pitch's exposure; the pitch and
-    # the floor carry their own light in their pictures
+    # the floor carry their own light in their pictures. `fill`: the light
+    # thrown back by the sunlit pitch and stands into the shade under the
+    # roofs, which the bake leaves far too dark: on the photos the second
+    # rings in the shade are still a full red, about a third of the sunlit first rings
     me = obj.data
     me.color_attributes.active_color = me.color_attributes.new('Light', 'FLOAT_COLOR', 'POINT')
     bk.target = 'VERTEX_COLORS'
@@ -2025,6 +2271,7 @@ def bake_light(obj, samples=96):
     fc = me.color_attributes['Light']
     c = np.empty(len(fc.data) * 4, 'f'); fc.data.foreach_get('color', c); c = c.reshape(-1, 4)
     c[:, :3] = np.clip(c[:, :3] * EXPOSE, 0, 1)
+    c[:, :3] = c[:, :3] + fill * (1 - c[:, :3])
     mi = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('material_index', mi)
     ls = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_start', ls)
     lt = np.empty(len(me.polygons), 'i'); me.polygons.foreach_get('loop_total', lt)
@@ -2049,7 +2296,7 @@ def bake_light(obj, samples=96):
     me.color_attributes.render_color_index = ci
 
 
-bake_light(target)
+bake_light(target, fill=0.10)
 bake_light(backdrop, 32)
 gc = goals.data.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
 gc.data.foreach_set('color', [0.45, 0.45, 0.45, 1.0] * len(gc.data))
