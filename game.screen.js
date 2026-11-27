@@ -389,17 +389,15 @@ const STADIUM_SCREEN = (() => {
         return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
     };
     function drawCampin(clock, s1, s2) {
+        // flat: a black board, each team's colour in a panel on its side, the
+        // score and the clock in white on the dark middle
         const c = eCtx, [ta, tb] = campinTeams();
         c.fillStyle = '#08080a'; c.fillRect(0, 0, CW2, CH2);
-        const x0 = 60, x1 = CW2 - 60, y0 = 50, y1 = CH2 - 50;
-        const g = c.createLinearGradient(x0, 0, x1, 0);
-        g.addColorStop(0, ta.color); g.addColorStop(0.3, ta.color);
-        g.addColorStop(0.5, mix(mix(ta.color, tb.color, 0.5), '#000000', 0.55));     // darker where they meet
-        g.addColorStop(0.7, tb.color); g.addColorStop(1, tb.color);
-        c.fillStyle = g; c.fillRect(x0, y0, x1 - x0, y1 - y0);
-        const shade = c.createLinearGradient(0, y0, 0, y1);
-        shade.addColorStop(0, 'rgba(255,255,255,0.08)'); shade.addColorStop(1, 'rgba(0,0,0,0.25)');
-        c.fillStyle = shade; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+        const x0 = 40, x1 = CW2 - 40, y0 = 40, y1 = CH2 - 40;
+        c.fillStyle = ta.color; c.fillRect(x0, y0, 300, y1 - y0);
+        c.fillStyle = tb.color; c.fillRect(x1 - 300, y0, 300, y1 - y0);
+        c.fillStyle = '#141418'; c.fillRect(x0 + 300, y0, x1 - x0 - 600, y1 - y0);
+        c.fillStyle = '#f2c200'; c.fillRect(x0 + 300, y0, x1 - x0 - 600, 10);       // the yellow of Bogotá along the top
         const shieldAt = (cx, cy, col, code) => {
             const path = (k) => {
                 c.beginPath();
@@ -411,13 +409,13 @@ const STADIUM_SCREEN = (() => {
             c.font = `700 44px ${CF}`; c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
             c.fillText(code, cx, cy - 6);
         };
-        shieldAt(230, 230, ta.color, ta.code);
-        shieldAt(794, 230, tb.color, tb.code);
+        shieldAt(190, 236, mix(ta.color, '#000000', 0.25), ta.code);
+        shieldAt(834, 236, mix(tb.color, '#000000', 0.25), tb.code);
         c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.font = `500 150px ${CF}`;
-        c.fillText(`${s1} : ${s2}`, 512, 236);
+        c.fillText(`${s1} : ${s2}`, 512, 226);
         c.font = `600 80px ${CF}`;
-        c.fillText(clock, 512, 372);
+        c.fillText(clock, 512, 368);
         eTexture.needsUpdate = true;
     }
 

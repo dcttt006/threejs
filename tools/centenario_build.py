@@ -1230,7 +1230,7 @@ new_obj('Floodlights', bm, '05_Outside', [lamp, lamp_glass])
 
 # ================================================================ outside: the park round the stadium, trees
 G_HALF = 320.0                   # tools/centenario/ground.png covers 640 x 640 m
-AP_X0, AP_X1, AP_Y0, AP_Y1 = -175.0, 175.0, -175.0, 165.0
+AP_X0, AP_X1, AP_Y0, AP_Y1 = -180.0, 180.0, -180.0, 170.0     # on the backdrop's 10 m grid: no overlap, no dark seam
 
 
 def ground_cells(bm, x0, x1, y0, y1, step, skip):

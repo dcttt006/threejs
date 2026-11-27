@@ -1684,7 +1684,7 @@ new_obj('Footbridge', bm, '05_Outside', [concrete_light, galv, white_paint, prin
 # The ground round the stadium up to the streets belongs to it (it is seen in
 # Stadion kiezen); the town beyond is the backdrop
 G_HALF = 320.0                   # tools/philips/ground.png covers 640 x 640 m
-AP_X0, AP_X1, AP_Y0, AP_Y1 = -160.0, 160.0, -165.0, 130.0
+AP_X0, AP_X1, AP_Y0, AP_Y1 = -160.0, 160.0, -170.0, 130.0     # on the backdrop's 10 m grid: no overlap, no dark seam
 G_Z = -0.12
 
 

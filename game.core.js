@@ -358,7 +358,7 @@ const STADIUMS = [
         club: 'PSV',
         city: 'Eindhoven',
         // built from nothing by tools/philips_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/philips_stadion.glb?v=3',
+        file: 'media/models/stadiums/philips_stadion.glb?v=4',
         capacity: '35.119',
         // measured with Philipsdorp, the railway and the town round it (the 'StadiumBackdrop' in the model)
         pitch: { x: 0.00, z: 0.00, w: 43.31, l: 28.05, angle: Math.PI, y: 0.05 },
@@ -375,7 +375,7 @@ const STADIUMS = [
         club: 'Uruguay · Peñarol · Nacional',
         city: 'Montevideo',
         // built from nothing by tools/centenario_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/centenario.glb?v=1',
+        file: 'media/models/stadiums/centenario.glb?v=2',
         capacity: '60.235',
         // measured with Parque Batlle and the Hospital de Clínicas round it (the 'StadiumBackdrop' in the model)
         pitch: { x: -1.05, z: -7.52, w: 40.84, l: 26.45, angle: Math.PI, y: 0.02 },
@@ -392,11 +392,12 @@ const STADIUMS = [
         club: 'Millonarios · Santa Fe',
         city: 'Bogotá',
         // built from nothing by tools/campin_build.py; ?v=: raise it with every new export
-        file: 'media/models/stadiums/el_campin.glb?v=1',
-        capacity: '36.343',
-        pitch: { x: 0, z: 0, w: 79.73, l: 50.73, angle: Math.PI, y: 0.07 },
-        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1 },
-        // the big screen over the north end: both teams' colours, score and clock
+        file: 'media/models/stadiums/el_campin.glb?v=2',
+        capacity: '39.512',
+        // measured with the brick town and the hills round it (the 'StadiumBackdrop' in the model)
+        pitch: { x: 0.00, z: 0.00, w: 43.31, l: 28.05, angle: Math.PI, y: 0.06 },
+        look: { photo: true, baked: true, gain: 2, sat: 1, contrast: 1, sky: [0x4a86d8, 0xc4dbef] },
+        // the LED screen on the north end's roof: both teams' colours, score and clock
         screen: 'campin',
         view: { lookZ: -12 },
     },
